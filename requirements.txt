@@ -1,4 +1,4 @@
-# Core app & UI
+# Core Space / Web stack
 gradio[mcp,oauth]==5.49.1
 fastapi==0.121.0
 uvicorn==0.31.1
@@ -6,21 +6,23 @@ starlette==0.49.3
 spaces==0.42.1
 python-dotenv==1.0.1
 
-# Vector learning & AI stack
+# Embedding + Semantic Retrieval Stack
 sentence-transformers==3.2.0
 faiss-cpu==1.8.0.post1
-transformers==4.46.2
-tokenizers==0.21.4
+
+# Transformers ecosystem (compatible versions)
+transformers==4.45.2
+tokenizers==0.20.3
 huggingface-hub==0.34.6
 
-# Numerical + analytics
+# Numeric + Analytics
 numpy==1.26.4
 pandas==2.2.2
 scikit-learn==1.5.2
 scipy==1.13.1
 matplotlib==3.9.2
 
-# Utils
+# Utility + Runtime
 tqdm==4.66.5
 requests==2.32.3
 tenacity==8.4.1
