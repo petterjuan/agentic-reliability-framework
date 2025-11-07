@@ -8,6 +8,7 @@ import requests
 from datetime import datetime
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
+import faiss
 import gradio as gr
 
 # ============================
@@ -27,38 +28,50 @@ else:
     print("⚠️ No Hugging Face token found. Running in fallback/local mode.")
 
 # ============================
-# GLOBAL CONFIG
+# CONFIG
 # ============================
 HF_API_URL = "https://router.huggingface.co/hf-inference"
 headers = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
+DATA_DIR = "./data"
+os.makedirs(DATA_DIR, exist_ok=True)
 
-# Load a lightweight sentence transformer for embedding incidents
+# ============================
+# MODEL + FAISS SETUP
+# ============================
 model = SentenceTransformer("all-MiniLM-L6-v2")
+VECTOR_DIM = model.get_sentence_embedding_dimension()
+FAISS_PATH = os.path.join(DATA_DIR, "incident_memory.faiss")
+META_PATH = os.path.join(DATA_DIR, "incidents.json")
 
-# Vector memory store (in-memory for now)
-incident_memory = []
+# Load or initialize FAISS index
+if os.path.exists(FAISS_PATH):
+    try:
+        index = faiss.read_index(FAISS_PATH)
+        with open(META_PATH, "r") as f:
+            incident_memory = json.load(f)
+        print(f"✅ Loaded {len(incident_memory)} past incidents from FAISS.")
+    except Exception:
+        print("⚠️ Failed to load FAISS index. Starting fresh.")
+        index = faiss.IndexFlatL2(VECTOR_DIM)
+        incident_memory = []
+else:
+    index = faiss.IndexFlatL2(VECTOR_DIM)
+    incident_memory = []
 
 # ============================
 # ANOMALY DETECTION
 # ============================
 def detect_anomaly(event):
-    """
-    Detects anomalies based on latency/error_rate thresholds.
-    Forces an anomaly randomly for validation.
-    """
-    force_anomaly = random.random() < 0.25  # ~25% forced anomaly rate
+    """Detects anomalies based on latency/error_rate thresholds, with forced random noise."""
+    force_anomaly = random.random() < 0.25
     if force_anomaly or event["latency"] > 150 or event["error_rate"] > 0.05:
         return True
     return False
-
 
 # ============================
 # AI ANALYSIS + HEALING
 # ============================
 def analyze_event(event):
-    """
-    Send event to HF Inference API for analysis, fallback locally if needed.
-    """
     prompt = (
         f"Analyze this telemetry event and suggest a healing action:\n"
         f"Component: {event['component']}\n"
@@ -90,12 +103,10 @@ def analyze_event(event):
     except Exception as e:
         return f"Error generating analysis: {e}", "No actionable step detected."
 
-
 # ============================
 # HEALING SIMULATION
 # ============================
 def choose_healing_action(event, analysis_text):
-    """Simulates an automated healing response."""
     possible_actions = [
         "Restarted container",
         "Scaled service replicas",
@@ -111,38 +122,37 @@ def choose_healing_action(event, analysis_text):
         return "Invalidated cache"
     return random.choice(possible_actions)
 
-
 # ============================
-# VECTOR SIMILARITY ENGINE
+# VECTOR SIMILARITY + FAISS PERSISTENCE
 # ============================
 def record_and_search_similar(event, analysis_text):
-    """
-    Store each event as a vector and retrieve similar past incidents.
-    """
+    """Store each event vector in FAISS and search for similar incidents."""
     description = (
         f"Component: {event['component']} | "
         f"Latency: {event['latency']} | "
         f"ErrorRate: {event['error_rate']} | "
         f"Analysis: {analysis_text}"
     )
-    embedding = model.encode(description)
+    embedding = model.encode(description).astype("float32").reshape(1, -1)
 
     similar_info = ""
-    if incident_memory:
-        existing_embeddings = np.array([e["embedding"] for e in incident_memory])
-        sims = cosine_similarity([embedding], existing_embeddings)[0]
-        top_indices = sims.argsort()[-3:][::-1]
-        similar = [
-            incident_memory[i]["description"]
-            for i in top_indices
-            if sims[i] > 0.7
-        ]
+    if len(incident_memory) > 0 and index.ntotal > 0:
+        k = min(3, len(incident_memory))
+        D, I = index.search(embedding, k)
+        similar = [incident_memory[i]["description"] for i in I[0] if D[0][0] < 0.5]
         if similar:
-            similar_info = f"Found {len(similar)} similar incidents (e.g., {similar[0][:150]}...)."
+            similar_info = f"Found {len(similar)} similar incidents (e.g., {similar[0][:120]}...)."
 
-    incident_memory.append({"embedding": embedding, "description": description})
+    # Store new entry
+    incident_memory.append({"description": description})
+    index.add(embedding)
+
+    # Persist FAISS + metadata
+    faiss.write_index(index, FAISS_PATH)
+    with open(META_PATH, "w") as f:
+        json.dump(incident_memory, f)
+
     return similar_info
-
 
 # ============================
 # EVENT HANDLER
@@ -156,6 +166,7 @@ def process_event(component, latency, error_rate):
         "latency": latency,
         "error_rate": error_rate,
     }
+
     event["anomaly"] = detect_anomaly(event)
     status = "Anomaly" if event["anomaly"] else "Normal"
     analysis, healing = analyze_event(event)
@@ -170,15 +181,12 @@ def process_event(component, latency, error_rate):
     df = pd.DataFrame(event_log[-20:])
     return f"✅ Event Processed ({status})", df
 
-
 # ============================
 # GRADIO UI
 # ============================
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("## 🧠 Agentic Reliability Framework MVP")
-    gr.Markdown(
-        "Adaptive anomaly detection + AI-driven self-healing + vector memory"
-    )
+    gr.Markdown("Adaptive anomaly detection + AI-driven self-healing + vector memory (FAISS persistent)")
 
     component = gr.Textbox(label="Component", value="api-service")
     latency = gr.Slider(10, 400, value=100, label="Latency (ms)")
