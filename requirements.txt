@@ -1,6 +1,6 @@
 # Core Web + UI
 gradio==4.43.0
-fastapi==0.115.2
+fastapi==0.112.2
 uvicorn==0.31.1
 
 # AI / Embedding / Similarity
@@ -20,7 +20,7 @@ matplotlib==3.9.2
 huggingface-hub==0.26.1
 python-dotenv==1.0.1
 
-# Optional - reliability logging & persistence
+# Reliability logging & persistence
 joblib==1.4.2
 tqdm==4.66.5
 
