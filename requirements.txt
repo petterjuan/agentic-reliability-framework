@@ -1,26 +1,20 @@
-# --- Core Framework ---
-gradio[mcp,oauth]==5.49.1
-uvicorn>=0.38.0
-fastapi>=0.121.0
+# Core UI & API Framework
+gradio==5.2.0
+uvicorn==0.30.6
+fastapi==0.115.5
 
-# --- Data & Core ---
-pandas>=2.2.2
-numpy>=1.26.4
-scikit-learn>=1.5.1
+# Core Data + Model Utilities
+pandas==2.2.3
+numpy==2.1.3
+scikit-learn==1.5.2
+python-dotenv==1.0.1
 
-# --- Hugging Face + Transformers ---
-transformers>=4.57.1
-torch>=2.4.0
-huggingface-hub>=0.30.0
-hf-transfer>=0.1.4
+# Hugging Face + Model Integration
+huggingface-hub==0.25.2
+transformers==4.45.2
+sentence-transformers==3.1.1
+torch==2.4.1
+faiss-cpu==1.8.0.post1
 
-# --- AI & Embeddings ---
-faiss-cpu>=1.8.0
-sentence-transformers>=3.0.1
-
-# --- Utilities ---
-requests>=2.32.3
-python-dotenv>=1.0.1
-
-# --- Compatibility fix ---
-pydantic>=2.0,<2.12
+# Reliability + Misc
+requests==2.32.3
