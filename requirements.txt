@@ -11,7 +11,7 @@ sentence-transformers==3.2.0
 faiss-cpu==1.8.0.post1
 transformers==4.46.2
 tokenizers==0.21.4
-huggingface-hub==0.35.5
+huggingface-hub==0.34.6
 
 # Numerical + analytics
 numpy==1.26.4
