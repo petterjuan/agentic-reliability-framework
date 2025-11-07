@@ -1,19 +1,29 @@
-# Core runtime
-gradio==5.49.1
-uvicorn>=0.22.0
-spaces
+# Core Web + UI
+gradio==4.43.0
+fastapi==0.115.2
+uvicorn==0.31.1
 
-# ML & Vector memory
-sentence-transformers==3.2.1
+# AI / Embedding / Similarity
+sentence-transformers==3.2.0
 faiss-cpu==1.8.0.post1
-numpy==1.26.4
+
+# Data + Analytics
 pandas==2.2.2
-torch==2.3.1
+numpy==1.26.4
 scikit-learn==1.5.2
 
-# Networking & API
-requests==2.32.3
+# Time & Anomaly Simulation
+scipy==1.13.1
+matplotlib==3.9.2
+
+# Hugging Face + Token Management
+huggingface-hub==0.26.1
 python-dotenv==1.0.1
 
-# Misc utils
+# Optional - reliability logging & persistence
+joblib==1.4.2
 tqdm==4.66.5
+
+# Security & resilience
+requests==2.32.3
+tenacity==8.4.1
