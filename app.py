@@ -1,96 +1,80 @@
-import gradio as gr
-import sqlite3
+import os
+import random
 import time
-from datetime import datetime
+import gradio as gr
+import pandas as pd
+from huggingface_hub import InferenceClient
 
-DB_PATH = "reliability.db"
+# === Initialize Hugging Face client ===
+HF_TOKEN = os.getenv("HF_API_TOKEN")
+client = InferenceClient(token=HF_TOKEN)
 
-# --- Setup database (first run only) ---
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS telemetry (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        component TEXT,
-        latency REAL,
-        error_rate REAL
-    )
-    """)
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS alerts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_id INTEGER,
-        alert_type TEXT,
-        threshold REAL,
-        timestamp TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
+# === Mock telemetry state ===
+events_log = []
 
-init_db()
+def simulate_event():
+    """Simulate one telemetry datapoint."""
+    component = random.choice(["api-service", "data-ingestor", "model-runner", "queue-worker"])
+    latency = round(random.gauss(150, 60), 2)
+    error_rate = round(random.random() * 0.2, 3)
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    return {"timestamp": timestamp, "component": component, "latency": latency, "error_rate": error_rate}
 
-# --- Core functions ---
-def log_event(component, latency, error_rate):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO telemetry (timestamp, component, latency, error_rate) VALUES (?, ?, ?, ?)",
-              (datetime.now().isoformat(), component, latency, error_rate))
-    conn.commit()
-    conn.close()
-    return detect_anomaly()
+def detect_anomaly(event):
+    """Basic anomaly detection: threshold rule."""
+    if event["latency"] > 250 or event["error_rate"] > 0.1:
+        return True
+    return False
 
-def detect_anomaly(threshold_latency=200, threshold_error=0.3):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM telemetry ORDER BY id DESC LIMIT 1")
-    row = c.fetchone()
-    conn.close()
-    if row:
-        id, ts, component, latency, error_rate = row
-        if latency > threshold_latency or error_rate > threshold_error:
-            alert_msg = f"⚠️ Anomaly detected in {component} — latency {latency}ms, error rate {error_rate}"
-            save_alert(id, "anomaly", max(latency, error_rate))
-            return alert_msg
-    return "✅ No anomaly detected."
+def analyze_cause(event):
+    """Use an LLM to interpret and explain anomalies."""
+    prompt = f"""
+    You are an AI reliability engineer analyzing telemetry.
+    Component: {event['component']}
+    Latency: {event['latency']}ms
+    Error Rate: {event['error_rate']}
+    Timestamp: {event['timestamp']}
 
-def save_alert(event_id, alert_type, threshold):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("INSERT INTO alerts (event_id, alert_type, threshold, timestamp) VALUES (?, ?, ?, ?)",
-              (event_id, alert_type, threshold, datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
+    Explain in plain English the likely root cause of this anomaly and one safe auto-healing action to take.
+    """
+    try:
+        response = client.text_generation(
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+            prompt=prompt,
+            max_new_tokens=180
+        )
+        return response.strip()
+    except Exception as e:
+        return f"Error generating analysis: {e}"
 
-def show_recent_alerts():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 10")
-    rows = c.fetchall()
-    conn.close()
-    if not rows:
-        return "No alerts yet."
-    return "\n".join([f"[{r[4]}] {r[2]} (threshold: {r[3]})" for r in rows])
+def process_event():
+    """Simulate event → detect → diagnose → log."""
+    event = simulate_event()
+    is_anomaly = detect_anomaly(event)
+    result = {"event": event, "anomaly": is_anomaly, "analysis": None}
 
-# --- Gradio UI ---
-with gr.Blocks() as demo:
-    gr.Markdown("# 🧠 Agentic Reliability Framework MVP")
-    gr.Markdown("Simulate telemetry events and detect anomalies automatically.")
-    
-    with gr.Row():
-        component = gr.Textbox(label="Component", value="api-service")
-        latency = gr.Number(label="Latency (ms)", value=150)
-        error_rate = gr.Number(label="Error rate", value=0.05)
-    btn = gr.Button("Submit Event")
-    output = gr.Textbox(label="Detection Output")
-    
-    btn.click(fn=log_event, inputs=[component, latency, error_rate], outputs=output)
-    
-    gr.Markdown("### Recent Alerts")
-    alert_box = gr.Textbox(label="", interactive=False)
-    refresh_btn = gr.Button("Refresh Alerts")
-    refresh_btn.click(fn=show_recent_alerts, outputs=alert_box)
+    if is_anomaly:
+        analysis = analyze_cause(event)
+        result["analysis"] = analysis
+        event["analysis"] = analysis
+        event["status"] = "Anomaly"
+    else:
+        event["analysis"] = "-"
+        event["status"] = "Normal"
+
+    events_log.append(event)
+    df = pd.DataFrame(events_log).tail(15)
+    return f"✅ Event Processed ({event['status']})", df
+
+# === Gradio UI ===
+with gr.Blocks(title="🧠 Agentic Reliability Framework MVP") as demo:
+    gr.Markdown("# 🧠 Agentic Reliability Framework MVP\n### Real-time anomaly detection + AI-driven diagnostics")
+
+    run_btn = gr.Button("🚀 Submit Telemetry Event")
+    status = gr.Textbox(label="Detection Output")
+    alerts = gr.Dataframe(headers=["timestamp", "component", "latency", "error_rate", "status", "analysis"],
+                          label="Recent Events (Last 15)", wrap=True)
+
+    run_btn.click(fn=process_event, inputs=None, outputs=[status, alerts])
 
 demo.launch()
