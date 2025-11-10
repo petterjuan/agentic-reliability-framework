@@ -4,22 +4,6 @@ Adaptive anomaly detection + AI-driven self-healing + persistent FAISS memory fo
 
 The Agentic Reliability Framework (ARF) provides a prototype for self-healing operational intelligence — integrating vector-based observability, adaptive anomaly detection, and cloud inference for autonomous incident handling.
 
----
-title: Agentic Reliability Framework
-emoji: 🧠
-colorFrom: red
-colorTo: gray
-sdk: gradio
-sdk_version: 5.49.1
-app_file: app.py
-pinned: false
-python_version: '3.10'
-license: apache-2.0
-short_description: Autonomous detect → diagnose → heal reliability framework
----
-
-# 🧠 Agentic Reliability Framework
-
 **Autonomous detect → diagnose → heal reliability framework** with adaptive anomaly detection, AI-driven root cause analysis, and persistent vector memory for cloud infrastructure.
 
 ---
