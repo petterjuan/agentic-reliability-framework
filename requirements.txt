@@ -25,7 +25,7 @@ numpy>=1.26.4,<2.0.0
 
 # === Data Validation & Type Safety ===
 # UPGRADE: From 2.5.0 to 2.11.x
-pydantic>=2.11.0,<2.12
+pydantic>=2.11.0,<2.13
 
 # === HTTP & API Communication ===
 # SECURITY FIX: Upgraded from 2.31.0 to fix CVE-2023-32681 and CVE-2024-47081
