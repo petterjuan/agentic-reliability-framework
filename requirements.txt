@@ -21,7 +21,7 @@ faiss-cpu>=1.13.0
 
 # === Data Processing & Mathematics ===
 # CONSERVATIVE UPDATE: Staying on 1.26.x for compatibility
-numpy>=1.26.4,<2.0.0
+numpy>=1.26.4,<3.0.0
 
 # === Data Validation & Type Safety ===
 # UPGRADE: From 2.5.0 to 2.11.x
