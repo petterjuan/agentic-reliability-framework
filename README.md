@@ -69,23 +69,27 @@ Memory Behavior	Growing	Stable / Bounded	0 leaks
 
 🧩 Architecture Overview
 
-Your Production System (APIs, DBs, Microservices)
-                     │
-                     ▼
-        ┌───────────────────────────────────┐
-        │     Agentic Reliability Core      │
-        └───────────────┬───────────────────┘
-                Detect  │  Diagnose  │ Predict
-        ┌───────────────┼────────────┼────────────────┐
-        ▼               ▼            ▼                │
-  Detective Agent   Diagnostician   Predictive        │
-    (Anomaly         Agent          Agent              │
-    Detection)       (Root Cause)   (Forecasting)      │
-        └───────────────────────────┬──────────────────┘
-                                    ▼
-                          Policy Engine (Auto-Healing)
-                                    ▼
-         Healing Actions (restart, scale, rollback, circuit-break)
+flowchart TB
+  subgraph Prod["Your Production System\n(APIs, Databases, Microservices)"]
+  end
+
+  subgraph Core["Agentic Reliability Core"]
+    direction TB
+    Detect[Detective Agent\n(Anomaly Detection)]
+    Diagnose[Diagnostician Agent\n(Root Cause Analysis)]
+    Predict[Predictive Agent\n(Forecasting)]
+    Policy[Policy Engine\n(Auto-Healing)]
+    Actions[Healing Actions\n(restart · scale · rollback · circuit-break)]
+  end
+
+  Prod --> Core
+  Core --> Detect
+  Core --> Diagnose
+  Core --> Predict
+  Detect --> Policy
+  Diagnose --> Policy
+  Predict --> Policy
+  Policy --> Actions
 
 
 🧪 The Three Agents
