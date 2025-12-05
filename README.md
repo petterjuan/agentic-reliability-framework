@@ -56,34 +56,43 @@ Atomic operations w/ thread-safe FAISS single-writer pattern
 
 Lock-free reads for high throughput
 
-⚡ Performance Improvements
+⚡ Lock-Free Reads for High Throughput
+
+By restructuring the internal memory stores around lock-free, single-writer / multi-reader semantics, the framework delivers deterministic concurrency without blocking. This removes tail-latency spikes and keeps event flows smooth even under burst load.
+
+Performance Impact
 Metric	Before	After	Δ
 Event Processing (p50)	~350ms	~100ms	⚡ 71% faster
 Event Processing (p99)	~800ms	~250ms	⚡ 69% faster
-Agent Orchestration	Sequential	Parallel	3×
-Memory	Growing	Stable / Bounded	0 leaks
-🧩 Architecture
-Your Production System
-(APIs, DBs, Microservices)
-               │
-               ▼
-   ┌──────────────────────────┐
-   │ Agentic Reliability Core │
-   └───────────┬──────────────┘
-       Detect   │   Diagnose   │   Predict
-     ┌──────────┼──────────────┼──────────┐
-     ▼          ▼              ▼
-  Detective   Diagnostician   Predictive
-   Agent         Agent          Agent
-     └──────────────┬──────────────┘
-                    ▼
-           Policy Engine (Auto-Healing)
-                    ▼
-         Healing Actions (restart, scale,
-             rollback, circuit break)
+Agent Orchestration	Sequential	Parallel	3× throughput
+Memory Behavior	Growing	Stable / Bounded	0 leaks
+
+🧩 Architecture Overview
+
+Your Production System (APIs, DBs, Microservices)
+                     │
+                     ▼
+        ┌───────────────────────────────────┐
+        │     Agentic Reliability Core      │
+        └───────────────┬───────────────────┘
+                Detect  │  Diagnose  │ Predict
+        ┌───────────────┼────────────┼────────────────┐
+        ▼               ▼            ▼                │
+  Detective Agent   Diagnostician   Predictive        │
+    (Anomaly         Agent          Agent              │
+    Detection)       (Root Cause)   (Forecasting)      │
+        └───────────────────────────┬──────────────────┘
+                                    ▼
+                          Policy Engine (Auto-Healing)
+                                    ▼
+         Healing Actions (restart, scale, rollback, circuit-break)
+
 
 🧪 The Three Agents
-🕵️ Detective Agent (Anomaly Detection)
+
+🕵️ Detective Agent — Anomaly Detection
+
+Real-time vector embeddings + adaptive thresholds to surface deviations before they cascade.
 
 Adaptive multi-metric scoring
 
