@@ -71,33 +71,33 @@ Memory Behavior	Growing	Stable / Bounded	0 leaks
 
 Your Production System
 (APIs, Databases, Microservices)
+         │
+         ▼
+ ┌───────────────────────────────┐
+ │  Agentic Reliability Core     │
+ │ (Detect → Diagnose → Predict) │
+ └─────────────┬─────────────────┘
                │
+   ┌───────────┼───────────┐
+   ▼           ▼           ▼
+┌─────────┐ ┌────────────┐ ┌────────────┐
+│Detective│ │Diagnostician│ │Predictive │
+│Agent    │ │Agent        │ │Agent      │
+│(Anomaly)│ │(Root Cause) │ │(Forecast) │
+└────┬────┘ └────┬───────┘ └────┬───────┘
+     │            │            │
+     └────────────┴────────────┘
                ▼
-   ┌───────────────────────────────┐
-   │  Agentic Reliability Core     │
-   │  (Detect → Diagnose → Predict)│
-   └─────────────┬─────────────────┘
-                 │
-      ┌──────────┼──────────┐
-      ▼          ▼          ▼
-┌────────────┐ ┌──────────────┐ ┌──────────────┐
-│ Detective  │ │ Diagnostician│ │ Predictive   │
-│ Agent      │ │ Agent        │ │ Agent        │
-│ (Anomaly)  │ │ (Root Cause) │ │ (Forecasting)│
-└────┬───────┘ └────┬─────────┘ └────┬─────────┘
-     │               │                │
-     └───────────────┴────────────────┘
-                     ▼
-           ┌─────────────────────┐
-           │   Policy Engine     │
-           │   (Auto-Healing)    │
-           └─────────┬───────────┘
-                     ▼
-           ┌─────────────────────┐
-           │   Healing Actions   │
-           │ restart · scale ·   │
-           │ rollback · circuit │
-           └─────────────────────┘
+       ┌───────────────┐
+       │ Policy Engine │
+       │ (Auto-Healing)│
+       └───────┬───────┘
+               ▼
+       ┌───────────────┐
+       │ Healing Actions│
+       │ restart · scale│
+       │ rollback · cb │
+       └───────────────┘
 
 
 
