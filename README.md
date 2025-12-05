@@ -69,35 +69,42 @@ Memory Behavior	Growing	Stable / Bounded	0 leaks
 
 🧩 Architecture Overview
 
+System Flow:
+
 Your Production System
 (APIs, Databases, Microservices)
-         │
-         ▼
- ┌───────────────────────────────┐
- │  Agentic Reliability Core     │
- │ (Detect → Diagnose → Predict) │
- └─────────────┬─────────────────┘
-               │
-   ┌───────────┼───────────┐
-   ▼           ▼           ▼
-┌─────────┐ ┌────────────┐ ┌────────────┐
-│Detective│ │Diagnostician│ │Predictive │
-│Agent    │ │Agent        │ │Agent      │
-│(Anomaly)│ │(Root Cause) │ │(Forecast) │
-└────┬────┘ └────┬───────┘ └────┬───────┘
-     │            │            │
-     └────────────┴────────────┘
-               ▼
-       ┌───────────────┐
-       │ Policy Engine │
-       │ (Auto-Healing)│
-       └───────┬───────┘
-               ▼
-       ┌───────────────┐
-       │ Healing Actions│
-       │ restart · scale│
-       │ rollback · cb │
-       └───────────────┘
+
+↓
+
+Agentic Reliability Core
+
+Detect → Diagnose → Predict
+
+↓
+
+Agents:
+
+🕵️ Detective Agent – Anomaly detection
+
+🔍 Diagnostician Agent – Root cause analysis
+
+🔮 Predictive Agent – Forecasting / risk estimation
+
+↓
+
+Policy Engine (Auto-Healing)
+
+↓
+
+Healing Actions:
+
+Restart
+
+Scale
+
+Rollback
+
+Circuit-break
 
 
 
