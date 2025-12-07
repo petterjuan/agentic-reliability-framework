@@ -12,8 +12,22 @@
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python 3.10+"></a>
   <a href="#"><img src="https://img.shields.io/badge/status-MVP-green" alt="Status: MVP"></a>
-  <a href="#"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="License: MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="License: MIT"></a>
 </p>
+
+---
+
+## 💬 Community
+
+Join the discussion! Ask questions, share feedback, or showcase what you're building:
+
+🗨️ **[GitHub Discussions](https://github.com/petterjuan/agentic-reliability-framework/discussions)** - Active community with Q&A, feature requests, and support
+
+📚 **[Documentation](https://github.com/petterjuan/agentic-reliability-framework#readme)** - Complete setup guide and architecture overview
+
+🎯 **[Live Demo](https://huggingface.co/spaces/petterjuan/agentic-reliability-framework)** - Try ARF in your browser
+
+---
 
 ## 🧠 Agentic Reliability Framework
 
@@ -35,18 +49,21 @@ Transform reactive monitoring into proactive, self-healing reliability. The Agen
 ## 💼 Real-World Use Cases
 
 ### 1. **E-commerce Platform - Black Friday**
+
 **Scenario:** Traffic spike during peak shopping  
 **Detection:** Latency climbing from 100ms → 400ms  
 **Action:** ARF detects trend, triggers scale-out 8 minutes before user impact  
 **Result:** Prevented service degradation affecting estimated $47K in revenue
 
 ### 2. **SaaS API Service - Database Failure**
+
 **Scenario:** Database connection pool exhaustion  
 **Detection:** Error rate 0.02 → 0.31 in 90 seconds  
 **Action:** Circuit breaker + rollback triggered automatically  
 **Result:** Incident contained in 2.3 minutes (vs industry avg 14 minutes)
 
 ### 3. **Financial Services - Memory Leak**
+
 **Scenario:** Slow memory leak in payment service  
 **Detection:** Memory 78% → 94% over 8 hours  
 **Prediction:** OOM crash predicted in 18 minutes  
@@ -118,6 +135,7 @@ Your Production System
 ```
 
 **Key Design Patterns:**
+
 - **Parallel Agent Execution:** All 3 agents analyze simultaneously via `asyncio.gather()`
 - **FAISS Vector Memory:** Persistent incident similarity search with single-writer pattern
 - **Policy Engine:** Thread-safe (RLock), rate-limited healing automation
@@ -222,6 +240,7 @@ python app.py
 **UI:** http://localhost:7860
 
 **Expected Output:**
+
 ```
 Starting Enterprise Agentic Reliability Framework...
 Loading SentenceTransformer model...
@@ -272,6 +291,7 @@ custom = HealingPolicy(
 ```
 
 **Built-in Policies:**
+
 - High latency restart (>500ms)
 - Critical error rate rollback (>30%)
 - Resource exhaustion scale-out (CPU/Memory >90%)
@@ -282,11 +302,13 @@ custom = HealingPolicy(
 **Coming Soon:** Docker configuration is being finalized for production deployment.
 
 **Current Deployment:**
+
 ```bash
 python app.py  # Runs on 0.0.0.0:7860
 ```
 
 **Manual Docker Setup (if needed):**
+
 ```dockerfile
 FROM python:3.10-slim
 WORKDIR /app
@@ -310,6 +332,7 @@ CMD ["python", "app.py"]
 | Vector Encoding | ~15ms | ~30ms |
 
 **System Characteristics:**
+
 - **Stable memory:** ~250MB baseline
 - **Theoretical throughput:** 100+ events/sec (single node, async architecture)
 - **Max FAISS vectors:** ~1M (memory-dependent, ~2GB for 1M vectors)
@@ -342,6 +365,7 @@ pip install pytest pytest-asyncio pytest-cov pytest-mock black ruff mypy
 The framework is production-ready with comprehensive error handling, but automated tests are being added incrementally.
 
 **Planned Coverage:**
+
 - Unit tests for core components
 - Thread-safety stress tests
 - Integration tests for multi-agent orchestration
@@ -433,7 +457,7 @@ Pull requests welcome! Please ensure:
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## ⭐ Support
 
@@ -448,6 +472,7 @@ If this project helps you:
 ## 🙏 Acknowledgments
 
 Built with:
+
 - [Gradio](https://gradio.app/) - Web interface framework
 - [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
 - [SentenceTransformers](https://www.sbert.net/) - Semantic embeddings
