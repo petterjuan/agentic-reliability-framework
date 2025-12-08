@@ -88,8 +88,8 @@ def sample_incident_data():
         "latency_p99": 650.0,
         "error_rate": 0.22,
         "throughput": 8500.0,
-        "cpu_utilization": 0.95,
-        "memory_utilization": 0.88,
+        "cpu_util": 0.95,
+        "memory_util": 0.88,
         "severity": "CRITICAL",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
@@ -114,7 +114,7 @@ def sample_timeline_display():
 
 
 # ====================================================================
-# POLICY ENGINE FIXTURES (FIXED VERSION)
+# POLICY ENGINE FIXTURES (FIXED VERSION WITH CORRECT FIELD NAMES)
 # ====================================================================
 
 @pytest.fixture
@@ -146,7 +146,8 @@ def policy_engine():
         HealingPolicy(
             name="high_cpu_policy",
             conditions=[
-                PolicyCondition(metric="cpu_utilization", operator="gt", threshold=0.9)
+                # CORRECTED: cpu_util not cpu_utilization
+                PolicyCondition(metric="cpu_util", operator="gt", threshold=0.9)
             ],
             actions=[HealingAction.SCALE_OUT],
             priority=3,
@@ -182,8 +183,16 @@ def sample_event():
         latency_p99=800.0,
         error_rate=0.1,
         throughput=1000.0,
-        cpu_utilization=0.5,
-        memory_utilization=0.6,
+        # CORRECTED: cpu_util not cpu_utilization
+        cpu_util=0.5,
+        # CORRECTED: memory_util not memory_utilization
+        memory_util=0.6,
+        # Added missing fields from the actual model
+        service_mesh="istio",
+        revenue_impact=50000.0,
+        user_impact=1000,
+        upstream_deps=["auth-service"],
+        downstream_deps=["analytics-service"],
         severity=EventSeverity.MEDIUM,
         timestamp=datetime.now(timezone.utc),
         dependencies=[],
@@ -200,8 +209,13 @@ def normal_event():
         latency_p99=150.0,
         error_rate=0.01,
         throughput=1000.0,
-        cpu_utilization=0.3,
-        memory_utilization=0.4,
+        cpu_util=0.3,
+        memory_util=0.4,
+        service_mesh="istio",
+        revenue_impact=1000.0,
+        user_impact=100,
+        upstream_deps=[],
+        downstream_deps=[],
         severity=EventSeverity.LOW,
         timestamp=datetime.now(timezone.utc),
         dependencies=[],
@@ -218,8 +232,13 @@ def critical_event():
         latency_p99=1200.0,
         error_rate=0.5,
         throughput=1000.0,
-        cpu_utilization=0.95,
-        memory_utilization=0.95,
+        cpu_util=0.95,
+        memory_util=0.95,
+        service_mesh="istio",
+        revenue_impact=500000.0,
+        user_impact=10000,
+        upstream_deps=["database", "cache"],
+        downstream_deps=["frontend", "mobile-api"],
         severity=EventSeverity.CRITICAL,
         timestamp=datetime.now(timezone.utc),
         dependencies=[],
@@ -236,8 +255,13 @@ def high_latency_event():
         latency_p99=750.0,  # Above 500 threshold
         error_rate=0.05,
         throughput=1200.0,
-        cpu_utilization=0.4,
-        memory_utilization=0.5,
+        cpu_util=0.4,
+        memory_util=0.5,
+        service_mesh="linkerd",
+        revenue_impact=25000.0,
+        user_impact=500,
+        upstream_deps=["database-service", "cache-service"],
+        downstream_deps=["frontend-service"],
         severity=EventSeverity.HIGH,
         timestamp=datetime.now(timezone.utc),
         dependencies=["database-service", "cache-service"],
@@ -254,8 +278,13 @@ def high_error_rate_event():
         latency_p99=300.0,
         error_rate=0.45,  # Above 0.3 threshold
         throughput=800.0,
-        cpu_utilization=0.6,
-        memory_utilization=0.7,
+        cpu_util=0.6,
+        memory_util=0.7,
+        service_mesh="istio",
+        revenue_impact=100000.0,
+        user_impact=2000,
+        upstream_deps=["auth-service", "fraud-service"],
+        downstream_deps=["notification-service"],
         severity=EventSeverity.HIGH,
         timestamp=datetime.now(timezone.utc),
         dependencies=["auth-service", "fraud-service"],
@@ -272,8 +301,13 @@ def high_cpu_event():
         latency_p99=450.0,
         error_rate=0.02,
         throughput=2000.0,
-        cpu_utilization=0.92,  # Above 0.9 threshold
-        memory_utilization=0.65,
+        cpu_util=0.92,  # Above 0.9 threshold
+        memory_util=0.65,
+        service_mesh="consul",
+        revenue_impact=15000.0,
+        user_impact=300,
+        upstream_deps=["load-balancer"],
+        downstream_deps=["api-gateway"],
         severity=EventSeverity.MEDIUM,
         timestamp=datetime.now(timezone.utc),
         dependencies=["load-balancer"],
@@ -311,7 +345,7 @@ def sample_anomaly_result():
         metrics={
             "latency_p99": 650.0,
             "error_rate": 0.25,
-            "cpu_utilization": 0.88
+            "cpu_util": 0.88
         },
         reason="Latency spike detected with high confidence"
     )
@@ -366,7 +400,7 @@ async def async_policy_engine():
 
 
 # ====================================================================
-# TEST DATA GENERATORS
+# TEST DATA GENERATORS (CORRECTED)
 # ====================================================================
 
 @pytest.fixture
@@ -381,8 +415,13 @@ def generate_events():
                 latency_p99=(base_latency + (i * 10)) * 1.5,
                 error_rate=0.01 + (i * 0.02),
                 throughput=float(1000 + (i * 100)),
-                cpu_utilization=0.3 + (i * 0.05),
-                memory_utilization=0.4 + (i * 0.04),
+                cpu_util=0.3 + (i * 0.05),
+                memory_util=0.4 + (i * 0.04),
+                service_mesh="istio",
+                revenue_impact=10000.0 + (i * 5000),
+                user_impact=100 + (i * 50),
+                upstream_deps=[f"upstream-{j}" for j in range(i % 3)],
+                downstream_deps=[f"downstream-{j}" for j in range(i % 2)],
                 severity=severity,
                 timestamp=datetime.now(timezone.utc),
                 dependencies=[f"dependency-{j}" for j in range(i % 3)],
@@ -419,7 +458,7 @@ def generate_policies():
 
 
 # ====================================================================
-# EDGE CASE FIXTURES
+# EDGE CASE FIXTURES (CORRECTED)
 # ====================================================================
 
 @pytest.fixture
@@ -431,8 +470,13 @@ def minimal_event():
         latency_p99=0.0,
         error_rate=0.0,
         throughput=0.0,
-        cpu_utilization=0.0,
-        memory_utilization=0.0,
+        cpu_util=0.0,
+        memory_util=0.0,
+        service_mesh="",
+        revenue_impact=0.0,
+        user_impact=0,
+        upstream_deps=[],
+        downstream_deps=[],
         severity=EventSeverity.LOW,
         timestamp=datetime.now(timezone.utc),
         dependencies=[],
@@ -449,8 +493,13 @@ def extreme_values_event():
         latency_p99=1999999.0,
         error_rate=1.0,  # Maximum
         throughput=9999999.0,
-        cpu_utilization=1.0,  # Maximum
-        memory_utilization=1.0,  # Maximum
+        cpu_util=1.0,  # Maximum
+        memory_util=1.0,  # Maximum
+        service_mesh="custom-mesh",
+        revenue_impact=1000000.0,
+        user_impact=100000,
+        upstream_deps=["dep1", "dep2", "dep3", "dep4", "dep5"],
+        downstream_deps=["client1", "client2", "client3"],
         severity=EventSeverity.CRITICAL,
         timestamp=datetime.now(timezone.utc),
         dependencies=["dep1", "dep2", "dep3", "dep4", "dep5"],
@@ -471,8 +520,21 @@ def event_with_dependencies():
         latency_p99=225.0,
         error_rate=0.03,
         throughput=5000.0,
-        cpu_utilization=0.45,
-        memory_utilization=0.55,
+        cpu_util=0.45,
+        memory_util=0.55,
+        service_mesh="istio",
+        revenue_impact=50000.0,
+        user_impact=5000,
+        upstream_deps=[
+            "database-primary",
+            "database-replica",
+            "redis-cache"
+        ],
+        downstream_deps=[
+            "auth-service",
+            "payment-service",
+            "notification-service"
+        ],
         severity=EventSeverity.MEDIUM,
         timestamp=datetime.now(timezone.utc),
         dependencies=[
@@ -534,7 +596,7 @@ def reset_mocks():
 
 
 # ====================================================================
-# TEST HELPER FUNCTIONS
+# TEST HELPER FUNCTIONS (CORRECTED)
 # ====================================================================
 
 @pytest.fixture
@@ -546,8 +608,13 @@ def assert_event_equal():
         assert event1.latency_p99 == event2.latency_p99
         assert event1.error_rate == event2.error_rate
         assert event1.throughput == event2.throughput
-        assert event1.cpu_utilization == event2.cpu_utilization
-        assert event1.memory_utilization == event2.memory_utilization
+        assert event1.cpu_util == event2.cpu_util
+        assert event1.memory_util == event2.memory_util
+        assert event1.service_mesh == event2.service_mesh
+        assert event1.revenue_impact == event2.revenue_impact
+        assert event1.user_impact == event2.user_impact
+        assert event1.upstream_deps == event2.upstream_deps
+        assert event1.downstream_deps == event2.downstream_deps
         assert event1.severity == event2.severity
         assert event1.dependencies == event2.dependencies
         assert event1.metadata == event2.metadata
@@ -581,8 +648,13 @@ def create_custom_event():
             "latency_p99": 150.0,
             "error_rate": 0.01,
             "throughput": 1000.0,
-            "cpu_utilization": 0.3,
-            "memory_utilization": 0.4,
+            "cpu_util": 0.3,
+            "memory_util": 0.4,
+            "service_mesh": "istio",
+            "revenue_impact": 10000.0,
+            "user_impact": 100,
+            "upstream_deps": [],
+            "downstream_deps": [],
             "severity": EventSeverity.MEDIUM,
             "timestamp": datetime.now(timezone.utc),
             "dependencies": [],
