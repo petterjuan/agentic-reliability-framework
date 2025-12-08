@@ -23,6 +23,7 @@ pinned: false
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python 3.10+"></a>
   <a href="#"><img src="https://img.shields.io/badge/status-MVP-green" alt="Status: MVP"></a>
   <a href="#"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="License: MIT"></a>
+  <a href="https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/tests.yml"><img src="https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
 </p>
 
 ## 🧠 Agentic Reliability Framework
