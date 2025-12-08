@@ -426,4 +426,3 @@ def validate_policy():
         assert policy.max_executions_per_hour >= 0
         return True
     return _validate_policy
-EOF
