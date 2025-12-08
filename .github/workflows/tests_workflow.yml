@@ -42,7 +42,7 @@ jobs:
     
     - name: 📈 Upload coverage to artifacts
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: coverage-report-python-${{ matrix.python-version }}
         path: coverage.xml
