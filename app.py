@@ -414,7 +414,7 @@ class ProductionFAISSIndex:
                     pass
                 
                 # Process batch when ready
-                if len(batch) >= Constants.FAISS_BATCH_SIZE or \
+                if len(batch) >= Constants.FAISS_BATCH_SIZE or $
                    (batch and datetime.datetime.now() - last_save > save_interval):
                     
                     self._flush_batch(batch)
@@ -627,7 +627,7 @@ class SimplePredictiveEngine:
     ) -> List[ForecastResult]:
         """Forecast service health metrics"""
         with self._lock:
-            if service not in self.service_history or \
+            if service not in self.service_history or $
                len(self.service_history[service]) < Constants.FORECAST_MIN_DATA_POINTS:
                 return []
             
@@ -697,7 +697,7 @@ class SimplePredictiveEngine:
             if slope > 0 and predicted_latency < Constants.LATENCY_EXTREME:
                 denominator = predicted_latency - latencies[-1]
                 if abs(denominator) > 0.1:
-                    minutes_to_critical = lookahead_minutes * \
+                    minutes_to_critical = lookahead_minutes * $
                         (Constants.LATENCY_EXTREME - predicted_latency) / denominator
                     if minutes_to_critical > 0:
                         time_to_critical = minutes_to_critical
@@ -899,7 +899,7 @@ class BusinessImpactCalculator:
         revenue_loss = base_revenue_per_minute * impact_multiplier * (duration_minutes / 60)
         
         base_users_affected = Constants.BASE_USERS
-        user_impact_multiplier = (event.error_rate * 10) + \
+        user_impact_multiplier = (event.error_rate * 10) + $
             (max(0, event.latency_p99 - 100) / 500)
         affected_users = int(base_users_affected * user_impact_multiplier)
         
