@@ -84,7 +84,7 @@ class PolicyEngine:
     def __init__(
         self,
         policies: Optional[List[HealingPolicy]] = None,
-        max_cooldown_history: int = 10000,
+        max_cooldown_history: int = 100,
         max_execution_history: int = 1000
     ):
         """

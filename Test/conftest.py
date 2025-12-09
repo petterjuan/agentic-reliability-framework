@@ -1,12 +1,4 @@
-"""
-Pytest configuration and shared fixtures for ARF tests - COMPLETE FIXED VERSION
-
-FIXES APPLIED:
-- latency → latency_p99 (required field)
-- cpu_percent → cpu_util (fraction 0.0-1.0, not percentage)
-- memory_percent → memory_util (fraction 0.0-1.0, not percentage)
-- operator: '>' → 'gt', '<' → 'lt', '=' → 'eq', '>=' → 'gte', '<=' → 'lte'
-"""
+"""Pytest configuration - FINAL FIXED VERSION"""
 
 import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock
@@ -15,30 +7,19 @@ from typing import Dict, List
 import asyncio
 
 from models import (
-    ReliabilityEvent,
-    HealingPolicy,
-    PolicyCondition,
-    HealingAction,
-    EventSeverity,
-    AnomalyResult,
-    ForecastResult
+    ReliabilityEvent, HealingPolicy, PolicyCondition,
+    HealingAction, EventSeverity, AnomalyResult, ForecastResult
 )
-
 from healing_policies import PolicyEngine
 
 
-# ============================================================================
-# CORE EVENT FIXTURES
-# ============================================================================
-
 @pytest.fixture
 def sample_event():
-    """Sample test event with correct field names and ranges"""
     return ReliabilityEvent(
         component="test-service",
         timestamp=datetime.now(timezone.utc),
         latency_p99=250.0,
-        error_rate=0.05,
+        error_rate=0.15,
         throughput=1000,
         cpu_util=0.65,
         memory_util=0.70,
@@ -48,8 +29,22 @@ def sample_event():
 
 
 @pytest.fixture
+def normal_event():
+    return ReliabilityEvent(
+        component="test-service",
+        timestamp=datetime.now(timezone.utc),
+        latency_p99=150.0,
+        error_rate=0.02,
+        throughput=2000,
+        cpu_util=0.50,
+        memory_util=0.55,
+        service_mesh="default",
+        severity=EventSeverity.LOW
+    )
+
+
+@pytest.fixture
 def critical_event():
-    """Critical severity event"""
     return ReliabilityEvent(
         component="critical-service",
         timestamp=datetime.now(timezone.utc),
@@ -63,51 +58,16 @@ def critical_event():
 
 
 @pytest.fixture
-def low_severity_event():
-    """Low severity healthy event"""
-    return ReliabilityEvent(
-        component="healthy-service",
-        timestamp=datetime.now(timezone.utc),
-        latency_p99=50.0,
-        error_rate=0.001,
-        throughput=5000,
-        cpu_util=0.30,
-        memory_util=0.40,
-        severity=EventSeverity.LOW
-    )
-
-
-@pytest.fixture
-def memory_leak_event():
-    """Event simulating memory leak"""
-    return ReliabilityEvent(
-        component="leaky-service",
-        timestamp=datetime.now(timezone.utc),
-        latency_p99=150.0,
-        error_rate=0.02,
-        throughput=1000,
-        cpu_util=0.50,
-        memory_util=0.94,
-        severity=EventSeverity.HIGH
-    )
-
-
-# ============================================================================
-# POLICY FIXTURES
-# ============================================================================
-
-@pytest.fixture
 def sample_policy():
-    """Sample policy with correct operator format"""
     return HealingPolicy(
         name="Restart on High Errors",
         description="Restart when error rate > 10%",
-        condition=PolicyCondition(
+        conditions=[PolicyCondition(
             metric="error_rate",
             operator="gt",
             threshold=0.10
-        ),
-        action=HealingAction.RESTART_CONTAINER,
+        )],
+        actions=[HealingAction.RESTART_CONTAINER],
         cooldown_seconds=300,
         enabled=True
     )
@@ -115,16 +75,15 @@ def sample_policy():
 
 @pytest.fixture
 def scale_policy():
-    """Policy for scaling on high CPU"""
     return HealingPolicy(
         name="Scale on High CPU",
         description="Scale when CPU > 80%",
-        condition=PolicyCondition(
+        conditions=[PolicyCondition(
             metric="cpu_util",
             operator="gt",
             threshold=0.80
-        ),
-        action=HealingAction.SCALE_HORIZONTAL,
+        )],
+        actions=[HealingAction.SCALE_HORIZONTAL],
         cooldown_seconds=600,
         enabled=True
     )
@@ -132,108 +91,59 @@ def scale_policy():
 
 @pytest.fixture
 def rollback_policy():
-    """Policy for rollback on critical errors"""
     return HealingPolicy(
         name="Rollback on Critical",
         description="Rollback on error rate > 30%",
-        condition=PolicyCondition(
+        conditions=[PolicyCondition(
             metric="error_rate",
             operator="gt",
             threshold=0.30
-        ),
-        action=HealingAction.ROLLBACK_DEPLOYMENT,
+        )],
+        actions=[HealingAction.ROLLBACK_DEPLOYMENT],
         cooldown_seconds=900,
         enabled=True
     )
 
 
 @pytest.fixture
-def circuit_breaker_policy():
-    """Policy for circuit breaker"""
-    return HealingPolicy(
-        name="Circuit Breaker",
-        description="Enable circuit breaker on high errors",
-        condition=PolicyCondition(
-            metric="error_rate",
-            operator="gt",
-            threshold=0.25
-        ),
-        action=HealingAction.CIRCUIT_BREAKER,
-        cooldown_seconds=180,
-        enabled=True
-    )
-
-
-@pytest.fixture
 def disabled_policy():
-    """Disabled policy that should never trigger"""
     return HealingPolicy(
         name="Disabled Policy",
         description="Should never execute",
-        condition=PolicyCondition(
+        conditions=[PolicyCondition(
             metric="error_rate",
             operator="gt",
             threshold=0.01
-        ),
-        action=HealingAction.RESTART_CONTAINER,
+        )],
+        actions=[HealingAction.RESTART_CONTAINER],
         cooldown_seconds=300,
         enabled=False
     )
 
 
-# ============================================================================
-# POLICY ENGINE FIXTURES
-# ============================================================================
-
 @pytest.fixture
 def policy_engine():
-    """PolicyEngine instance"""
     return PolicyEngine()
 
 
 @pytest.fixture
 def policy_engine_with_policies(sample_policy, scale_policy):
-    """PolicyEngine pre-loaded with policies"""
     engine = PolicyEngine()
     engine.add_policy(sample_policy)
     engine.add_policy(scale_policy)
     return engine
 
 
-# ============================================================================
-# MOCK FIXTURES
-# ============================================================================
-
 @pytest.fixture
 def mock_faiss_memory():
-    """Mock FAISS memory"""
     mock = MagicMock()
     mock.search_similar = AsyncMock(return_value=[])
     mock.add_incident = AsyncMock()
-    mock.save = AsyncMock()
     return mock
 
-
-@pytest.fixture
-def mock_anomaly_detector():
-    """Mock anomaly detector"""
-    mock = MagicMock()
-    mock.detect_anomaly = Mock(return_value=AnomalyResult(
-        is_anomaly=True,
-        confidence=0.85,
-        affected_metrics=["latency_p99", "error_rate"],
-        severity=EventSeverity.HIGH
-    ))
-    return mock
-
-
-# ============================================================================
-# FACTORY FIXTURES
-# ============================================================================
 
 @pytest.fixture
 def event_factory():
-    """Factory to create custom events in tests"""
     def _create_event(
         component: str = "test-service",
         latency_p99: float = 150.0,
@@ -258,7 +168,6 @@ def event_factory():
 
 @pytest.fixture
 def policy_factory():
-    """Factory to create custom policies in tests"""
     def _create_policy(
         name: str = "Test Policy",
         metric: str = "error_rate",
@@ -271,112 +180,50 @@ def policy_factory():
         return HealingPolicy(
             name=name,
             description=f"Policy for {metric} {operator} {threshold}",
-            condition=PolicyCondition(
+            conditions=[PolicyCondition(
                 metric=metric,
                 operator=operator,
                 threshold=threshold
-            ),
-            action=action,
+            )],
+            actions=[action],
             cooldown_seconds=cooldown_seconds,
             enabled=enabled
         )
     return _create_policy
 
 
-# ============================================================================
-# TIME-BASED FIXTURES
-# ============================================================================
-
-@pytest.fixture
-def past_event():
-    """Event from 1 hour ago"""
-    return ReliabilityEvent(
-        component="test-service",
-        timestamp=datetime.now(timezone.utc) - timedelta(hours=1),
-        latency_p99=200.0,
-        error_rate=0.03,
-        throughput=1500,
-        cpu_util=0.60,
-        memory_util=0.65
-    )
-
-
-@pytest.fixture
-def event_sequence():
-    """Sequence of events showing degradation"""
-    base_time = datetime.now(timezone.utc)
-    
-    return [
-        ReliabilityEvent(
-            component="degrading-service",
-            timestamp=base_time,
-            latency_p99=100.0,
-            error_rate=0.01,
-            throughput=3000,
-            cpu_util=0.50,
-            memory_util=0.50,
-            severity=EventSeverity.LOW
-        ),
-        ReliabilityEvent(
-            component="degrading-service",
-            timestamp=base_time + timedelta(minutes=5),
-            latency_p99=200.0,
-            error_rate=0.05,
-            throughput=2500,
-            cpu_util=0.65,
-            memory_util=0.60,
-            severity=EventSeverity.MEDIUM
-        ),
-        ReliabilityEvent(
-            component="degrading-service",
-            timestamp=base_time + timedelta(minutes=10),
-            latency_p99=500.0,
-            error_rate=0.15,
-            throughput=1500,
-            cpu_util=0.80,
-            memory_util=0.75,
-            severity=EventSeverity.HIGH
-        ),
-        ReliabilityEvent(
-            component="degrading-service",
-            timestamp=base_time + timedelta(minutes=15),
-            latency_p99=2000.0,
-            error_rate=0.40,
-            throughput=500,
-            cpu_util=0.95,
-            memory_util=0.90,
-            severity=EventSeverity.CRITICAL
-        )
-    ]
-
-
-# ============================================================================
-# ASYNC UTILITIES
-# ============================================================================
-
-@pytest.fixture
-def event_loop():
-    """Event loop for async tests"""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# ============================================================================
-# PYTEST CONFIGURATION
-# ============================================================================
-
 def pytest_configure(config):
-    """Register custom markers"""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    config.addinivalue_line("markers", "slow: marks tests as slow")
+    config.addinivalue_line("markers", "integration: integration tests")
+    config.addinivalue_line("markers", "unit: unit tests")
+
+
+@pytest.fixture
+def trigger_event():
+    """Event that triggers sample_policy (error_rate > 0.10)"""
+    return ReliabilityEvent(
+        component="failing-service",
+        timestamp=datetime.now(timezone.utc),
+        latency_p99=300.0,
+        error_rate=0.15,  # 15% - WILL trigger policy
+        throughput=1000,
+        cpu_util=0.70,
+        memory_util=0.65,
+        service_mesh="default",
+        severity=EventSeverity.HIGH
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
-    config.addinivalue_line(
-        "markers", "performance: marks performance benchmark tests"
-    )
+
+
+@pytest.fixture
+def sample_metrics():
+    """Sample timeline metrics for testing"""
+    return {
+        'incident_start': '2025-12-09T09:00:00Z',
+        'incident_detected': '2025-12-09T09:02:00Z',
+        'incident_resolved': '2025-12-09T09:15:00Z',
+        'industry_mttr_minutes': 14.0,
+        'arf_mttr_minutes': 2.0,
+        'time_saved_minutes': 12.0,
+        'cost_per_minute': 1000.0,
+        'cost_savings': 12000.0
+    }
