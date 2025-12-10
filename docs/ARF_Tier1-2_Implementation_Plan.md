@@ -8,24 +8,6 @@
 
 ---
 
-## 🐛 CRITICAL BUG FIX IDENTIFIED
-
-### Event History Not Displaying - Root Cause Analysis
-
-**Problem:** The "Event History" table in "📈 Recent Events (Last 15)" is not populating with events.
-
-**Root Cause:** The `events_table` Gradio component is returning a DataFrame update, but the initial DataFrame in the UI has **no headers defined**, causing a mismatch. Looking at line 1507 in app.py:
-
-```python
-events_table = gr.Dataframe(
-    headers=["Timestamp", "Component", "Latency", "Error Rate", "Throughput", "Severity", "Analysis"],
-    label="Event History",
-    wrap=True,
-)
-```
-
-The table IS properly initialized with headers. However, the issue is in the **async handler return** at lines 1456-1465:
-
 ```python
 gr.Dataframe(
     headers=["Timestamp", "Component", "Latency", "Error Rate", "Throughput", "Severity", "Analysis"],
