@@ -66,13 +66,12 @@ Repository = "https://github.com/petterjuan/agentic-reliability-framework"
 Issues = "https://github.com/petterjuan/agentic-reliability-framework/issues"
 
 [project.scripts]
-arf = "arf.cli:main"
+arf = "agentic_reliability_framework.cli:main"
 
 [tool.setuptools]
-# This tells setuptools to find packages automatically
 packages.find = {where = ["."]}
 include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.index", "*.txt", "*.md"]
-"arf" = ["data/*", "py.typed"]
+"agentic_reliability_framework" = ["data/*", "py.typed"]

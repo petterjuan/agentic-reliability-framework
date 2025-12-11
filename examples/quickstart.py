@@ -4,7 +4,7 @@ Zero to incident detection in 2 minutes
 """
 
 import asyncio
-from arf import EnhancedReliabilityEngine
+from agentic_reliability_framework import EnhancedReliabilityEngine
 
 async def main():
     print("=" * 60)

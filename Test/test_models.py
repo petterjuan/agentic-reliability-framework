@@ -3,9 +3,9 @@ Unit tests for Pydantic models with validation and security tests
 """
 
 import pytest
-from datetime import datetime, timezone
-from pydantic import ValidationError
-from models import (
+from agentic_reliability_framework.datetime import datetime, timezone
+from agentic_reliability_framework.pydantic import ValidationError
+from agentic_reliability_framework.models import (
     ReliabilityEvent,
     EventSeverity,
     HealingPolicy,

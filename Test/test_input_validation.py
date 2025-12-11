@@ -3,7 +3,7 @@ Unit tests for input validation functions
 """
 
 import pytest
-from app import validate_inputs, validate_component_id
+from agentic_reliability_framework.app import validate_inputs, validate_component_id
 
 
 class TestComponentIDValidation:

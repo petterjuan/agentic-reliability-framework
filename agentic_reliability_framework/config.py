@@ -33,6 +33,12 @@ class AppConfig:
     # Business Metrics
     base_revenue_per_minute: float = float(os.getenv("BASE_REVENUE_PER_MINUTE", "100.0"))
     base_users: int = int(os.getenv("BASE_USERS", "1000"))
+
+    # File Paths
+    data_dir: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    data_file: str = os.path.join(data_dir, "demo_incidents.json")
+    index_file: str = os.path.join(data_dir, "incident_vectors.index")
+    incident_texts_file: str = os.path.join(data_dir, "incident_texts.json")
     
     # Rate Limiting
     max_requests_per_minute: int = int(os.getenv("MAX_REQUESTS_PER_MINUTE", "60"))

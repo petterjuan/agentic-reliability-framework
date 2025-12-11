@@ -5,11 +5,11 @@ Tests the core calculation logic for incident response timeline comparisons.
 """
 
 import pytest
-from datetime import datetime
-from typing import Dict, Any
+from agentic_reliability_framework.datetime import datetime
+from agentic_reliability_framework.typing import Dict, Any
 
 # Import your timeline calculator (adjust path as needed)
-# from app import TimelineCalculator, TimelineMetrics
+# from agentic_reliability_framework.app import TimelineCalculator, TimelineMetrics
 
 
 class TestTimelineCalculator:

@@ -2,15 +2,15 @@
 
 import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List
+from agentic_reliability_framework.datetime import datetime, timezone, timedelta
+from agentic_reliability_framework.typing import Dict, List
 import asyncio
 
-from models import (
+from agentic_reliability_framework.models import (
     ReliabilityEvent, HealingPolicy, PolicyCondition,
     HealingAction, EventSeverity, AnomalyResult, ForecastResult
 )
-from healing_policies import PolicyEngine
+from agentic_reliability_framework.healing_policies import PolicyEngine
 
 
 @pytest.fixture

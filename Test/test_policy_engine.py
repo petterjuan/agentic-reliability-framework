@@ -5,9 +5,9 @@ Unit tests for PolicyEngine with thread safety and concurrency tests
 import pytest
 import threading
 import time
-from datetime import datetime, timezone
-from models import ReliabilityEvent, EventSeverity, HealingPolicy, HealingAction, PolicyCondition
-from healing_policies import PolicyEngine
+from agentic_reliability_framework.datetime import datetime, timezone
+from agentic_reliability_framework.models import ReliabilityEvent, EventSeverity, HealingPolicy, HealingAction, PolicyCondition
+from agentic_reliability_framework.healing_policies import PolicyEngine
 
 
 class TestPolicyEngineBasics:
