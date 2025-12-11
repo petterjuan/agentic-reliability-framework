@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 diagnostic.sh
 *.fixed
+
+# PyPI build artifacts
+dist/
+*.egg-info/
+build/
+
