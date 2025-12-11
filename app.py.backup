@@ -2148,27 +2148,7 @@ def create_enhanced_ui():
                 
                 # Build table data (THREAD-SAFE)
                 table_data = []
-                # DEBUG: Check event store
-                print(f'DEBUG: Event store count before building table: {enhanced_engine.event_store.count()}')
-                # Force events to show - if empty, add demo events
-                if enhanced_engine.event_store.count() == 0:
-                    print('DEBUG: No events in store, adding demo events...')
-                    from models import ReliabilityEvent, EventSeverity
-                    import datetime
-                    for j in range(3):
-                        demo_event = ReliabilityEvent(
-                            component=f'demo-event-{j}',
-                            latency_p99=100 + j*150,
-                            error_rate=0.05 + j*0.08,
-                            throughput=1000 + j*300,
-                            severity=EventSeverity.HIGH if j > 1 else EventSeverity.MEDIUM
-                        )
-                        enhanced_engine.event_store.add(demo_event)
-                    print(f'DEBUG: Added demo events. Total now: {enhanced_engine.event_store.count()}')
-                
-                events = enhanced_engine.event_store.get_recent(15)
-                print(f'DEBUG: Retrieved {len(events)} events for table')
-                for event in events:
+                for event in enhanced_engine.event_store.get_recent(15):
                     table_data.append([
                         event.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                         event.component,
@@ -2212,6 +2192,7 @@ def create_enhanced_ui():
                 predictive_insights_data = agent_insights_data.get('predictive_insights', {})
                 
                 # Get updated metrics
+                metrics = business_metrics.get_metrics()
                 
                 # RETURN THE RESULTS WITH ROI METRICS (10 values)
                 return (

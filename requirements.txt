@@ -1,45 +1,9 @@
-# ============================================================================
-# Enterprise Agentic Reliability Framework - SECURITY PATCHED
-# Production-Optimized Dependencies with CVE Fixes
-# ============================================================================
-# 
-# Last Updated: 2025-11-29
-# Security Status: ✅ All critical CVEs patched
-#
-# ============================================================================
-
-# === Core Web Framework ===
-# SECURITY FIX: Upgraded from 5.49.1 to fix CVE-2025-23042 (CVSS 9.1)
 gradio>=5.50.0,<6.0.0
-
-# === Vector Search & Embeddings ===
-# UPGRADE: From 2.2.2 to 5.1.1 (latest stable)
 sentence-transformers>=5.1.1
-
-# UPGRADE: From 1.7.4 to 1.13.0 (latest stable)
 faiss-cpu>=1.13.0
-
-# === Data Processing & Mathematics ===
-# CONSERVATIVE UPDATE: Staying on 1.26.x for compatibility
 numpy>=1.26.4,<2.0.0
-
-# === Data Validation & Type Safety ===
-# UPGRADE: From 2.5.0 to 2.11.x
 pydantic>=2.11.0,<2.12
-
-# === HTTP & API Communication ===
-# SECURITY FIX: Upgraded from 2.31.0 to fix CVE-2023-32681 and CVE-2024-47081
 requests>=2.32.5
-
-# === Production Dependencies ===
-# Circuit breaker pattern
 circuitbreaker>=2.0.0
-
-# Atomic file operations
 atomicwrites>=1.4.1
-
-# ============================================================================
-# Development Dependencies (install separately)
-# pip install pytest pytest-asyncio pytest-cov pytest-mock black ruff mypy
-# ============================================================================python-dotenv>=1.0.0
 python-dotenv>=1.0.0

@@ -1,5 +1,5 @@
-from config import config
-from config import config
+from .config import config
+from .config import config
 """
 Enterprise Agentic Reliability Framework - Main Application (FIXED VERSION)
 Multi-Agent AI System for Production Reliability Monitoring
@@ -36,11 +36,11 @@ from circuitbreaker import circuit
 import atomicwrites
 
 # Import our modules
-from models import (
+from .models import (
     ReliabilityEvent, EventSeverity, AnomalyResult,
     HealingAction, ForecastResult, PolicyCondition
 )
-from healing_policies import PolicyEngine, DEFAULT_HEALING_POLICIES
+from .healing_policies import PolicyEngine, DEFAULT_HEALING_POLICIES
 
 # === Logging Configuration ===
 logging.basicConfig(
