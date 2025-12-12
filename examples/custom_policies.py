@@ -8,7 +8,7 @@ from agentic_reliability_framework import (
     HealingAction,
     PolicyCondition,
     PolicyEngine,
-    get_engine
+    # get_engine  # REMOVED: imported but unused
 )
 
 print("="*60)
@@ -114,7 +114,7 @@ for test in test_cases:
     if actions:
         print(f"  🚨 Triggered: {[a.value for a in actions]}")
     else:
-        print(f"  ✅ No actions triggered")
+        print("  ✅ No actions triggered")  # FIXED: Removed f prefix
 
 print("\n" + "="*60)
 print("💡 Integration Example:")
