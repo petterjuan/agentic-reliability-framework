@@ -46,7 +46,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-asyncio pytest-cov
-        pytest tests/ -v --cov=agentic_reliability_framework --cov-report=xml
+        pytest Test/ -v --cov=agentic_reliability_framework --cov-report=xml  # FIXED: Test/ not tests/
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
