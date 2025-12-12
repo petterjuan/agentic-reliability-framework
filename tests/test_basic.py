@@ -3,13 +3,6 @@ Basic tests for Agentic Reliability Framework
 """
 
 import pytest
-import sys
-import os
-
-# Add the project root to Python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-sys.path.insert(0, project_root)
 
 
 def test_basic_import():
