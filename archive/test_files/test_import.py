@@ -5,6 +5,7 @@ Isolate the import issue
 
 import sys
 import time
+import importlib.util  # FIXED: Moved to VERY TOP
 
 # Test 1: Import just the module without any dependencies
 print("Test 1: Creating empty module...")
@@ -19,7 +20,7 @@ print("\nTest 2: Importing arf...")
 start = time.time()
 
 # First, let's see what happens if we don't import app.py
-import importlib.util  # FIXED: Moved to top (was at line 22)
+# importlib.util is now at the top (line 8)
 
 # Try to import agentic_reliability_framework as arf without triggering app.py
 spec = importlib.util.find_spec('arf')
