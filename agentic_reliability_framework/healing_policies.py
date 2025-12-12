@@ -8,7 +8,7 @@ import threading
 import logging
 from collections import OrderedDict
 from typing import Dict, List, Optional
-from .models import HealingPolicy, HealingAction, EventSeverity, ReliabilityEvent, PolicyCondition
+from .models import HealingPolicy, HealingAction, ReliabilityEvent, PolicyCondition
 
 logger = logging.getLogger(__name__)
 
