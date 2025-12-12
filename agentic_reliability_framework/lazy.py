@@ -3,8 +3,8 @@ Simple lazy loading for ARF - No circular dependencies!
 """
 
 import threading
-from typing import Any, Callable, Optional, TypeVar
-import numpy as np
+from typing import Callable, Optional, TypeVar
+# numpy import removed - not used
 
 T = TypeVar('T')
 
