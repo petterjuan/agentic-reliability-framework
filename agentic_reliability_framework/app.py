@@ -1,4 +1,5 @@
 import os
+import sys  # FIXED: Added sys import
 import json
 import numpy as np
 import gradio as gr
@@ -7,7 +8,7 @@ import threading
 import logging
 import asyncio
 import tempfile
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Literal  # FIXED: Added Literal
 from collections import deque
 from enum import Enum
 from concurrent.futures import ProcessPoolExecutor
@@ -322,7 +323,7 @@ class ThreadSafeEventStore:
     """Thread-safe storage for reliability events"""
     
     def __init__(self, max_size: int = Constants.MAX_EVENTS_STORED):
-        self._events = deque(maxlen=max_size)
+        self._events: deque[ReliabilityEvent] = deque(maxlen=max_size)  # FIXED: Add type annotation
         self._lock = threading.RLock()
         logger.info(f"Initialized ThreadSafeEventStore with max_size={max_size}")
     
@@ -611,6 +612,42 @@ class SimplePredictiveEngine:
         
         return forecasts
     
+    def _get_trend_literal(self, slope: float) -> Literal["increasing", "decreasing", "stable"]:
+        """Safely convert slope to trend literal"""
+        if slope > Constants.SLOPE_THRESHOLD_INCREASING:
+            return "increasing"
+        elif slope < Constants.SLOPE_THRESHOLD_DECREASING:
+            return "decreasing"
+        return "stable"
+    
+    def _get_risk_literal(self, metric: str, value: float, trend: str) -> Literal["low", "medium", "high", "critical"]:
+        """Safely determine risk level based on metric and value"""
+        if metric == "latency":
+            if value > Constants.LATENCY_EXTREME:
+                return "critical"
+            elif value > Constants.LATENCY_CRITICAL:
+                return "high" if trend == "increasing" else "medium"
+            elif value > Constants.LATENCY_WARNING:
+                return "medium"
+            return "low"
+        elif metric == "error_rate":
+            if value > Constants.ERROR_RATE_CRITICAL:
+                return "critical"
+            elif value > Constants.ERROR_RATE_HIGH:
+                return "high" if trend == "increasing" else "medium"
+            elif value > Constants.ERROR_RATE_WARNING:
+                return "medium"
+            return "low"
+        elif metric in ["cpu_util", "memory_util"]:
+            if value > 0.9:
+                return "critical"
+            elif value > 0.8:
+                return "high" if trend == "increasing" else "medium"
+            elif value > 0.7:
+                return "medium"
+            return "low"
+        return "low"
+    
     def _forecast_latency(
         self,
         history: List,
@@ -635,16 +672,9 @@ class SimplePredictiveEngine:
             residuals = latencies - (slope * x + intercept)
             confidence = max(0, 1 - (np.std(residuals) / max(1, np.mean(latencies))))
             
-            # Determine trend and risk
-            if slope > Constants.SLOPE_THRESHOLD_INCREASING:
-                trend = "increasing"
-                risk = "critical" if predicted_latency > Constants.LATENCY_EXTREME else "high"
-            elif slope < Constants.SLOPE_THRESHOLD_DECREASING:
-                trend = "decreasing"
-                risk = "low"
-            else:
-                trend = "stable"
-                risk = "low" if predicted_latency < Constants.LATENCY_WARNING else "medium"
+            # Determine trend and risk using helper methods
+            trend = self._get_trend_literal(slope)
+            risk = self._get_risk_literal("latency", predicted_latency, trend)
             
             # Calculate time to reach critical threshold
             time_to_critical = None
@@ -692,15 +722,15 @@ class SimplePredictiveEngine:
             # Trend analysis
             recent_trend = np.mean(error_rates[-3:]) - np.mean(error_rates[-6:-3])
             
+            # Determine trend and risk using helper methods
             if recent_trend > 0.02:
-                trend = "increasing"
-                risk = "critical" if predicted_rate > Constants.ERROR_RATE_CRITICAL else "high"
+                trend: Literal["increasing", "decreasing", "stable"] = "increasing"
             elif recent_trend < -0.01:
                 trend = "decreasing"
-                risk = "low"
             else:
                 trend = "stable"
-                risk = "low" if predicted_rate < Constants.ERROR_RATE_WARNING else "medium"
+            
+            risk = self._get_risk_literal("error_rate", predicted_rate, trend)
             
             # Confidence based on volatility
             confidence = max(0, 1 - (np.std(error_rates) / max(0.01, np.mean(error_rates))))
@@ -730,21 +760,23 @@ class SimplePredictiveEngine:
         if len(cpu_values) >= Constants.FORECAST_MIN_DATA_POINTS:
             try:
                 predicted_cpu = np.mean(cpu_values[-5:])
-                trend = "increasing" if cpu_values[-1] > np.mean(cpu_values[-10:-5]) else "stable"
                 
-                risk = "low"
-                if predicted_cpu > Constants.CPU_CRITICAL:
-                    risk = "critical"
-                elif predicted_cpu > Constants.CPU_WARNING:
-                    risk = "high"
-                elif predicted_cpu > 0.7:
-                    risk = "medium"
+                # Determine trend
+                if len(cpu_values) >= 10:
+                    trend_value: Literal["increasing", "decreasing", "stable"] = (
+                        "increasing" if cpu_values[-1] > np.mean(cpu_values[-10:-5]) 
+                        else "stable"
+                    )
+                else:
+                    trend_value = "stable"
+                
+                risk = self._get_risk_literal("cpu_util", predicted_cpu, trend_value)
                 
                 forecasts.append(ForecastResult(
                     metric="cpu_util",
                     predicted_value=predicted_cpu,
                     confidence=0.7,
-                    trend=trend,
+                    trend=trend_value,
                     risk_level=risk
                 ))
             except Exception as e:
@@ -755,21 +787,23 @@ class SimplePredictiveEngine:
         if len(memory_values) >= Constants.FORECAST_MIN_DATA_POINTS:
             try:
                 predicted_memory = np.mean(memory_values[-5:])
-                trend = "increasing" if memory_values[-1] > np.mean(memory_values[-10:-5]) else "stable"
                 
-                risk = "low"
-                if predicted_memory > Constants.MEMORY_CRITICAL:
-                    risk = "critical"
-                elif predicted_memory > Constants.MEMORY_WARNING:
-                    risk = "high"
-                elif predicted_memory > 0.7:
-                    risk = "medium"
+                # Determine trend
+                if len(memory_values) >= 10:
+                    trend_value: Literal["increasing", "decreasing", "stable"] = (
+                        "increasing" if memory_values[-1] > np.mean(memory_values[-10:-5]) 
+                        else "stable"
+                    )
+                else:
+                    trend_value = "stable"
+                
+                risk = self._get_risk_literal("memory_util", predicted_memory, trend_value)
                 
                 forecasts.append(ForecastResult(
                     metric="memory_util",
                     predicted_value=predicted_memory,
                     confidence=0.7,
-                    trend=trend,
+                    trend=trend_value,
                     risk_level=risk
                 ))
             except Exception as e:
@@ -1622,11 +1656,11 @@ class BusinessMetricsTracker:
     """Track cumulative business metrics for ROI dashboard"""
     
     def __init__(self):
-        self.total_incidents = 0
-        self.incidents_auto_healed = 0
-        self.total_revenue_saved = 0.0
-        self.total_revenue_at_risk = 0.0
-        self.detection_times = []
+        self.total_incidents: int = 0  # FIXED: Type annotation
+        self.incidents_auto_healed: int = 0  # FIXED: Type annotation
+        self.total_revenue_saved: float = 0.0
+        self.total_revenue_at_risk: float = 0.0
+        self.detection_times: List[float] = []
         self._lock = threading.RLock()
         logger.info("Initialized BusinessMetricsTracker")
     
@@ -2195,7 +2229,7 @@ if __name__ == "__main__":
     logger.info("=" * 80)
     logger.info("Starting Enterprise Agentic Reliability Framework (DEMO READY VERSION)")
     logger.info("=" * 80)
-    logger.info(f"Python version: {os.sys.version}")
+    logger.info(f"Python version: {sys.version}")  # FIXED: Use sys directly
     logger.info(f"Total events in history: {get_engine().event_store.count()}")
     logger.info(f"Vector index size: {get_faiss_index().get_count()}")
     logger.info(f"Agents initialized: {len(get_engine().orchestrator.agents)}")
