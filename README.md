@@ -12,6 +12,8 @@
 
 <div align="center">
 
+[![PyPI version](https://badge.fury.io/py/agentic-reliability-framework.svg)](https://pypi.org/project/agentic-reliability-framework/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/agentic-reliability-framework.svg)](https://pypi.org/project/agentic-reliability-framework/)
 [![Tests](https://img.shields.io/badge/tests-157%2F158%20passing-brightgreen?style=for-the-badge)](./Test)
 [![Python](https://img.shields.io/badge/python-3.12-blue?style=for-the-badge&logo=python)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](./LICENSE)
