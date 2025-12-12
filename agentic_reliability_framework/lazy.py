@@ -4,6 +4,7 @@ Simple lazy loading for ARF - No circular dependencies!
 
 import threading
 from typing import Callable, Optional, Any
+import os
 
 class LazyLoader:
     """Simple thread-safe lazy loader"""
@@ -58,19 +59,23 @@ def _load_agents() -> Any:
 
 def _load_faiss_index() -> Any:
     """Load or create FAISS index"""
-    import os
     import json
     import faiss
     from .config import config
     from .app import ProductionFAISSIndex
     from sentence_transformers import SentenceTransformer
     
+    # FIXED: Use correct attribute names from config.py
+    # config has: index_file and incident_texts_file (lowercase)
+    index_file = config.index_file  # Not INDEX_FILE
+    texts_file = config.incident_texts_file  # Not TEXTS_FILE
+    
     # Load or create index
-    if os.path.exists(config.INDEX_FILE):
-        index = faiss.read_index(config.INDEX_FILE)
+    if os.path.exists(index_file):
+        index = faiss.read_index(index_file)
         incident_texts = []
-        if os.path.exists(config.TEXTS_FILE):
-            with open(config.TEXTS_FILE, 'r') as f:
+        if os.path.exists(texts_file):
+            with open(texts_file, 'r') as f:
                 incident_texts = json.load(f)
     else:
         model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
