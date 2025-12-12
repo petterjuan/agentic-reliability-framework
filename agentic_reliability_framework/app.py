@@ -763,20 +763,20 @@ class SimplePredictiveEngine:
                 
                 # Determine trend
                 if len(cpu_values) >= 10:
-                    trend_value: Literal["increasing", "decreasing", "stable"] = (
+                    cpu_trend: Literal["increasing", "decreasing", "stable"] = (
                         "increasing" if cpu_values[-1] > np.mean(cpu_values[-10:-5]) 
                         else "stable"
                     )
                 else:
-                    trend_value = "stable"
+                    cpu_trend = "stable"
                 
-                risk = self._get_risk_literal("cpu_util", predicted_cpu, trend_value)
+                risk = self._get_risk_literal("cpu_util", predicted_cpu, cpu_trend)
                 
                 forecasts.append(ForecastResult(
                     metric="cpu_util",
                     predicted_value=predicted_cpu,
                     confidence=0.7,
-                    trend=trend_value,
+                    trend=cpu_trend,
                     risk_level=risk
                 ))
             except Exception as e:
@@ -790,20 +790,20 @@ class SimplePredictiveEngine:
                 
                 # Determine trend
                 if len(memory_values) >= 10:
-                    trend_value: Literal["increasing", "decreasing", "stable"] = (
+                    memory_trend: Literal["increasing", "decreasing", "stable"] = (
                         "increasing" if memory_values[-1] > np.mean(memory_values[-10:-5]) 
                         else "stable"
                     )
                 else:
-                    trend_value = "stable"
+                    memory_trend = "stable"
                 
-                risk = self._get_risk_literal("memory_util", predicted_memory, trend_value)
+                risk = self._get_risk_literal("memory_util", predicted_memory, memory_trend)
                 
                 forecasts.append(ForecastResult(
                     metric="memory_util",
                     predicted_value=predicted_memory,
                     confidence=0.7,
-                    trend=trend_value,
+                    trend=memory_trend,
                     risk_level=risk
                 ))
             except Exception as e:
@@ -1656,8 +1656,8 @@ class BusinessMetricsTracker:
     """Track cumulative business metrics for ROI dashboard"""
     
     def __init__(self):
-        self.total_incidents: int = 0  # FIXED: Type annotation
-        self.incidents_auto_healed: int = 0  # FIXED: Type annotation
+        self.total_incidents: int = 0
+        self.incidents_auto_healed: int = 0
         self.total_revenue_saved: float = 0.0
         self.total_revenue_at_risk: float = 0.0
         self.detection_times: List[float] = []
@@ -1670,7 +1670,7 @@ class BusinessMetricsTracker:
         auto_healed: bool,
         revenue_loss: float,
         detection_time_seconds: float = 120.0  # 2 minutes default
-    ):
+    ) -> None:  # FIXED: Add return type
         """Record an incident and update metrics"""
         with self._lock:
             self.total_incidents += 1
@@ -1723,7 +1723,7 @@ class BusinessMetricsTracker:
                 )  # vs industry 14 min
             }
     
-    def reset(self):
+    def reset(self) -> None:  # FIXED: Add return type
         """Reset all metrics (for demo purposes)"""
         with self._lock:
             self.total_incidents = 0
@@ -1968,7 +1968,7 @@ def create_enhanced_ui():
             gr.Markdown("\n\n".join(policy_info))
         
         # Scenario change handler
-        def on_scenario_change(scenario_name):
+        def on_scenario_change(scenario_name: str) -> Dict[str, Any]:  # FIXED: Add type annotations
             """Update input fields when demo scenario is selected"""
             if scenario_name == "Manual Entry":
                 return {
@@ -1996,7 +1996,7 @@ def create_enhanced_ui():
             }
         
         # Reset metrics handler
-        def reset_metrics():
+        def reset_metrics() -> Tuple[int, int, float, float, float, float]:  # FIXED: Add type annotations
             """Reset business metrics for demo purposes"""
             get_business_metrics().reset()
             return 0, 0, 0.0, 0.0, 2.3, 83.6
@@ -2023,8 +2023,13 @@ def create_enhanced_ui():
             
         # Event submission handler with ROI tracking
         async def submit_event_enhanced_async(
-            component, latency, error_rate, throughput, cpu_util, memory_util
-        ):
+            component: str,
+            latency: float,
+            error_rate: float,
+            throughput: float,
+            cpu_util: Optional[float],
+            memory_util: Optional[float]
+        ) -> Tuple[str, Dict[str, Any], Dict[str, Any], Any, int, int, float, float, float, float]:  # FIXED: Add return type
             """
             Async event handler - uses Gradio's native async support
             
@@ -2051,11 +2056,11 @@ def create_enhanced_ui():
                 
                 # Type conversion
                 try:
-                    latency = float(latency)
-                    error_rate = float(error_rate)
-                    throughput = float(throughput) if throughput else 1000
-                    cpu_util = float(cpu_util) if cpu_util else None
-                    memory_util = float(memory_util) if memory_util else None
+                    latency_f = float(latency)
+                    error_rate_f = float(error_rate)
+                    throughput_f = float(throughput) if throughput else 1000
+                    cpu_util_f = float(cpu_util) if cpu_util else None
+                    memory_util_f = float(memory_util) if memory_util else None
                 except (ValueError, TypeError) as e:
                     error_msg = f"❌ Invalid input types: {str(e)}"
                     logger.warning(error_msg)
@@ -2072,7 +2077,7 @@ def create_enhanced_ui():
                 
                 # Input validation
                 is_valid, error_msg = validate_inputs(
-                    latency, error_rate, throughput, cpu_util, memory_util
+                    latency_f, error_rate_f, throughput_f, cpu_util_f, memory_util_f
                 )
                 if not is_valid:
                     logger.warning(f"Invalid input: {error_msg}")
@@ -2089,7 +2094,7 @@ def create_enhanced_ui():
                 
                 # Process event through engine
                 result = await get_engine().process_event_enhanced(
-                    component, latency, error_rate, throughput, cpu_util, memory_util
+                    component, latency_f, error_rate_f, throughput_f, cpu_util_f, memory_util_f
                 )
                 
                 # Handle errors
