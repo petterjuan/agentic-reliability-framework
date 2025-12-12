@@ -104,7 +104,7 @@ def seed_faiss_index():
     
     print(f"✅ Seeded FAISS index with {len(embeddings)} demo incidents")
     print(f"   Dimension: {dimension}")
-    print(f"   Saved to: data/incident_vectors.index")
+    print("   Saved to: data/incident_vectors.index")  # FIXED: Removed f prefix
     
     return incidents
 
