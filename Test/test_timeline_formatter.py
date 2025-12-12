@@ -5,7 +5,6 @@ Tests the formatting and display generation for timeline visualizations.
 """
 
 import pytest
-from agentic_reliability_framework.typing import Dict, Any
 
 # Import your formatter (adjust path as needed)
 # from agentic_reliability_framework.app import TimelineFormatter, TimelineMetrics
