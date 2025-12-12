@@ -1027,7 +1027,7 @@ class AnomalyDetectionAgent(BaseAgent):
             scores.append(0.3 * error_score)
         
         # Resource anomaly (weighted 30%)
-        resource_score = 0
+        resource_score: float = 0.0
         if event.cpu_util and event.cpu_util > Constants.CPU_WARNING:
             resource_score += 0.15 * min(1.0, (event.cpu_util - Constants.CPU_WARNING) / 0.2)
         if event.memory_util and event.memory_util > Constants.MEMORY_WARNING:
