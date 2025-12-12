@@ -27,13 +27,13 @@ class LazyLoader:
 
 # ========== MODULE-LEVEL IMPORTS ==========
 
-def _load_engine():
+def _load_engine() -> Any:
     """Import and create EnhancedReliabilityEngine"""
     # Import here to avoid circular dependency
     from .app import EnhancedReliabilityEngine
     return EnhancedReliabilityEngine()
 
-def _load_agents():
+def _load_agents() -> Any:
     """Create all agent instances"""
     from .app import (
         AnomalyDetectionAgent, 
@@ -56,7 +56,7 @@ def _load_agents():
         'predictive_engine': predictive_engine
     }
 
-def _load_faiss_index():
+def _load_faiss_index() -> Any:
     """Load or create FAISS index"""
     import os
     import json
@@ -80,7 +80,7 @@ def _load_faiss_index():
     
     return ProductionFAISSIndex(index, incident_texts)
 
-def _load_business_metrics():
+def _load_business_metrics() -> Any:
     """Create BusinessMetricsTracker"""
     from .app import BusinessMetricsTracker
     return BusinessMetricsTracker()
@@ -96,27 +96,27 @@ business_metrics_loader = LazyLoader(_load_business_metrics)
 
 # ========== PUBLIC API ==========
 
-def get_engine():
+def get_engine() -> Any:
     """Get or create EnhancedReliabilityEngine"""
     return engine_loader()
 
-def get_agents():
+def get_agents() -> Any:
     """Get or create agent instances"""
     return agents_loader()
 
-def get_faiss_index():
+def get_faiss_index() -> Any:
     """Get or create FAISS index"""
     return faiss_loader()
 
-def get_business_metrics():
+def get_business_metrics() -> Any:
     """Get or create BusinessMetricsTracker"""
     return business_metrics_loader()
 
-def enhanced_engine():
+def enhanced_engine() -> Any:
     """Alias for get_engine()"""
     return get_engine()
 
-def reset_all():
+def reset_all() -> None:
     """Reset all loaders (for testing)"""
     engine_loader.reset()
     agents_loader.reset()
