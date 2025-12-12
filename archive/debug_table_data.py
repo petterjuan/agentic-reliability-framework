@@ -4,7 +4,7 @@ sys.path.insert(0, '.')
 import asyncio
 
 async def test():
-    from app import enhanced_engine, business_metrics
+    from app import enhanced_engine  # Removed: business_metrics
     
     print("=== Testing Table Data Issue ===")
     
@@ -28,7 +28,7 @@ async def test():
         )
         enhanced_engine.event_store.add(event)
     
-    print(f"   Added 3 test events")
+    print("   Added 3 test events")  # Removed: f prefix
     print(f"   Total events now: {enhanced_engine.event_store.count()}")
     
     # Now simulate the table building
