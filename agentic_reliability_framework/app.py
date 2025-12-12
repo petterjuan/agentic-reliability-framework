@@ -38,16 +38,13 @@ import os
 import json
 import numpy as np
 import gradio as gr
-import requests
-import pandas as pd
 import datetime
 import threading
 import logging
 import asyncio
 import tempfile
 from typing import List, Dict, Any, Optional, Tuple
-from collections import deque, OrderedDict
-from dataclasses import dataclass, asdict
+from collections import deque
 from enum import Enum
 from concurrent.futures import ProcessPoolExecutor
 from queue import Queue
@@ -56,10 +53,12 @@ import atomicwrites
 
 # Import our modules
 from .models import (
-    ReliabilityEvent, EventSeverity, AnomalyResult,
-    HealingAction, ForecastResult, PolicyCondition
+    ReliabilityEvent, 
+    EventSeverity, 
+    HealingAction, 
+    ForecastResult
 )
-from .healing_policies import PolicyEngine, DEFAULT_HEALING_POLICIES
+from .healing_policies import PolicyEngine
 
 # === Logging Configuration ===
 logging.basicConfig(
@@ -114,8 +113,7 @@ class Constants:
     MAX_REQUESTS_PER_HOUR = 500
 
 # === Configuration ===
-config = Config()
-HEADERS = {"Authorization": f"Bearer {config.HF_TOKEN}"} if config.HF_TOKEN else {}
+HEADERS = {"Authorization": f"Bearer {config.hf_api_key}"} if config.hf_api_key else {}
 
 # === Demo Scenarios for Hackathon Presentations ===
 DEMO_SCENARIOS = {
@@ -467,7 +465,7 @@ class ProductionFAISSIndex:
             with tempfile.NamedTemporaryFile(
                 mode='wb',
                 delete=False,
-                dir=os.path.dirname(config.INDEX_FILE),
+                dir=os.path.dirname(config.index_file),
                 prefix='index_',
                 suffix='.tmp'
             ) as tmp:
@@ -482,14 +480,14 @@ class ProductionFAISSIndex:
                 os.fsync(f.fileno())
             
             # Atomic rename
-            os.replace(temp_path, config.INDEX_FILE)
+            os.replace(temp_path, config.index_file)
             
             # Save texts with atomic write
             with self._lock:
                 texts_copy = self.texts.copy()
             
             with atomicwrites.atomic_write(
-                config.TEXTS_FILE,
+                config.incident_texts_file,
                 mode='w',
                 overwrite=True
             ) as f:
@@ -832,7 +830,7 @@ class BusinessImpactCalculator:
     
     def __init__(self, revenue_per_request: float = 0.01):
         self.revenue_per_request = revenue_per_request
-        logger.info(f"Initialized BusinessImpactCalculator")
+        logger.info("Initialized BusinessImpactCalculator")
     
     def calculate_impact(
         self,
@@ -1618,8 +1616,6 @@ class EnhancedReliabilityEngine:
                 detection_time_seconds=120.0  # Assume 2 min detection
             )
         
-        logger.info(f"Event processed: {result['status']} with {result['severity']} severity")
-        
         return result
 
 # === Global Metrics Tracker for ROI Dashboard ===
@@ -2008,7 +2004,7 @@ def create_enhanced_ui():
                 # Rate limiting check
                 allowed, rate_msg = rate_limiter.is_allowed()
                 if not allowed:
-                    logger.warning(f"Rate limit exceeded")
+                    logger.warning("Rate limit exceeded")
                     metrics = get_business_metrics().get_metrics()
                     return (
                         rate_msg, {}, {}, gr.Dataframe(value=[]),
@@ -2206,7 +2202,7 @@ if __name__ == "__main__":
     logger.info(f"Agents initialized: {len(get_engine().orchestrator.agents)}")
     logger.info(f"Policies loaded: {len(get_engine().policy_engine.policies)}")
     logger.info(f"Demo scenarios loaded: {len(DEMO_SCENARIOS)}")
-    logger.info(f"Configuration: HF_TOKEN={'SET' if config.HF_TOKEN else 'NOT SET'}")
+    logger.info(f"Configuration: HF_TOKEN={'SET' if config.hf_api_key else 'NOT SET'}")
     logger.info(f"Rate limit: {Constants.MAX_REQUESTS_PER_MINUTE} requests/minute")
     logger.info("=" * 80)
     
