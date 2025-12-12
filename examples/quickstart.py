@@ -26,7 +26,7 @@ async def main():
         memory_util=0.98
     )
     
-    print(f"\n🔍 Analysis Result:")
+    print("\n🔍 Analysis Result:")  # FIXED: Removed f prefix
     print(f"  Status: {result['status']}")
     print(f"  Severity: {result['severity']}")
     
