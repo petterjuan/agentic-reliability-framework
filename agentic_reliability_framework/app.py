@@ -644,7 +644,7 @@ class ProductionFAISSIndex:
                     
                     # SAFE PARSING: Handle potential parsing errors
                     try:
-                        result = {
+                        result: Dict[str, Any] = {
                             "similarity_score": round(normalized_similarity, 3),
                             "raw_score": round(score, 4),
                             "faiss_index": idx,
@@ -670,8 +670,9 @@ class ProductionFAISSIndex:
                             "parse_error": str(parse_error)
                         })
             
-            # Sort by similarity (highest first)
-            results.sort(key=lambda x: x["similarity_score"], reverse=True)
+            # FIXED: Add explicit type annotation for sort key
+            # Sort by similarity (highest first) - explicitly return float
+            results.sort(key=lambda x: float(x["similarity_score"]), reverse=True)
             
             logger.info(
                 f"Semantic search: '{query_text[:50]}...' found {len(results)} similar incidents "
@@ -707,6 +708,14 @@ class ProductionFAISSIndex:
                 # Calculate memory usage estimate (rough)
                 memory_bytes = total_vectors * dimension * 4  # float32 = 4 bytes
                 
+                # FIXED: Use public API to get max workers
+                # ProcessPoolExecutor doesn't expose _max_workers publicly
+                # We can track it ourselves or use a workaround
+                max_workers = 2  # Default from __init__
+                if hasattr(self._encoder_pool, '_max_workers'):
+                    # This might work in some Python versions, but not guaranteed
+                    max_workers = self._encoder_pool._max_workers
+                
                 return {
                     "total_vectors": total_vectors,
                     "stored_texts": len(self.texts),
@@ -718,7 +727,7 @@ class ProductionFAISSIndex:
                     "index_type": type(self.index).__name__,
                     "is_shutdown": self._shutdown.is_set(),
                     "writer_thread_alive": self._writer_thread.is_alive(),
-                    "encoder_pool_workers": self._encoder_pool._max_workers
+                    "encoder_pool_workers": max_workers
                 }
                 
             except Exception as e:
@@ -783,7 +792,7 @@ class ProductionFAISSIndex:
         self.force_save()
         self._writer_thread.join(timeout=5.0)
         self._encoder_pool.shutdown(wait=True)
-
+        
 # === Predictive Models ===
 class SimplePredictiveEngine:
     """
