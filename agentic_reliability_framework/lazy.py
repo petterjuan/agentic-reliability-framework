@@ -6,8 +6,11 @@ UPDATED: Now uses modular imports from memory/ and other packages
 
 import threading
 import sys  # ADDED: Fix for F821 error
+import logging  # MOVED: From line 200 to here to fix E402
 from typing import Callable, Optional, Any, Dict
 import os
+
+logger = logging.getLogger(__name__)
 
 class LazyLoader:
     """Simple thread-safe lazy loader"""
@@ -103,7 +106,7 @@ def _load_rag_graph() -> Any:
     """Create RAGGraphMemory for v3 features"""
     try:
         from .memory.rag_graph import RAGGraphMemory
-        from .memory.faiss_index import ProductionFAISSIndex
+        from .memory.faiss_index import ProductionFAISSIndex  # noqa: F401
         
         # Get FAISS index first
         faiss_index = get_faiss_index()
@@ -195,11 +198,6 @@ def reset_all() -> None:
     policy_engine_loader.reset()
     event_store_loader.reset()
     logger.info("Reset all lazy loaders")
-
-# ========== LOGGING SETUP ==========
-import logging
-logger = logging.getLogger(__name__)
-
 
 # ========== BACKWARD COMPATIBILITY ==========
 def _create_legacy_compatibility_layer() -> None:
