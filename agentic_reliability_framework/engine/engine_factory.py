@@ -107,7 +107,6 @@ class EngineFactory:
         
         # Try to import components to check availability
         try:
-            from ..memory.rag_graph import RAGGraphMemory
             from ..lazy import get_faiss_index
             faiss_index = get_faiss_index()
             components_available["rag"] = faiss_index is not None
@@ -115,7 +114,6 @@ class EngineFactory:
             pass
         
         try:
-            from .mcp_server import MCPServer
             components_available["mcp"] = True
         except ImportError:
             pass
