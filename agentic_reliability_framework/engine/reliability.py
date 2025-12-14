@@ -7,7 +7,7 @@ import threading
 import logging
 import asyncio
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+# Removed: from datetime import datetime  # Unused - FIXED
 
 from ..models import ReliabilityEvent, EventSeverity, HealingAction
 from ..healing_policies import PolicyEngine
