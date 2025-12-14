@@ -5,14 +5,12 @@ Phase 3: Integration & Learning Loop (2 weeks)
 Goal: Connect RAG → Policy → MCP → Outcome recording
 """
 
-import asyncio
 import threading
 import logging
 from typing import Dict, Any, List, Optional
 import time
 
 from ..models import ReliabilityEvent, HealingAction
-from ..healing_policies import PolicyEngine
 from ..config import config
 from ..memory.rag_graph import RAGGraphMemory
 from .reliability import EnhancedReliabilityEngine as V2Engine
