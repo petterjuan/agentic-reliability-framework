@@ -5,7 +5,7 @@ Extracted from app.py for modularity
 
 import threading
 import logging
-import asyncio
+import asyncio # noqa: F401
 from typing import Dict, Any, Optional, List
 # Removed: from datetime import datetime  # Unused - FIXED
 
