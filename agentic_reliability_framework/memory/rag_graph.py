@@ -10,7 +10,7 @@ import threading
 import logging
 import hashlib
 import json
-from typing import Dict, List, Any, Optional, Tuple, Set
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 from collections import OrderedDict
 from dataclasses import asdict
@@ -19,7 +19,7 @@ from .faiss_index import ProductionFAISSIndex
 from .enhanced_faiss import EnhancedFAISSIndex
 from .models import (
     IncidentNode, OutcomeNode, GraphEdge, 
-    SimilarityResult, EdgeType, NodeType
+    SimilarityResult, EdgeType
 )
 from .constants import MemoryConstants
 from ..models import ReliabilityEvent
