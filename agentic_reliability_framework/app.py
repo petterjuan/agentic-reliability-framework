@@ -3,16 +3,11 @@ import sys  # FIXED: Added sys import
 import json
 import numpy as np
 import gradio as gr
-import datetime
 import threading
 import logging
-import asyncio
+import asyncio  # noqa: F401
+# Removed: import datetime  # Unused
 import tempfile
-# Add these imports with other engine imports
-from .engine.predictive import SimplePredictiveEngine
-from .engine.anomaly import AdvancedAnomalyDetector
-from .engine.business import BusinessImpactCalculator, BusinessMetricsTracker
-from .engine.reliability import EnhancedReliabilityEngine, ThreadSafeEventStore
 from typing import List, Dict, Any, Optional, Tuple, Literal  # FIXED: Added Literal
 from collections import deque
 from enum import Enum
@@ -20,6 +15,12 @@ from concurrent.futures import ProcessPoolExecutor
 from queue import Queue
 from circuitbreaker import circuit
 import atomicwrites
+
+# Add these imports with other engine imports
+from .engine.predictive import SimplePredictiveEngine
+from .engine.anomaly import AdvancedAnomalyDetector
+from .engine.business import BusinessImpactCalculator, BusinessMetricsTracker
+from .engine.reliability import EnhancedReliabilityEngine, ThreadSafeEventStore
 from .memory.faiss_index import ProductionFAISSIndex
 
 # Import our modules
@@ -323,43 +324,6 @@ def validate_inputs(
     except Exception as e:
         logger.error(f"Validation error: {e}", exc_info=True)
         return False, f"❌ Validation error: {str(e)}"
-
-# === Thread-Safe Data Structures ===
-class ThreadSafeEventStore:
-    """Thread-safe storage for reliability events"""
-    
-    def __init__(self, max_size: int = Constants.MAX_EVENTS_STORED):
-        self._events: deque[ReliabilityEvent] = deque(maxlen=max_size)  # FIXED: Add type annotation
-        self._lock = threading.RLock()
-        logger.info(f"Initialized ThreadSafeEventStore with max_size={max_size}")
-    
-    def add(self, event: ReliabilityEvent) -> None:
-        """Add event to store"""
-        with self._lock:
-            self._events.append(event)
-            logger.debug(f"Added event for {event.component}: {event.severity.value}")
-    
-    def get_recent(self, n: int = 15) -> List[ReliabilityEvent]:
-        """Get n most recent events"""
-        with self._lock:
-            return list(self._events)[-n:] if self._events else []
-    
-    def get_all(self) -> List[ReliabilityEvent]:
-        """Get all events"""
-        with self._lock:
-            return list(self._events)
-    
-    def count(self) -> int:
-        """Get total event count"""
-        with self._lock:
-            return len(self._events)
-            
-# === Predictive Models ===
-# [SimplePredictiveEngine MOVED TO engine/predictive.py]
-
-# [BusinessImpactCalculator MOVED TO engine/business.py]
-
-# [AdvancedAnomalyDetector MOVED TO engine/anomaly.py]
 
 # === Multi-Agent System ===
 class AgentSpecialization(Enum):
@@ -882,179 +846,8 @@ class OrchestrationManager:
                 unique_actions.append(action)
         return unique_actions[:5]
 
-# === Enhanced Reliability Engine ===
-class EnhancedReliabilityEngine:
-    """
-    Main engine for processing reliability events
-    
-    FIXED: Dependency injection for all components
-    """
-    
-    def __init__(
-        self,
-        orchestrator: Optional[OrchestrationManager] = None,
-        policy_engine: Optional[PolicyEngine] = None,
-        event_store: Optional[ThreadSafeEventStore] = None,
-        anomaly_detector: Optional[AdvancedAnomalyDetector] = None,
-        business_calculator: Optional[BusinessImpactCalculator] = None
-    ):
-        """
-        Initialize reliability engine with dependency injection
-        
-        FIXED: All dependencies injected for testability
-        """
-        self.orchestrator = orchestrator or OrchestrationManager()
-        self.policy_engine = policy_engine or PolicyEngine()
-        self.event_store = event_store or ThreadSafeEventStore()
-        self.anomaly_detector = anomaly_detector or AdvancedAnomalyDetector()
-        self.business_calculator = business_calculator or BusinessImpactCalculator()
-        
-        self.performance_metrics = {
-            'total_incidents_processed': 0,
-            'multi_agent_analyses': 0,
-            'anomalies_detected': 0
-        }
-        self._lock = threading.RLock()
-        logger.info("Initialized EnhancedReliabilityEngine")
-    
-    async def process_event_enhanced(
-        self,
-        component: str,
-        latency: float,
-        error_rate: float,
-        throughput: float = 1000,
-        cpu_util: Optional[float] = None,
-        memory_util: Optional[float] = None
-    ) -> Dict[str, Any]:
-        """
-        Process a reliability event through the complete analysis pipeline
-        
-        FIXED: Proper async/await throughout
-        """
-        logger.info(
-            f"Processing event for {component}: latency={latency}ms, "
-            f"error_rate={error_rate*100:.1f}%"
-        )
-        
-        # Validate component ID
-        is_valid, error_msg = validate_component_id(component)
-        if not is_valid:
-            return {'error': error_msg, 'status': 'INVALID'}
-        
-        # Create event
-        try:
-            event = ReliabilityEvent(
-                component=component,
-                latency_p99=latency,
-                error_rate=error_rate,
-                throughput=throughput,
-                cpu_util=cpu_util,
-                memory_util=memory_util,
-                upstream_deps=["auth-service", "database"] if component == "api-service" else []
-            )
-        except Exception as e:
-            logger.error(f"Event creation error: {e}", exc_info=True)
-            return {'error': f'Invalid event data: {str(e)}', 'status': 'INVALID'}
-        
-        # Multi-agent analysis
-        agent_analysis = await self.orchestrator.orchestrate_analysis(event)
-        
-        # Anomaly detection
-        is_anomaly = self.anomaly_detector.detect_anomaly(event)
-        
-        # Determine severity based on agent confidence
-        agent_confidence = 0.0
-        if agent_analysis and 'incident_summary' in agent_analysis:
-            agent_confidence = agent_analysis.get('incident_summary', {}).get('anomaly_confidence', 0)
-        else:
-            agent_confidence = 0.8 if is_anomaly else 0.1
-        
-        # Set event severity
-        if agent_confidence > 0.8:
-            severity = EventSeverity.CRITICAL
-        elif agent_confidence > 0.6:
-            severity = EventSeverity.HIGH
-        elif agent_confidence > 0.4:
-            severity = EventSeverity.MEDIUM
-        else:
-            severity = EventSeverity.LOW
-        
-        # Create mutable copy with updated severity
-        event = event.model_copy(update={'severity': severity})
-        
-        # Evaluate healing policies
-        healing_actions = self.policy_engine.evaluate_policies(event)
-        
-        # Calculate business impact
-        business_impact = self.business_calculator.calculate_impact(event) if is_anomaly else None
-        
-        # Store in vector database for similarity detection
-        if is_anomaly:
-            try:
-                # FIXED: Non-blocking encoding with ProcessPoolExecutor
-                analysis_text = agent_analysis.get('recommended_actions', ['No analysis'])[0]
-                vector_text = f"{component} {latency} {error_rate} {analysis_text}"
-                
-                # Encode asynchronously - import SentenceTransformer here
-                from sentence_transformers import SentenceTransformer
-                model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-                
-                loop = asyncio.get_event_loop()
-                vec = await loop.run_in_executor(
-                    get_faiss_index()._encoder_pool,
-                    model.encode,
-                    [vector_text]
-                )
-                
-                get_faiss_index().add_async(np.array(vec, dtype=np.float32), vector_text)
-            except Exception as e:
-                logger.error(f"Error storing vector: {e}", exc_info=True)
-        
-        # Build comprehensive result
-        result = {
-            "timestamp": event.timestamp.isoformat(),
-            "component": component,
-            "latency_p99": latency,
-            "error_rate": error_rate,
-            "throughput": throughput,
-            "status": "ANOMALY" if is_anomaly else "NORMAL",
-            "multi_agent_analysis": agent_analysis,
-            "healing_actions": [action.value for action in healing_actions],
-            "business_impact": business_impact,
-            "severity": event.severity.value,
-            "similar_incidents_count": get_faiss_index().get_count() if is_anomaly else 0,
-            "processing_metadata": {
-                "agents_used": agent_analysis.get('agent_metadata', {}).get('participating_agents', []),
-                "analysis_confidence": agent_analysis.get('incident_summary', {}).get('anomaly_confidence', 0)
-            }
-        }
-        
-        # Store event in history
-        self.event_store.add(event)
-        
-        # Update performance metrics
-        with self._lock:
-            self.performance_metrics['total_incidents_processed'] += 1
-            self.performance_metrics['multi_agent_analyses'] += 1
-            if is_anomaly:
-                self.performance_metrics['anomalies_detected'] += 1
-        
-        logger.info(f"Event processed: {result['status']} with {result['severity']} severity")
-        
-        # Track business metrics for ROI dashboard
-        if is_anomaly and business_impact:
-            auto_healed = len(healing_actions) > 0 and healing_actions[0] != HealingAction.NO_ACTION
-            get_business_metrics().record_incident(
-                severity=event.severity.value,
-                auto_healed=auto_healed,
-                revenue_loss=business_impact['revenue_loss_estimate'],
-                detection_time_seconds=120.0  # Assume 2 min detection
-            )
-        
-        return result
-
-# [BusinessMetricsTracker MOVED TO engine/business.py]
-# Global business metrics tracker will be initialized in lazy.py
+# NOTE: Removed duplicate EnhancedReliabilityEngine class (using module version from engine/reliability.py)
+# NOTE: Removed duplicate ThreadSafeEventStore class (using module version from engine/reliability.py)
 
 class RateLimiter:
     """Simple rate limiter for request throttling"""
@@ -1067,6 +860,7 @@ class RateLimiter:
     def is_allowed(self) -> Tuple[bool, str]:
         """Check if request is allowed"""
         with self._lock:
+            import datetime  # Import here since we removed the global import
             now = datetime.datetime.now(datetime.timezone.utc)
             
             # Remove requests older than 1 minute
