@@ -5,11 +5,10 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 import asyncio
 
 from .constants import MemoryConstants
-from ..config import config
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class EnhancedFAISSIndex:
         self._lock = faiss_index._lock if hasattr(faiss_index, '_lock') else None
         logger.info("Initialized EnhancedFAISSIndex for v3 RAG search")
     
-    def search(self, query_vector: np.ndarray, k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    def search(self, query_vector: np.ndarray, k: int = 5) -> tuple[np.ndarray, np.ndarray]:
         """
         Thread-safe similarity search in FAISS index
         
@@ -55,7 +54,7 @@ class EnhancedFAISSIndex:
         else:
             return self._safe_search(query_vector, k)
     
-    def _safe_search(self, query_vector: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+    def _safe_search(self, query_vector: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
         """Perform search with error handling"""
         try:
             # Ensure proper dimensionality
@@ -92,7 +91,7 @@ class EnhancedFAISSIndex:
             logger.error(f"FAISS search error: {e}", exc_info=True)
             raise RuntimeError(f"Search failed: {str(e)}")
     
-    async def search_async(self, query_vector: np.ndarray, k: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    async def search_async(self, query_vector: np.ndarray, k: int = 5) -> tuple[np.ndarray, np.ndarray]:
         """
         Async version of similarity search
         
@@ -171,7 +170,7 @@ class EnhancedFAISSIndex:
                     )
                 )
                 return np.array(embedding, dtype=np.float32)
-        except:
+        except Exception:
             pass
         
         # Fallback: create simple embedding from text hash
