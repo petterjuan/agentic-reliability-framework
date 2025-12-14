@@ -21,7 +21,7 @@ from .engine.predictive import SimplePredictiveEngine
 from .engine.anomaly import AdvancedAnomalyDetector  # noqa: F401
 from .engine.business import BusinessImpactCalculator, BusinessMetricsTracker  # noqa: F401
 from .engine.reliability import EnhancedReliabilityEngine, ThreadSafeEventStore  # noqa: F401
-from .memory.faiss_index import ProductionFAISSIndex  # noqa: F401
+from .memory.faiss_index import ProductionFAISSIndex, create_faiss_index  # noqa: F401
 
 # Import our modules
 from .models import (
