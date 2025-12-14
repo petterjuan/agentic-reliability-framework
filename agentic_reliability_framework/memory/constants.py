@@ -1,6 +1,5 @@
-# agentic_reliability_framework/memory/constants.py
 """
-Constants specific to memory module
+Constants for memory module
 """
 
 class MemoryConstants:
