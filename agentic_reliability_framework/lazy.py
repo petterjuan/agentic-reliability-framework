@@ -5,6 +5,7 @@ UPDATED: Now uses modular imports from memory/ and other packages
 """
 
 import threading
+import sys  # ADDED: Fix for F821 error
 from typing import Callable, Optional, Any, Dict
 import os
 
@@ -247,5 +248,5 @@ def get_diagnostics() -> Dict[str, Any]:
         'event_store_loaded': event_store_loader._instance is not None,
         'rag_available': get_rag_graph() is not None,
         'module_path': __file__,
-        'python_version': sys.version,
+        'python_version': sys.version,  # NOW WORKS WITH sys IMPORT
     }
