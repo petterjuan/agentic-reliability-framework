@@ -6,7 +6,7 @@ Implements feature flags and gradual rollout
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from .reliability import EnhancedReliabilityEngine as V2Engine
 from .v3_reliability import V3ReliabilityEngine
@@ -111,13 +111,13 @@ class EngineFactory:
             from ..lazy import get_faiss_index
             faiss_index = get_faiss_index()
             components_available["rag"] = faiss_index is not None
-        except:
+        except ImportError:
             pass
         
         try:
             from .mcp_server import MCPServer
             components_available["mcp"] = True
-        except:
+        except ImportError:
             pass
         
         return {
