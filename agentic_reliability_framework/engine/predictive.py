@@ -7,7 +7,7 @@ import numpy as np
 import datetime
 import threading
 import logging
-from typing import Dict, List, Optional, Tuple, Literal
+from typing import Dict, List, Optional, Tuple, Literal, Any
 from collections import deque
 
 from ..models import ForecastResult
