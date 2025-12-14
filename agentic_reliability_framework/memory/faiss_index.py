@@ -1,4 +1,40 @@
-# === FAISS Integration ===
+"""
+Production FAISS Index for v2/v3 compatibility
+Extracted from app.py for proper module structure
+"""
+
+import threading
+import numpy as np
+import logging
+import datetime
+import json
+import os
+import tempfile
+import time
+from typing import List, Tuple, Optional
+from queue import Queue
+from concurrent.futures import ProcessPoolExecutor
+
+from ..config import config
+from .constants import MemoryConstants
+
+logger = logging.getLogger(__name__)
+
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    FAISS_AVAILABLE = False
+    logger.warning("FAISS not available. Search functionality will be limited.")
+
+try:
+    import atomicwrites
+    ATOMIC_WRITES_AVAILABLE = True
+except ImportError:
+    ATOMIC_WRITES_AVAILABLE = False
+    logger.warning("atomicwrites not available. Using regular file writes.")
+
+
 class ProductionFAISSIndex:
     """Production-safe FAISS index with single-writer pattern"""
     
@@ -34,7 +70,7 @@ class ProductionFAISSIndex:
         batch = []
         last_save = datetime.datetime.now()
         save_interval = datetime.timedelta(
-            seconds=Constants.FAISS_SAVE_INTERVAL_SECONDS
+            seconds=MemoryConstants.FAISS_SAVE_INTERVAL_SECONDS
         )
         
         while not self._shutdown.is_set():
@@ -46,7 +82,7 @@ class ProductionFAISSIndex:
                 except queue.Empty:
                     pass
                 
-                if len(batch) >= Constants.FAISS_BATCH_SIZE or \
+                if len(batch) >= MemoryConstants.FAISS_BATCH_SIZE or \
                    (batch and datetime.datetime.now() - last_save > save_interval):
                     self._flush_batch(batch)
                     batch = []
@@ -80,12 +116,13 @@ class ProductionFAISSIndex:
     def _save_atomic(self) -> None:
         """Atomic save with fsync for durability"""
         try:
-            import faiss
+            if not FAISS_AVAILABLE:
+                return
             
             with tempfile.NamedTemporaryFile(
                 mode='wb',
                 delete=False,
-                dir=os.path.dirname(config.INDEX_FILE),
+                dir=os.path.dirname(config.index_file),
                 prefix='index_',
                 suffix='.tmp'
             ) as tmp:
@@ -97,17 +134,22 @@ class ProductionFAISSIndex:
                 f.flush()
                 os.fsync(f.fileno())
             
-            os.replace(temp_path, config.INDEX_FILE)
+            os.replace(temp_path, config.index_file)
             
             with self._lock:
                 texts_copy = self.texts.copy()
             
-            with atomicwrites.atomic_write(
-                config.TEXTS_FILE,
-                mode='w',
-                overwrite=True
-            ) as f:
-                json.dump(texts_copy, f)
+            # Use atomic writes if available
+            if ATOMIC_WRITES_AVAILABLE:
+                with atomicwrites.atomic_write(
+                    config.incident_texts_file,
+                    mode='w',
+                    overwrite=True
+                ) as f:
+                    json.dump(texts_copy, f)
+            else:
+                with open(config.incident_texts_file, 'w') as f:
+                    json.dump(texts_copy, f)
             
             logger.info(
                 f"Atomically saved FAISS index with {len(texts_copy)} vectors"
@@ -132,7 +174,6 @@ class ProductionFAISSIndex:
             if (datetime.datetime.now() - start).total_seconds() > timeout:
                 logger.warning("Force save timeout - queue not empty")
                 break
-            import time
             time.sleep(0.1)
         
         self._save_atomic()
@@ -144,56 +185,48 @@ class ProductionFAISSIndex:
         self.force_save()
         self._writer_thread.join(timeout=5.0)
         self._encoder_pool.shutdown(wait=True)
-
-
-# === FAISS & Embeddings Setup ===
-model = None
-
-def get_model():
-    """Lazy-load SentenceTransformer model on first use"""
-    global model
-    if model is None:
-        from sentence_transformers import SentenceTransformer
-        logger.info("Loading SentenceTransformer model...")
-        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        logger.info("Model loaded on demand")
-    return model
-
-try:
-    from sentence_transformers import SentenceTransformer
-    import faiss
     
-    if os.path.exists(config.INDEX_FILE):
-        logger.info(f"Loading existing FAISS index from {config.INDEX_FILE}")
-        index = faiss.read_index(config.INDEX_FILE)
-        
-        if index.d != Constants.VECTOR_DIM:
-            logger.warning(
-                f"Index dimension mismatch: {index.d} != {Constants.VECTOR_DIM}. "
-                f"Creating new index."
-            )
-            index = faiss.IndexFlatL2(Constants.VECTOR_DIM)
-            incident_texts = []
+    def add_text(self, text: str, embedding: List[float]) -> int:
+        """Add text with embedding to FAISS"""
+        vector = np.array(embedding, dtype=np.float32).reshape(1, -1)
+        self.add_async(vector, text)
+        return len(self.texts) - 1
+
+
+# Factory function for lazy loading
+def create_faiss_index():
+    """Create FAISS index with proper error handling"""
+    if not FAISS_AVAILABLE:
+        logger.warning("FAISS not available. Creating dummy index.")
+        return None
+    
+    try:
+        if os.path.exists(config.index_file):
+            logger.info(f"Loading existing FAISS index from {config.index_file}")
+            index = faiss.read_index(config.index_file)
+            
+            if index.d != MemoryConstants.VECTOR_DIM:
+                logger.warning(
+                    f"Index dimension mismatch: {index.d} != {MemoryConstants.VECTOR_DIM}. "
+                    f"Creating new index."
+                )
+                index = faiss.IndexFlatL2(MemoryConstants.VECTOR_DIM)
+                incident_texts = []
+            else:
+                try:
+                    with open(config.incident_texts_file, "r") as f:
+                        incident_texts = json.load(f)
+                    logger.info(f"Loaded {len(incident_texts)} incident texts")
+                except FileNotFoundError:
+                    logger.warning("Incident texts file not found, starting fresh")
+                    incident_texts = []
         else:
-            with open(config.TEXTS_FILE, "r") as f:
-                incident_texts = json.load(f)
-            logger.info(f"Loaded {len(incident_texts)} incident texts")
-    else:
-        logger.info("Creating new FAISS index")
-        index = faiss.IndexFlatL2(Constants.VECTOR_DIM)
-        incident_texts = []
-    
-    thread_safe_index = ProductionFAISSIndex(index, incident_texts)
-    
-except ImportError as e:
-    logger.warning(f"FAISS or SentenceTransformers not available: {e}")
-    index = None
-    incident_texts = []
-    model = None
-    thread_safe_index = None
-except Exception as e:
-    logger.error(f"Error initializing FAISS: {e}", exc_info=True)
-    index = None
-    incident_texts = []
-    model = None
-    thread_safe_index = None
+            logger.info("Creating new FAISS index")
+            index = faiss.IndexFlatL2(MemoryConstants.VECTOR_DIM)
+            incident_texts = []
+        
+        return ProductionFAISSIndex(index, incident_texts)
+        
+    except Exception as e:
+        logger.error(f"Error creating FAISS index: {e}", exc_info=True)
+        return None
