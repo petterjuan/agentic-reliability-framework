@@ -20,8 +20,7 @@ import atomicwrites
 
 # Import from local modules
 from ..config import config
-from ..models import ReliabilityEvent
-from .constants import MemoryConstants
+from .constants import MemoryConstants  # REMOVED: ReliabilityEvent import (was unused)
 
 logger = logging.getLogger(__name__)
 
