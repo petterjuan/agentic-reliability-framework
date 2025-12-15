@@ -956,39 +956,38 @@ class RAGGraphMemory:
             logger.info("Cleared RAG graph caches")
     
     def export_graph(self, filepath: str) -> bool:
-    """Export graph to JSON file with proper error handling"""
-    try:
-        with self._transaction():
-            data: Dict[str, Any] = {
-                "version": "v3.0",
-                "export_timestamp": datetime.now().isoformat(),
-                "config": {
-                    "rag_enabled": config.rag_enabled,
-                    "max_incident_nodes": MemoryConstants.MAX_INCIDENT_NODES,
-                    "max_outcome_nodes": MemoryConstants.MAX_OUTCOME_NODES,
-                    "similarity_threshold": config.rag_similarity_threshold,
-                },
-                # FIXED: Use _serialize_node for proper serialization
-                "incident_nodes": [self._serialize_node(node) for node in self.incident_nodes.values()],
-                "outcome_nodes": [self._serialize_node(node) for node in self.outcome_nodes.values()],
-                "edges": [self._serialize_node(edge) for edge in self.edges],
-                "stats": self.get_graph_stats(),
-                "faiss_mapping_size": len(self._faiss_to_incident)  # This should now work with explicit type
-            }
-        
-        # Ensure directory exists
-        import os
-        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, default=str)
-        
-        logger.info(f"Exported RAG graph to {filepath}: {len(data['incident_nodes'])} incidents")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error exporting graph: {e}", exc_info=True)
-        return False
+        """Export graph to JSON file with proper error handling"""
+        try:
+            with self._transaction():
+                data: Dict[str, Any] = {
+                    "version": "v3.0",
+                    "export_timestamp": datetime.now().isoformat(),
+                    "config": {
+                        "rag_enabled": config.rag_enabled,
+                        "max_incident_nodes": MemoryConstants.MAX_INCIDENT_NODES,
+                        "max_outcome_nodes": MemoryConstants.MAX_OUTCOME_NODES,
+                        "similarity_threshold": config.rag_similarity_threshold,
+                    },
+                    "incident_nodes": [self._serialize_node(node) for node in self.incident_nodes.values()],
+                    "outcome_nodes": [self._serialize_node(node) for node in self.outcome_nodes.values()],
+                    "edges": [self._serialize_node(edge) for edge in self.edges],
+                    "stats": self.get_graph_stats(),
+                    "faiss_mapping_size": len(self._faiss_to_incident)
+                }
+            
+            # Ensure directory exists
+            import os
+            os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, default=str)
+            
+            logger.info(f"Exported RAG graph to {filepath}: {len(data['incident_nodes'])} incidents")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error exporting graph: {e}", exc_info=True)
+            return False
     
     def cleanup_old_nodes(self, max_age_days: int = 30) -> int:
         """
