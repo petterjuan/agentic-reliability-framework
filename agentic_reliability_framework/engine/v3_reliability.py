@@ -95,7 +95,7 @@ class V3ReliabilityEngine(V2Engine):
     @asynccontextmanager
     async def _v3_execution_context(self, event: ReliabilityEvent) -> Any:
         """Context manager for v3 feature execution with metrics"""
-        start_time = time.time()
+        # Removed unused start_time variable
         try:
             yield
         finally:
