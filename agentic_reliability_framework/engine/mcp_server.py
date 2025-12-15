@@ -192,6 +192,10 @@ class MCPTool(Protocol):
     def validate(self, context: ToolContext) -> ValidationResult:
         """Validate the tool execution"""
         ...
+    
+    def get_tool_info(self) -> Dict[str, Any]:  # FIXED: Added this method to protocol
+        """Get comprehensive tool information"""
+        ...
 
 
 # ========== BASE TOOL CLASSES ==========
@@ -452,8 +456,13 @@ class RestartContainerTool(BaseMCPTool):
                 validation, "container_healthy", True
             )
         
-        validation.valid = len(validation.errors) == 0
-        return validation
+        # FIXED: Create new ValidationResult instead of modifying valid field
+        return ValidationResult(
+            valid=len(validation.errors) == 0,
+            errors=validation.errors,
+            warnings=validation.warnings,
+            safety_checks=validation.safety_checks
+        )
 
 
 class ScaleOutTool(BaseMCPTool):
@@ -526,8 +535,13 @@ class ScaleOutTool(BaseMCPTool):
                 validation, "within_resource_limits", True
             )
         
-        validation.valid = len(validation.errors) == 0
-        return validation
+        # FIXED: Create new ValidationResult instead of modifying valid field
+        return ValidationResult(
+            valid=len(validation.errors) == 0,
+            errors=validation.errors,
+            warnings=validation.warnings,
+            safety_checks=validation.safety_checks
+        )
 
 
 # ========== FACTORY FUNCTIONS ==========
@@ -854,7 +868,7 @@ class MCPServer:
             executed=False
         )
     
-    def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
+    async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:  # FIXED: Made async
         """Handle advisory mode (OSS default - no execution)"""
         return MCPResponse(
             request_id=request.request_id,
@@ -1110,7 +1124,7 @@ class MCPServer:
             }
         }
     
-    def get_tool_info(self, tool_name: str = None) -> Dict[str, Any]:
+    def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:  # FIXED: Optional[str]
         """Get information about tools"""
         if tool_name:
             tool = self.registered_tools.get(tool_name)
