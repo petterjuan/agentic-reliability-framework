@@ -120,3 +120,30 @@ def get_v3_status() -> Dict[str, Any]:
         "learning_enabled": config.learning_enabled,
         "rollout_percentage": config.rollout_percentage,
     }
+
+# ========== ADD THESE TO lazy.py ==========
+
+# These functions should already exist elsewhere, export them here
+def get_engine():
+    """Get the reliability engine"""
+    from .app import get_engine as _get_engine
+    return _get_engine()
+
+def get_agents():
+    """Get the agent orchestrator"""
+    from .app import get_agents as _get_agents
+    return _get_agents()
+
+def get_faiss_index():
+    """Get the FAISS index instance"""
+    from .app import get_faiss_index as _get_faiss_index
+    return _get_faiss_index()
+
+def get_business_metrics():
+    """Get business metrics tracker"""
+    from .app import get_business_metrics as _get_business_metrics
+    return _get_business_metrics()
+
+def enhanced_engine():
+    """Get enhanced reliability engine"""
+    return get_engine()
