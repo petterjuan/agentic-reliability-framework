@@ -1,9 +1,8 @@
-# agentic_reliability_framework/engine/interfaces.py
 """
 Protocol interfaces for v3 integration - breaks circular dependencies
 """
 
-from typing import Protocol, Any, Optional
+from typing import Protocol, Optional
 from ..models import ReliabilityEvent
 
 
