@@ -7,14 +7,14 @@ import asyncio
 import logging
 import time
 import uuid
-from abc import ABC, abstractmethod
+from abc import ABC
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
     Dict, Any, List, Optional, TypedDict, Protocol, 
-    AsyncGenerator, Callable, cast
+    AsyncGenerator
 )
 from collections import defaultdict, deque
 
@@ -229,7 +229,6 @@ class BaseMCPTool:
             details=details
         )
         return validation
-
 
 class RollbackTool(BaseMCPTool):
     """K8s/ECS/VM rollback adapter with enhanced safety"""
