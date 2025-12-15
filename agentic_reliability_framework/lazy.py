@@ -7,7 +7,6 @@ import threading
 import logging
 from typing import Callable, Optional, Dict, Any, TypeVar, Generic, cast
 from contextlib import suppress
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +41,16 @@ class LazyLoader(Generic[T]):
 
 
 # ========== GLOBAL INSTANCES WITH CONCRETE TYPES ==========
+
+# Import types for forward references
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .memory.rag_graph import RAGGraphMemory
+    from .engine.mcp_server import MCPServer
+    from .engine.interfaces import ReliabilityEngineProtocol
+    from .app import OrchestrationManager
+    from .memory.faiss_index import ProductionFAISSIndex
+    from .engine.business import BusinessMetricsTracker
 
 # These instances use concrete types for type safety in v3 engine
 _rag_graph_instance: Optional['RAGGraphMemory'] = None
@@ -117,7 +126,7 @@ def _load_engine() -> Optional['ReliabilityEngineProtocol']:
         from .engine.reliability import EnhancedReliabilityEngine
         logger.info("Loading EnhancedReliabilityEngine directly")
         _engine_instance = EnhancedReliabilityEngine()
-        return cast(Optional['ReliabilityEngineProtocol'], _engine_instance)
+        return cast('ReliabilityEngineProtocol', _engine_instance)
     
     logger.error("Failed to load reliability engine")
     return None
@@ -145,7 +154,7 @@ def _load_faiss_index_safe() -> Optional['ProductionFAISSIndex']:
             return index
         else:
             logger.warning(f"FAISS index has unexpected type: {type(index)}")
-            return cast(ProductionFAISSIndex, index)  # Cast if needed
+            return cast('ProductionFAISSIndex', index)  # Cast if needed
     
     logger.warning("FAISS index not available")
     return None
@@ -164,7 +173,6 @@ def _load_business_metrics() -> Optional['BusinessMetricsTracker']:
 
 # ========== CREATE LAZY LOADERS WITH EXPLICIT TYPES ==========
 
-# Note: We need to specify the type for each loader
 rag_graph_loader: LazyLoader[Optional['RAGGraphMemory']] = LazyLoader(_load_rag_graph)
 mcp_server_loader: LazyLoader[Optional['MCPServer']] = LazyLoader(_load_mcp_server)
 engine_loader: LazyLoader[Optional['ReliabilityEngineProtocol']] = LazyLoader(_load_engine)
