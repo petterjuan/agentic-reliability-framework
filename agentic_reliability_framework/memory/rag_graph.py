@@ -147,13 +147,15 @@ class RAGGraphMemory:
             
             # 1. Basic metrics (normalized)
             latency_float = float(event.latency_p99)
-            features.append(event.latency_p99 / 1000.0)  # Normalize to seconds
-            features.append(event.error_rate)  # Already 0-1
-            features.append(event.throughput / 10000.0)  # Normalize
+            features.append(latency_float / 1000.0)  # Normalize to seconds
+            features.append(float(event.error_rate))  # Already 0-1
+            features.append(float(event.throughput) / 10000.0)  # Normalize
             
             # 2. Resource utilization (if available)
-            features.append(float(event.cpu_util) if event.cpu_util is not None else 0.0)
-            features.append(float(event.memory_util) if event.memory_util is not None else 0.0)
+            cpu_float = float(event.cpu_util) if event.cpu_util is not None else 0.0
+            mem_float = float(event.memory_util) if event.memory_util is not None else 0.0
+            features.append(cpu_float)
+            features.append(mem_float)
             
             # 3. Severity encoding
             severity_map = {
@@ -171,7 +173,7 @@ class RAGGraphMemory:
             # 5. Analysis confidence (if available)
             if analysis and 'incident_summary' in analysis:
                 confidence = analysis['incident_summary'].get('anomaly_confidence', 0.5)
-                features.append(confidence)
+                features.append(float(confidence))
             else:
                 features.append(0.5)
             
@@ -270,8 +272,8 @@ class RAGGraphMemory:
                     "latency_ms": event.latency_p99,
                     "error_rate": event.error_rate,
                     "throughput": event.throughput,
-                    "cpu_util": event.cpu_util if event.cpu_util else 0.0,
-                    "memory_util": event.memory_util if event.memory_util else 0.0
+                    "cpu_util": float(event.cpu_util) if event.cpu_util is not None else 0.0,
+                    "memory_util": float(event.memory_util) if event.memory_util is not None else 0.0
                 },
                 agent_analysis=analysis,
                 embedding_id=faiss_index_id,
@@ -614,15 +616,15 @@ class RAGGraphMemory:
                     successful += 1
                     resolution_times.append(outcome.resolution_time_minutes)
         
-        avg_resolution_time = np.mean(resolution_times) if resolution_times else 0.0
+        avg_resolution_time = float(np.mean(resolution_times)) if resolution_times else 0.0
         
         return {
             "action": action,
             "total_uses": total,
             "successful_uses": successful,
-            "success_rate": successful / total if total > 0 else 0.0,
+            "success_rate": float(successful) / total if total > 0 else 0.0,
             "avg_resolution_time_minutes": avg_resolution_time,
-            "resolution_time_std": np.std(resolution_times) if resolution_times else 0.0,
+            "resolution_time_std": float(np.std(resolution_times)) if resolution_times else 0.0,
             "component_filter": component,
             "data_points": total
         }
@@ -651,7 +653,7 @@ class RAGGraphMemory:
                         action_stats[action] = {
                             "total": 0,
                             "successful": 0,
-                            "resolution_times": []
+                            "resolution_times": []  # type: List[float]
                         }
                     
                     action_stats[action]["total"] += 1
@@ -663,13 +665,13 @@ class RAGGraphMemory:
         effectiveness = []
         for action, stats in action_stats.items():
             if stats["total"] >= config.learning_min_data_points:  # Only include if enough data
-                success_rate = stats["successful"] / stats["total"]
-                avg_time = np.mean(stats["resolution_times"]) if stats["resolution_times"] else 0.0
+                success_rate = float(stats["successful"]) / stats["total"]
+                avg_time = float(np.mean(stats["resolution_times"])) if stats["resolution_times"] else 0.0
                 
                 effectiveness.append({
                     "action": action,
                     "success_rate": success_rate,
-                    "confidence": min(1.0, stats["total"] / 20.0),  # Confidence based on data points
+                    "confidence": min(1.0, float(stats["total"]) / 20.0),  # Confidence based on data points
                     "avg_resolution_time_minutes": avg_time,
                     "total_uses": stats["total"],
                     "successful_uses": stats["successful"]
@@ -688,7 +690,7 @@ class RAGGraphMemory:
         with self._lock:
             # Calculate cache hit rate
             cache_hit_rate = (
-                self._stats["cache_hits"] / self._stats["similarity_searches"] 
+                float(self._stats["cache_hits"]) / self._stats["similarity_searches"] 
                 if self._stats["similarity_searches"] > 0 else 0
             )
             
@@ -699,12 +701,12 @@ class RAGGraphMemory:
             )
             
             avg_outcomes_per_incident = (
-                len(self.outcome_nodes) / len(self.incident_nodes) 
+                float(len(self.outcome_nodes)) / len(self.incident_nodes) 
                 if len(self.incident_nodes) > 0 else 0
             )
             
-            # Get component distribution
-            component_distribution = {}
+            # Get component distribution - FIXED: Add type annotation
+            component_distribution: Dict[str, int] = {}
             for node in self.incident_nodes.values():
                 component_distribution[node.component] = component_distribution.get(node.component, 0) + 1
             
