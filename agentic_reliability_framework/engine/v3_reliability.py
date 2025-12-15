@@ -4,17 +4,17 @@ V3 Reliability Engine with RAG integration and learning loop
 Phase 3: Integration & Learning Loop (2 weeks)
 Goal: Connect RAG → Policy → MCP → Outcome recording
 """
-from typing import Dict, Any, List, Optional, Union, cast
-import numpy as np
 import threading
 import logging
-from typing import Dict, Any, List, Optional
 import time
+from typing import Dict, Any, List, Optional, Union, cast
+import numpy as np
 
 from ..models import ReliabilityEvent, HealingAction
 from ..config import config
 from ..memory.rag_graph import RAGGraphMemory
 from .reliability import EnhancedReliabilityEngine as V2Engine
+from .mcp_server import MCPServer, MCPMode, MCPRequest, MCPResponse
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class V3ReliabilityEngine(V2Engine):
     def __init__(
         self,
         rag_graph: Optional[RAGGraphMemory] = None,
-        mcp_server: Optional[Any] = None,  # Will be Phase 2
+        mcp_server: Optional[MCPServer] = None,
         **kwargs
     ):
         """
@@ -50,7 +50,7 @@ class V3ReliabilityEngine(V2Engine):
         self.mcp_server = mcp_server
         
         # Learning loop state
-        self.learning_state = {
+        self.learning_state: Dict[str, Any] = {
             "total_learned_patterns": 0,
             "successful_predictions": 0,
             "failed_predictions": 0,
@@ -59,7 +59,7 @@ class V3ReliabilityEngine(V2Engine):
         }
         
         # Performance metrics for v3
-        self.v3_metrics = {
+        self.v3_metrics: Dict[str, Any] = {
             "rag_queries": 0,
             "rag_cache_hits": 0,
             "rag_timeouts": 0,
@@ -156,7 +156,7 @@ class V3ReliabilityEngine(V2Engine):
                 logger.info(f"RAG found {len(similar_incidents)} similar incidents")
         
         # 3. ENHANCE POLICY DECISION with historical context
-        healing_actions = []
+        healing_actions: List[str] = []
         
         if similar_incidents and config.learning_enabled:
             # Use learning-enhanced policy evaluation
@@ -173,7 +173,7 @@ class V3ReliabilityEngine(V2Engine):
             healing_actions = v2_result.get("healing_actions", [])
         
         # Convert healing actions from strings to HealingAction enum if needed
-        healing_action_objs = []
+        healing_action_objs: List[HealingAction] = []
         for action_str in healing_actions:
             try:
                 if isinstance(action_str, str):
@@ -185,7 +185,7 @@ class V3ReliabilityEngine(V2Engine):
                 logger.warning(f"Invalid healing action: {action_str}")
         
         # 4. MCP EXECUTION BOUNDARY - NEW
-        mcp_results = []
+        mcp_results: List[Dict[str, Any]] = []
         
         if self.mcp_server and config.mcp_enabled and healing_action_objs:
             for action in healing_action_objs:
@@ -336,11 +336,11 @@ class V3ReliabilityEngine(V2Engine):
             
             return ReliabilityEvent(
                 component=result.get("component", "unknown"),
-                latency_p99=result.get("latency_p99", 0.0),
-                error_rate=result.get("error_rate", 0.0),
-                throughput=result.get("throughput", 1000.0),
-                cpu_util=result.get("cpu_util"),
-                memory_util=result.get("memory_util"),
+                latency_p99=float(result.get("latency_p99", 0.0)),
+                error_rate=float(result.get("error_rate", 0.0)),
+                throughput=float(result.get("throughput", 1000.0)),
+                cpu_util=float(result.get("cpu_util")) if result.get("cpu_util") is not None else None,
+                memory_util=float(result.get("memory_util")) if result.get("memory_util") is not None else None,
                 severity=result.get("severity", "low"),
                 timestamp=datetime.now()
             )
@@ -354,7 +354,7 @@ class V3ReliabilityEngine(V2Engine):
             return []
         
         # Collect actions from successful outcomes
-        action_effectiveness = {}
+        action_effectiveness: Dict[str, Dict[str, Any]] = {}
         
         for incident in similar_incidents:
             if hasattr(incident, 'outcomes') and incident.outcomes:
@@ -375,12 +375,12 @@ class V3ReliabilityEngine(V2Engine):
                             )
         
         # Calculate effectiveness metrics
-        effective_actions = []
+        effective_actions: List[Dict[str, Any]] = []
         for action, stats in action_effectiveness.items():
             if stats["total_count"] > 0:
-                success_rate = stats["success_count"] / stats["total_count"]
+                success_rate = float(stats["success_count"]) / stats["total_count"]
                 avg_resolution_time = (
-                    sum(stats["resolution_times"]) / len(stats["resolution_times"])
+                    float(np.sum(stats["resolution_times"])) / len(stats["resolution_times"])
                     if stats["resolution_times"] else 0.0
                 )
                 
@@ -391,7 +391,7 @@ class V3ReliabilityEngine(V2Engine):
                         "success_rate": success_rate,
                         "avg_resolution_time_minutes": avg_resolution_time,
                         "data_points": stats["total_count"],
-                        "confidence": min(1.0, stats["total_count"] / 10.0)
+                        "confidence": min(1.0, float(stats["total_count"]) / 10.0)
                     })
         
         # Sort by success rate, then by data points
@@ -429,7 +429,7 @@ class V3ReliabilityEngine(V2Engine):
             return default_actions
         
         # Filter default actions based on historical effectiveness
-        enhanced_actions = []
+        enhanced_actions: List[str] = []
         
         for action_str in default_actions:
             if action_str == "no_action":
@@ -513,8 +513,8 @@ class V3ReliabilityEngine(V2Engine):
             "tool": action.value,
             "component": event.component,
             "parameters": {
-                "latency": event.latency_p99,
-                "error_rate": event.error_rate,
+                "latency": float(event.latency_p99),
+                "error_rate": float(event.error_rate),
                 "severity": severity,
                 "event_timestamp": event.timestamp.isoformat(),
                 "fingerprint": event.fingerprint
@@ -543,7 +543,7 @@ class V3ReliabilityEngine(V2Engine):
         result = getattr(mcp_response, 'result', {})
         
         # Extract lessons learned
-        lessons_learned = []
+        lessons_learned: List[str] = []
         
         if success:
             lessons_learned.append(f"Successfully executed {action.value} on {event.component}")
@@ -584,7 +584,7 @@ class V3ReliabilityEngine(V2Engine):
         # Estimate based on action type
         action = getattr(mcp_response, 'action', 'unknown')
         
-        time_estimates = {
+        time_estimates: Dict[str, float] = {
             "restart_container": 2.5,
             "scale_out": 3.0,
             "traffic_shift": 1.5,
@@ -637,10 +637,10 @@ class V3ReliabilityEngine(V2Engine):
             
             # Calculate success rates
             if metrics["rag_queries"] > 0:
-                metrics["rag_cache_hit_rate"] = metrics["rag_cache_hits"] / metrics["rag_queries"]
+                metrics["rag_cache_hit_rate"] = float(metrics["rag_cache_hits"]) / metrics["rag_queries"]
             
             if metrics["mcp_calls"] > 0:
-                metrics["mcp_success_rate"] = metrics["mcp_successes"] / metrics["mcp_calls"]
+                metrics["mcp_success_rate"] = float(metrics["mcp_successes"]) / metrics["mcp_calls"]
             
             # Add learning state
             metrics.update(self.learning_state)
@@ -665,7 +665,7 @@ class V3ReliabilityEngine(V2Engine):
         v3_stats = self.get_v3_metrics()
         
         # Combine stats
-        combined_stats = {
+        combined_stats: Dict[str, Any] = {
             **base_stats,
             "v3_features": v3_stats["v3_features_active"],
             "v3_metrics": v3_stats,
