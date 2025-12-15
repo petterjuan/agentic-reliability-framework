@@ -944,39 +944,52 @@ class RAGGraphMemory:
         if not config.rag_enabled:
             return 0
         
-        cutoff_date = datetime.now().timestamp() - (max_age_days * 24 * 3600)
+        cutoff_timestamp = time.time() - (max_age_days * 24 * 3600)
         cleaned_count = 0
         
         with self._transaction():
-            # Clean old incidents
-            old_incident_ids = [
-                incident_id for incident_id, node in self.incident_nodes.items()
-                if datetime.fromisoformat(node.metadata.get("created_at", "1970-01-01")).timestamp() < cutoff_date
-            ]
+            # Helper function to check if a date string is old
+            def is_old(date_str: str) -> bool:
+                try:
+                    # Clean up date string
+                    clean_date = date_str.replace('Z', '+00:00')
+                    date_obj = datetime.fromisoformat(clean_date)
+                    return date_obj.timestamp() < cutoff_timestamp
+                except (ValueError, TypeError):
+                    return True
             
-            for incident_id in old_incident_ids:
+            # Clean old incidents
+            incidents_to_remove = []
+            for incident_id, node in self.incident_nodes.items():
+                created_at = node.metadata.get("created_at", "1970-01-01")
+                if is_old(created_at):
+                    incidents_to_remove.append(incident_id)
+            
+            for incident_id in incidents_to_remove:
                 node = self.incident_nodes[incident_id]
-                # Clean up mapping
                 if node.faiss_index is not None:
                     self._faiss_to_incident.pop(node.faiss_index, None)
                 del self.incident_nodes[incident_id]
                 cleaned_count += 1
             
             # Clean old outcomes
-            old_outcome_ids = [
-                outcome_id for outcome_id, node in self.outcome_nodes.items()
-                if datetime.fromisoformat(node.metadata.get("created_at", "1970-01-01")).timestamp() < cutoff_date
-            ]
+            outcomes_to_remove = []
+            for outcome_id, node in self.outcome_nodes.items():
+                created_at = node.metadata.get("created_at", "1970-01-01")
+                if is_old(created_at):
+                    outcomes_to_remove.append(outcome_id)
             
-            for outcome_id in old_outcome_ids:
+            for outcome_id in outcomes_to_remove:
                 del self.outcome_nodes[outcome_id]
                 cleaned_count += 1
             
             # Clean edges pointing to removed outcomes
-            self.edges = [
-                edge for edge in self.edges
-                if edge.source_id in self.incident_nodes and edge.target_id in self.outcome_nodes
-            ]
+            valid_edges = []
+            for edge in self.edges:
+                if (edge.source_id in self.incident_nodes and 
+                    edge.target_id in self.outcome_nodes):
+                    valid_edges.append(edge)
+            self.edges = valid_edges
         
         if cleaned_count > 0:
             logger.info(f"Cleaned up {cleaned_count} old RAG graph nodes")
