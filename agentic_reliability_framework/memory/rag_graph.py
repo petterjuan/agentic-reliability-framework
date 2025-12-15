@@ -146,6 +146,7 @@ class RAGGraphMemory:
             features = []
             
             # 1. Basic metrics (normalized)
+            latency_float = float(event.latency_p99)
             features.append(event.latency_p99 / 1000.0)  # Normalize to seconds
             features.append(event.error_rate)  # Already 0-1
             features.append(event.throughput / 10000.0)  # Normalize
