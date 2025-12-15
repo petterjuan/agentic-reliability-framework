@@ -140,7 +140,7 @@ class EnhancedFAISSIndex:
                     })
             
             # Sort by similarity (highest first)
-            results.sort(key=lambda x: float(x["similarity"]), reverse=True)
+            results.sort(key=lambda x: cast(float, x["similarity"]), reverse=True)
             
             logger.info(
                 f"Semantic search for '{query_text[:50]}...' "
