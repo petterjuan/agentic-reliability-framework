@@ -208,7 +208,7 @@ class EnhancedReliabilityEngine:
     def get_engine_stats(self) -> Dict[str, Any]:
         """Get engine performance statistics"""
         with self._lock:
-            stats = self.performance_metrics.copy()
+            stats: Dict[str, Any] = self.performance_metrics.copy()
             stats.update({
                 'events_in_store': self.event_store.count(),
                 'rag_available': False,
