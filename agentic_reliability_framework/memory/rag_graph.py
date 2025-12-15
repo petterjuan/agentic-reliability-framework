@@ -91,7 +91,7 @@ class RAGGraphMemory:
         self._lock = threading.RLock()
         
         # Statistics with better organization
-        self._stats = {
+        self._stats: Dict[str, Any] = {
             "total_incidents_stored": 0,
             "total_outcomes_stored": 0,
             "total_edges_created": 0,
@@ -723,7 +723,7 @@ class RAGGraphMemory:
             
             return outcome_id
     
-    def get_historical_effectiveness(self, action: str, component: str = None) -> EffectivenessStats:
+    def get_historical_effectiveness(self, action: str, component: Optional[str] = None) -> EffectivenessStats:
         """
         Get historical effectiveness of an action
         
@@ -753,9 +753,25 @@ class RAGGraphMemory:
                     successful += 1
                     resolution_times.append(outcome.resolution_time_minutes)
         
-        # Calculate statistics
-        avg_resolution_time = float(np.mean(resolution_times)) if resolution_times else 0.0
-        resolution_std = float(np.std(resolution_times)) if resolution_times else 0.0
+        # Calculate statistics - FIXED: Handle numpy return types properly
+        if resolution_times:
+            mean_value = np.mean(resolution_times)
+            # Check if it's a valid finite number
+            if np.isfinite(mean_value):
+                avg_resolution_time = float(mean_value)
+            else:
+                avg_resolution_time = 0.0
+        else:
+            avg_resolution_time = 0.0
+        
+        if resolution_times:
+            std_value = np.std(resolution_times)
+            if np.isfinite(std_value):
+                resolution_std = float(std_value)
+            else:
+                resolution_std = 0.0
+        else:
+            resolution_std = 0.0
         
         return cast(EffectivenessStats, {
             "action": action,
@@ -767,6 +783,28 @@ class RAGGraphMemory:
             "component_filter": component,
             "data_points": total
         })
+    
+    def _serialize_node(self, node: Any) -> Dict[str, Any]:
+        """
+        Serialize a node safely, converting numpy arrays to lists.
+        
+        Args:
+            node: Any dataclass node
+            
+        Returns:
+            Serializable dictionary
+        """
+        data = asdict(node)
+        # Convert any numpy arrays to lists for JSON serialization
+        for key, value in data.items():
+            if isinstance(value, np.ndarray):
+                data[key] = value.tolist()
+            elif isinstance(value, dict):
+                # Recursively check nested dictionaries
+                for sub_key, sub_value in value.items():
+                    if isinstance(sub_value, np.ndarray):
+                        data[key][sub_key] = sub_value.tolist()
+        return data
     
     def get_most_effective_actions(self, component: str, k: int = 3) -> List[Dict[str, Any]]:
         """
@@ -792,7 +830,7 @@ class RAGGraphMemory:
                         action_stats[action] = {
                             "total": 0,
                             "successful": 0,
-                            "resolution_times": [], 
+                            "resolution_times": [],
                         }
                     
                     action_stats[action]["total"] += 1
@@ -810,7 +848,11 @@ class RAGGraphMemory:
                 
                 # Calculate average resolution time
                 resolution_times = stats["resolution_times"]
-                avg_time = float(np.mean(resolution_times)) if resolution_times else 0.0
+                if resolution_times:
+                    mean_value = np.mean(resolution_times)
+                    avg_time = float(mean_value) if np.isfinite(mean_value) else 0.0
+                else:
+                    avg_time = 0.0
                 
                 # Confidence based on data points (capped at 1.0)
                 confidence = min(1.0, float(stats["total"]) / (min_data_points * 2))
@@ -910,9 +952,9 @@ class RAGGraphMemory:
                         "max_outcome_nodes": MemoryConstants.MAX_OUTCOME_NODES,
                         "similarity_threshold": config.rag_similarity_threshold,
                     },
-                    "incident_nodes": [asdict(node) for node in self.incident_nodes.values()],
-                    "outcome_nodes": [asdict(node) for node in self.outcome_nodes.values()],
-                    "edges": [asdict(edge) for edge in self.edges],
+                    "incident_nodes": [self._serialize_node(node) for node in self.incident_nodes.values()],
+                    "outcome_nodes": [self._serialize_node(node) for node in self.outcome_nodes.values()],
+                    "edges": [self._serialize_node(edge) for edge in self.edges],
                     "stats": self.get_graph_stats(),
                     "faiss_mapping_size": len(self._faiss_to_incident)
                 }
@@ -960,8 +1002,8 @@ class RAGGraphMemory:
             
             # Clean old incidents
             incidents_to_remove = []
-            for incident_id, node in self.incident_nodes.items():
-                created_at = node.metadata.get("created_at", "1970-01-01")
+            for incident_id, incident_node in self.incident_nodes.items():
+                created_at = incident_node.metadata.get("created_at", "1970-01-01")
                 if is_old(created_at):
                     incidents_to_remove.append(incident_id)
             
@@ -972,10 +1014,10 @@ class RAGGraphMemory:
                 del self.incident_nodes[incident_id]
                 cleaned_count += 1
             
-            # Clean old outcomes
+            # Clean old outcomes - FIXED: renamed variable to avoid type conflict
             outcomes_to_remove = []
-            for outcome_id, node in self.outcome_nodes.items():
-                created_at = node.metadata.get("created_at", "1970-01-01")
+            for outcome_id, outcome_node in self.outcome_nodes.items():
+                created_at = outcome_node.metadata.get("created_at", "1970-01-01")
                 if is_old(created_at):
                     outcomes_to_remove.append(outcome_id)
             
