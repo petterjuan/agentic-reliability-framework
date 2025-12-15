@@ -5,7 +5,7 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 import asyncio
 
 from .constants import MemoryConstants
