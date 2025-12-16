@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import Enum
 from typing import (
     Dict, Any, List, Optional, TypedDict, Protocol, 
-    AsyncGenerator
+    AsyncGenerator, runtime_checkable, cast
 )
 from collections import defaultdict, deque
 
@@ -177,6 +177,7 @@ class ValidationResult:
 
 # ========== PROTOCOLS ==========
 
+@runtime_checkable
 class MCPTool(Protocol):
     """Protocol for MCP tools"""
     
@@ -193,7 +194,7 @@ class MCPTool(Protocol):
         """Validate the tool execution"""
         ...
     
-    def get_tool_info(self) -> Dict[str, Any]:  # FIXED: Added this method to protocol
+    def get_tool_info(self) -> Dict[str, Any]:
         """Get comprehensive tool information"""
         ...
 
@@ -226,12 +227,22 @@ class BaseMCPTool:
         details: str = ""
     ) -> ValidationResult:
         """Helper to add safety checks to validation result"""
-        validation.safety_checks[name] = SafetyCheck(
+        # Create a copy of safety_checks dict and update it
+        safety_checks = dict(validation.safety_checks)
+        safety_checks[name] = SafetyCheck(
             name=name,
             passed=passed,
             details=details
         )
-        return validation
+        
+        # Create a new ValidationResult with updated safety_checks
+        return ValidationResult(
+            valid=validation.valid,
+            errors=validation.errors.copy(),
+            warnings=validation.warnings.copy(),
+            safety_checks=safety_checks
+        )
+
 
 class RollbackTool(BaseMCPTool):
     """K8s/ECS/VM rollback adapter with enhanced safety"""
@@ -456,7 +467,7 @@ class RestartContainerTool(BaseMCPTool):
                 validation, "container_healthy", True
             )
         
-        # FIXED: Create new ValidationResult instead of modifying valid field
+        # Create new ValidationResult instead of modifying valid field
         return ValidationResult(
             valid=len(validation.errors) == 0,
             errors=validation.errors,
@@ -535,7 +546,7 @@ class ScaleOutTool(BaseMCPTool):
                 validation, "within_resource_limits", True
             )
         
-        # FIXED: Create new ValidationResult instead of modifying valid field
+        # Create new ValidationResult instead of modifying valid field
         return ValidationResult(
             valid=len(validation.errors) == 0,
             errors=validation.errors,
@@ -809,10 +820,12 @@ class MCPServer:
     
     def _check_permissions(self, request: MCPRequest) -> bool:
         """Check permissions for request"""
-        # Check safety blacklist
-        if request.tool.upper() in self.safety_guardrails["action_blacklist"]:
-            logger.warning(f"Tool {request.tool} is in safety blacklist")
-            return False
+        # FIXED: Added type checking for safety_guardrails
+        action_blacklist = self.safety_guardrails.get("action_blacklist", [])
+        if isinstance(action_blacklist, list):
+            if request.tool.upper() in action_blacklist:
+                logger.warning(f"Tool {request.tool} is in safety blacklist")
+                return False
         
         # Check component restrictions in autonomous mode
         if self.mode == MCPMode.AUTONOMOUS:
@@ -868,7 +881,7 @@ class MCPServer:
             executed=False
         )
     
-    async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:  # FIXED: Made async
+    async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
         """Handle advisory mode (OSS default - no execution)"""
         return MCPResponse(
             request_id=request.request_id,
@@ -1007,7 +1020,7 @@ class MCPServer:
         
         # Check blast radius
         affected_services = request.metadata.get("affected_services", [request.component])
-        max_blast_radius = self.safety_guardrails["max_blast_radius"]
+        max_blast_radius = self.safety_guardrails.get("max_blast_radius", 3)
         checks["blast_radius"] = len(affected_services) <= max_blast_radius
         
         # Check time of day (avoid production changes during business hours)
@@ -1078,8 +1091,15 @@ class MCPServer:
             MCPResponse with result
         """
         if approval_id not in self._approval_requests:
+            # FIXED: Create a proper request object instead of using invalid parameters
+            dummy_request = MCPRequest(
+                request_id=approval_id, 
+                tool="unknown", 
+                component="unknown", 
+                justification=""
+            )
             return self._create_error_response(
-                MCPRequest(request_id=approval_id, tool="", component="", justification=""),
+                dummy_request,
                 MCPRequestStatus.REJECTED,
                 f"Approval request not found: {approval_id}"
             )
@@ -1095,12 +1115,18 @@ class MCPServer:
             )
         
         # Execute the approved request
-        request = MCPRequest(
-            **request.to_dict(),  # Unpack and create new request
-            mode=MCPMode.AUTONOMOUS  # Switch to autonomous for execution
+        # Create new request with autonomous mode
+        new_request = MCPRequest(
+            request_id=request.request_id,
+            tool=request.tool,
+            component=request.component,
+            parameters=request.parameters,
+            justification=request.justification,
+            mode=MCPMode.AUTONOMOUS,  # Switch to autonomous for execution
+            metadata=request.metadata
         )
         
-        return await self._handle_autonomous_mode(request)
+        return await self._handle_autonomous_mode(new_request)
     
     def get_server_stats(self) -> Dict[str, Any]:
         """Get comprehensive MCP server statistics"""
@@ -1124,7 +1150,7 @@ class MCPServer:
             }
         }
     
-    def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:  # FIXED: Optional[str]
+    def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """Get information about tools"""
         if tool_name:
             tool = self.registered_tools.get(tool_name)
@@ -1148,3 +1174,4 @@ class MCPServer:
         self._cooldowns.clear()
         self._approval_requests.clear()
         logger.info("MCP server statistics reset")
+        
