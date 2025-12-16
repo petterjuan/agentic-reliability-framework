@@ -9,11 +9,16 @@ from dataclasses import dataclass
 from agentic_reliability_framework.memory.rag_graph import RAGGraphMemory
 from agentic_reliability_framework.mcp.server import MCPServer
 from agentic_reliability_framework.policy.actions import HealingAction
-from agentic_reliability_framework.models import ReliabilityEvent
+from agentic_reliability_framework.models import ReliabilityEvent, EventSeverity
 from agentic_reliability_framework.config import config
 
 # Placeholder types; replace with actual classes if available
 logger = logging.getLogger(__name__)
+
+# Default thresholds
+DEFAULT_ERROR_THRESHOLD = 0.05
+DEFAULT_LATENCY_THRESHOLD = 150.0
+DEFAULT_LEARNING_MIN_DATA_POINTS = 5
 
 
 @dataclass
@@ -47,6 +52,7 @@ class V3ReliabilityEngine:
         self.mcp: Optional[MCPServer] = mcp_server
         self.policy_engine: Any = None  # Replace with actual PolicyEngine type
         self._lock = threading.RLock()
+        self._start_time = time.time()
         
         # Initialize metrics
         self.metrics: Dict[str, Any] = {
@@ -57,6 +63,9 @@ class V3ReliabilityEngine:
             "successful_outcomes": 0,
             "failed_outcomes": 0,
         }
+        
+        # Initialize event store
+        self.event_store = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Original v2 processing logic"""
@@ -64,18 +73,31 @@ class V3ReliabilityEngine:
             # Simulate v2 processing
             await asyncio.sleep(0.01)  # Simulate processing time
             
+            # Get thresholds from config or use defaults
+            error_threshold = getattr(config, 'error_threshold', DEFAULT_ERROR_THRESHOLD)
+            latency_threshold = getattr(config, 'latency_threshold', DEFAULT_LATENCY_THRESHOLD)
+            
+            # Convert severity value to int if needed
+            severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
+            if isinstance(severity_value, str):
+                # Map string severity to numeric value
+                severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+                severity_numeric = severity_map.get(severity_value.lower(), 1)
+            else:
+                severity_numeric = int(severity_value)
+            
             # Basic anomaly detection
             is_anomaly = (
-                event.error_rate > config.error_threshold or
-                event.latency_p99 > config.latency_threshold or
-                event.severity.value >= 2
+                event.error_rate > error_threshold or
+                event.latency_p99 > latency_threshold or
+                severity_numeric >= 2
             )
             
             result: Dict[str, Any] = {
                 "status": "ANOMALY" if is_anomaly else "NORMAL",
                 "incident_id": f"inc_{int(time.time())}_{event.component}",
                 "component": event.component,
-                "severity": event.severity.value,
+                "severity": severity_numeric,
                 "detected_at": time.time(),
                 "confidence": 0.85 if is_anomaly else 0.95,
                 "healing_actions": self._generate_healing_actions(event) if is_anomaly else [],
@@ -100,40 +122,52 @@ class V3ReliabilityEngine:
 
     def _generate_healing_actions(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
         """Generate healing actions based on event"""
-        actions = []
+        actions: List[Dict[str, Any]] = []
         
-        if event.error_rate > config.error_threshold:
+        # Get thresholds from config or use defaults
+        error_threshold = getattr(config, 'error_threshold', DEFAULT_ERROR_THRESHOLD)
+        latency_threshold = getattr(config, 'latency_threshold', DEFAULT_LATENCY_THRESHOLD)
+        
+        if event.error_rate > error_threshold:
             actions.append({
                 "action": "restart_service",
                 "component": event.component,
                 "parameters": {"force": True},
                 "confidence": 0.7,
                 "description": f"Restart {event.component} due to high error rate",
-                "metadata": {"trigger": "error_rate", "threshold": config.error_threshold}
+                "metadata": {"trigger": "error_rate", "threshold": error_threshold}
             })
         
-        if event.latency_p99 > config.latency_threshold:
+        if event.latency_p99 > latency_threshold:
             actions.append({
                 "action": "scale_up",
                 "component": event.component,
                 "parameters": {"instances": 2},
                 "confidence": 0.6,
                 "description": f"Scale up {event.component} due to high latency",
-                "metadata": {"trigger": "latency", "threshold": config.latency_threshold}
+                "metadata": {"trigger": "latency", "threshold": latency_threshold}
             })
         
-        if event.severity.value >= 3:
+        # Convert severity value to int if needed
+        severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
+        if isinstance(severity_value, str):
+            severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+            severity_numeric = severity_map.get(severity_value.lower(), 1)
+        else:
+            severity_numeric = int(severity_value)
+        
+        if severity_numeric >= 3:
             actions.append({
                 "action": "escalate_to_team",
                 "component": event.component,
                 "parameters": {"team": "sre", "urgency": "high"},
                 "confidence": 0.9,
                 "description": f"Escalate {event.component} to SRE team",
-                "metadata": {"trigger": "severity", "level": event.severity.value}
+                "metadata": {"trigger": "severity", "level": severity_numeric}
             })
         
         # Sort by confidence
-        actions.sort(key=lambda x: x["confidence"], reverse=True)
+        actions.sort(key=lambda x: float(x.get("confidence", 0.0)), reverse=True)  # Explicit float conversion
         return actions
 
     def _calculate_outcome_stats(self, incidents: List[Any]) -> Dict[str, Any]:
@@ -178,7 +212,7 @@ class V3ReliabilityEngine:
             most_effective_action = None
             if action_successes:
                 # Calculate success rates
-                action_success_rates = {}
+                action_success_rates: Dict[str, float] = {}
                 for action, success_count in action_successes.items():
                     total_count = action_counts.get(action, 0)
                     if total_count > 0:
@@ -189,8 +223,8 @@ class V3ReliabilityEngine:
             
             return {
                 "total_incidents": total_incidents,
-                "success_rate": successful_outcomes / total_incidents if total_incidents > 0 else 0.0,
-                "avg_resolution_time": total_resolution_time / total_incidents if total_incidents > 0 else 0.0,
+                "success_rate": float(successful_outcomes) / total_incidents if total_incidents > 0 else 0.0,
+                "avg_resolution_time": float(total_resolution_time) / total_incidents if total_incidents > 0 else 0.0,
                 "most_common_action": most_common_action,
                 "most_effective_action": most_effective_action,
                 "action_success_rates": action_success_rates if 'action_success_rates' in locals() else {},
@@ -206,9 +240,13 @@ class V3ReliabilityEngine:
                 "most_effective_action": None,
             }
 
-    def _create_mcp_request(self, action: Union[Dict[str, Any], HealingAction], 
-                           event: ReliabilityEvent, 
-                           historical_context: List[Any]) -> Dict[str, Any]:
+    def _create_mcp_request(
+        self, 
+        action: Union[Dict[str, Any], HealingAction], 
+        event: ReliabilityEvent,
+        historical_context: List[Any],
+        rag_context: Optional[Dict[str, Any]] = None  # Add optional parameter for compatibility
+    ) -> Dict[str, Any]:
         """Create MCP request from action"""
         # Handle both dict and HealingAction types
         if isinstance(action, dict):
@@ -239,16 +277,22 @@ class V3ReliabilityEngine:
             "historical_context": historical_summary,
             "metadata": {
                 "event_fingerprint": event.fingerprint,
-                "event_severity": event.severity.value,
+                "event_severity": event.severity.value if hasattr(event.severity, 'value') else "unknown",
                 "similar_incidents_count": len(historical_context),
                 "action_confidence": action_dict.get("confidence", 0.0),
                 "trigger": action_dict.get("metadata", {}).get("trigger", "unknown"),
+                "rag_context": rag_context  # Include if provided
             }
         }
 
-    async def _record_outcome(self, incident_id: str, 
-                            action: Union[Dict[str, Any], HealingAction], 
-                            mcp_response: Union[MCPResponse, Dict[str, Any]]) -> Dict[str, Any]:
+    async def _record_outcome(
+        self, 
+        incident_id: str, 
+        action: Union[Dict[str, Any], HealingAction], 
+        mcp_response: Union[MCPResponse, Dict[str, Any]],
+        event: Optional[ReliabilityEvent] = None,  # Add optional parameters
+        similar_incidents: Optional[List[Any]] = None
+    ) -> Dict[str, Any]:
         """Record outcome of MCP execution"""
         try:
             # Convert mcp_response to dict if needed
@@ -269,7 +313,7 @@ class V3ReliabilityEngine:
                 action_params = getattr(action, 'parameters', {})
             
             # Create outcome record
-            outcome = {
+            outcome: Dict[str, Any] = {
                 "incident_id": incident_id,
                 "action": action_name,
                 "action_parameters": action_params,
@@ -278,6 +322,14 @@ class V3ReliabilityEngine:
                 "timestamp": time.time(),
                 "resolution_time_minutes": 5.0,  # Default, should be calculated
             }
+            
+            # Add optional V3 data if provided
+            if event:
+                outcome["event_component"] = event.component
+                outcome["event_severity"] = event.severity.value if hasattr(event.severity, 'value') else "unknown"
+            
+            if similar_incidents:
+                outcome["similar_incidents_count"] = len(similar_incidents)
             
             # Update metrics
             with self._lock:
@@ -298,7 +350,11 @@ class V3ReliabilityEngine:
                 "timestamp": time.time(),
             }
 
-    def _get_most_effective_action(self, incidents: List[Any]) -> Optional[Dict[str, Any]]:
+    def _get_most_effective_action(
+        self, 
+        incidents: List[Any],
+        component: Optional[str] = None  # Add optional parameter for compatibility
+    ) -> Optional[Dict[str, Any]]:
         """Return most effective past action from incidents"""
         if not incidents:
             return None
@@ -437,7 +493,7 @@ class V3ReliabilityEngine:
                 "rag_available": self.rag is not None,
                 "mcp_available": self.mcp is not None,
                 "policy_engine_available": self.policy_engine is not None,
-                "uptime": time.time() - self._start_time if hasattr(self, '_start_time') else 0,
+                "uptime": time.time() - self._start_time,
             }
 
     def shutdown(self) -> None:
@@ -456,7 +512,7 @@ def EnhancedReliabilityEngine(*args: Any, **kwargs: Any) -> V3ReliabilityEngine:
 # Thread-safe event store for compatibility
 class ThreadSafeEventStore:
     """Thread-safe event store for compatibility"""
-    def __init__(self):
+    def __init__(self) -> None:
         self._events: List[Any] = []
         self._lock = threading.RLock()
     
@@ -465,12 +521,25 @@ class ThreadSafeEventStore:
         with self._lock:
             self._events.append(event)
     
+    def add(self, event: Any) -> None:
+        """Alias for add_event"""
+        self.add_event(event)
+    
     def get_events(self, limit: int = 100) -> List[Any]:
         """Get events from store"""
         with self._lock:
             return self._events[-limit:] if self._events else []
     
+    def get_recent(self, limit: int = 100) -> List[Any]:
+        """Alias for get_events"""
+        return self.get_events(limit)
+    
     def clear(self) -> None:
         """Clear all events"""
         with self._lock:
             self._events.clear()
+    
+    def count(self) -> int:
+        """Count events in store"""
+        with self._lock:
+            return len(self._events)
