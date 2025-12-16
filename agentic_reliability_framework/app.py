@@ -1088,16 +1088,19 @@ def create_enhanced_ui():
         
         with gr.Accordion("🔧 Healing Policies", open=False):
             policy_info = []
-            for policy in get_engine().policy_engine.policies:
-                if policy.enabled:
-                    actions = ", ".join([action.value for action in policy.actions])
-                    policy_info.append(
-                        f"**{policy.name}** (Priority {policy.priority}): {actions}\n"
-                        f"  - Cooldown: {policy.cool_down_seconds}s\n"
-                        f"  - Max executions: {policy.max_executions_per_hour}/hour"
-                    )
+            engine = get_engine()
+            if hasattr(engine, 'policy_engine') and hasattr(engine.policy_engine, 'policies'):
+                for policy in engine.policy_engine.policies:
+                    if hasattr(policy, 'enabled') and policy.enabled:
+                        actions = ", ".join([action.value for action in policy.actions]) if hasattr(policy, 'actions') else ""
+                        policy_info.append(
+                            f"**{getattr(policy, 'name', 'Unknown')}** "
+                            f"(Priority {getattr(policy, 'priority', 0)}): {actions}\n"
+                            f"  - Cooldown: {getattr(policy, 'cool_down_seconds', 0)}s\n"
+                            f"  - Max executions: {getattr(policy, 'max_executions_per_hour', 0)}/hour"
+                        )
             
-            gr.Markdown("\n\n".join(policy_info))
+            gr.Markdown("\n\n".join(policy_info) if policy_info else "No policies available")
         
         # Scenario change handler
         def on_scenario_change(scenario_name: str) -> dict[str, Any]:
@@ -1130,7 +1133,9 @@ def create_enhanced_ui():
         # Reset metrics handler
         def reset_metrics() -> tuple[int, int, float, float, float, float]:
             """Reset business metrics for demo purposes"""
-            get_business_metrics().reset()
+            business_metrics = get_business_metrics()
+            if hasattr(business_metrics, 'reset'):
+                business_metrics.reset()
             return 0, 0, 0.0, 0.0, 2.3, 83.6
         
         # Connect scenario dropdown to inputs
@@ -1175,7 +1180,18 @@ def create_enhanced_ui():
                 allowed, rate_msg = rate_limiter.is_allowed()
                 if not allowed:
                     logger.warning("Rate limit exceeded")
-                    metrics = get_business_metrics().get_metrics()
+                    business_metrics = get_business_metrics()
+                    if hasattr(business_metrics, 'get_metrics'):
+                        metrics = business_metrics.get_metrics()
+                    else:
+                        metrics = {
+                            "total_incidents": 0,
+                            "incidents_auto_healed": 0,
+                            "auto_heal_rate": 0.0,
+                            "total_revenue_saved": 0.0,
+                            "avg_detection_time_minutes": 2.3,
+                            "time_improvement": 83.6
+                        }
                     return (
                         rate_msg, {}, {}, gr.Dataframe(value=[]),
                         metrics["total_incidents"],
@@ -1196,7 +1212,18 @@ def create_enhanced_ui():
                 except (ValueError, TypeError) as e:
                     error_msg = f"❌ Invalid input types: {str(e)}"
                     logger.warning(error_msg)
-                    metrics = get_business_metrics().get_metrics()
+                    business_metrics = get_business_metrics()
+                    if hasattr(business_metrics, 'get_metrics'):
+                        metrics = business_metrics.get_metrics()
+                    else:
+                        metrics = {
+                            "total_incidents": 0,
+                            "incidents_auto_healed": 0,
+                            "auto_heal_rate": 0.0,
+                            "total_revenue_saved": 0.0,
+                            "avg_detection_time_minutes": 2.3,
+                            "time_improvement": 83.6
+                        }
                     return (
                         error_msg, {}, {}, gr.Dataframe(value=[]),
                         metrics["total_incidents"],
@@ -1213,7 +1240,18 @@ def create_enhanced_ui():
                 )
                 if not is_valid:
                     logger.warning(f"Invalid input: {error_msg}")
-                    metrics = get_business_metrics().get_metrics()
+                    business_metrics = get_business_metrics()
+                    if hasattr(business_metrics, 'get_metrics'):
+                        metrics = business_metrics.get_metrics()
+                    else:
+                        metrics = {
+                            "total_incidents": 0,
+                            "incidents_auto_healed": 0,
+                            "auto_heal_rate": 0.0,
+                            "total_revenue_saved": 0.0,
+                            "avg_detection_time_minutes": 2.3,
+                            "time_improvement": 83.6
+                        }
                     return (
                         error_msg, {}, {}, gr.Dataframe(value=[]),
                         metrics["total_incidents"],
@@ -1225,13 +1263,31 @@ def create_enhanced_ui():
                     )
                 
                 # Process event through engine
-                result = await get_engine().process_event_enhanced(
+                engine = get_engine()
+                if not engine:
+                    return (
+                        "❌ Engine not available", {}, {}, gr.Dataframe(value=[]),
+                        0, 0, 0.0, 0.0, 2.3, 83.6
+                    )
+                
+                result = await engine.process_event_enhanced(
                     component, latency_f, error_rate_f, throughput_f, cpu_util_f, memory_util_f
                 )
                 
                 # Handle errors
                 if 'error' in result:
-                    metrics = get_business_metrics().get_metrics()
+                    business_metrics = get_business_metrics()
+                    if hasattr(business_metrics, 'get_metrics'):
+                        metrics = business_metrics.get_metrics()
+                    else:
+                        metrics = {
+                            "total_incidents": 0,
+                            "incidents_auto_healed": 0,
+                            "auto_heal_rate": 0.0,
+                            "total_revenue_saved": 0.0,
+                            "avg_detection_time_minutes": 2.3,
+                            "time_improvement": 83.6
+                        }
                     return (
                         f"❌ {result['error']}", {}, {}, gr.Dataframe(value=[]),
                         metrics["total_incidents"],
@@ -1244,39 +1300,29 @@ def create_enhanced_ui():
                 
                 # Build table data (THREAD-SAFE)
                 table_data = []
-                # DEBUG: Check event store
-                print(f'DEBUG: Event store count before building table: {get_engine().event_store.count()}')
-                # Force events to show - if empty, add demo events
-                if get_engine().event_store.count() == 0:
-                    print('DEBUG: No events in store, adding demo events...')
-                    from .models import ReliabilityEvent, EventSeverity
-                    for _ in range(3):
-                        demo_event = ReliabilityEvent(
-                            component=f'demo-event-{_}',
-                            latency_p99=100 + _*150,
-                            error_rate=0.05 + _*0.08,
-                            throughput=1000 + _*300,
-                            severity=EventSeverity.HIGH if _ > 1 else EventSeverity.MEDIUM
-                        )
-                        get_engine().event_store.add(demo_event)
-                    print(f'DEBUG: Added demo events. Total now: {get_engine().event_store.count()}')
                 
-                events = get_engine().event_store.get_recent(15)
-                print(f'DEBUG: Retrieved {len(events)} events for table')
-                for event in events:
-                    table_data.append([
-                        event.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                        event.component,
-                        f"{event.latency_p99:.0f}ms",
-                        f"{event.error_rate:.3f}",
-                        f"{event.throughput:.0f}",
-                        event.severity.value.upper(),
-                        "Multi-agent analysis"
-                    ])
+                # Try to get events from engine
+                if hasattr(engine, 'event_store') and hasattr(engine.event_store, 'get_recent'):
+                    try:
+                        events = engine.event_store.get_recent(15)
+                        for event in events:
+                            table_data.append([
+                                event.timestamp.strftime("%Y-%m-%d %H:%M:%S") if hasattr(event.timestamp, 'strftime') else "Unknown",
+                                event.component if hasattr(event, 'component') else "Unknown",
+                                f"{event.latency_p99:.0f}ms" if hasattr(event, 'latency_p99') else "0ms",
+                                f"{event.error_rate:.3f}" if hasattr(event, 'error_rate') else "0.000",
+                                f"{event.throughput:.0f}" if hasattr(event, 'throughput') else "0",
+                                event.severity.value.upper() if hasattr(event, 'severity') and hasattr(event.severity, 'value') else "UNKNOWN",
+                                "Multi-agent analysis"
+                            ])
+                    except Exception as e:
+                        logger.error(f"Error getting events: {e}")
+                        table_data = []
                 
                 # Format output message
-                status_emoji = "🚨" if result["status"] == "ANOMALY" else "✅"
-                output_msg = f"{status_emoji} **{result['status']}**\n"
+                status_emoji = "🚨" if result.get("status") == "ANOMALY" else "✅"
+                status = result.get("status", "UNKNOWN")
+                output_msg = f"{status_emoji} **{status}**\n"
                 
                 if "multi_agent_analysis" in result:
                     analysis = result["multi_agent_analysis"]
@@ -1294,9 +1340,9 @@ def create_enhanced_ui():
                 if result.get("business_impact"):
                     impact = result["business_impact"]
                     output_msg += (
-                        f"💰 **Business Impact**: ${impact['revenue_loss_estimate']:.2f} | "
-                        f"👥 {impact['affected_users_estimate']} users | "
-                        f"🚨 {impact['severity_level']}\n"
+                        f"💰 **Business Impact**: ${impact.get('revenue_loss_estimate', 0):.2f} | "
+                        f"👥 {impact.get('affected_users_estimate', 0)} users | "
+                        f"🚨 {impact.get('severity_level', 'UNKNOWN')}\n"
                     )
                 
                 if result.get("healing_actions") and result["healing_actions"] != ["no_action"]:
@@ -1307,7 +1353,18 @@ def create_enhanced_ui():
                 predictive_insights_data = agent_insights_data.get('predictive_insights', {})
                 
                 # Get updated metrics
-                metrics = get_business_metrics().get_metrics()
+                business_metrics = get_business_metrics()
+                if hasattr(business_metrics, 'get_metrics'):
+                    metrics = business_metrics.get_metrics()
+                else:
+                    metrics = {
+                        "total_incidents": 0,
+                        "incidents_auto_healed": 0,
+                        "auto_heal_rate": 0.0,
+                        "total_revenue_saved": 0.0,
+                        "avg_detection_time_minutes": 2.3,
+                        "time_improvement": 83.6
+                    }
                 
                 # RETURN THE RESULTS WITH ROI METRICS (10 values)
                 return (
@@ -1330,7 +1387,18 @@ def create_enhanced_ui():
             except Exception as e:
                 error_msg = f"❌ Error processing event: {str(e)}"
                 logger.error(error_msg, exc_info=True)
-                metrics = get_business_metrics().get_metrics()
+                business_metrics = get_business_metrics()
+                if hasattr(business_metrics, 'get_metrics'):
+                    metrics = business_metrics.get_metrics()
+                else:
+                    metrics = {
+                        "total_incidents": 0,
+                        "incidents_auto_healed": 0,
+                        "auto_heal_rate": 0.0,
+                        "total_revenue_saved": 0.0,
+                        "avg_detection_time_minutes": 2.3,
+                        "time_improvement": 83.6
+                    }
                 return (
                     error_msg, {}, {}, gr.Dataframe(value=[]),
                     metrics["total_incidents"],
@@ -1360,23 +1428,30 @@ def create_enhanced_ui():
         )
     
     return demo
-    
+
+
 # === Main Entry Point ===
-if __name__ == "__main__":
+def main() -> None:
+    """Main entry point for the application"""
     logger.info("=" * 80)
     logger.info("Starting Enterprise Agentic Reliability Framework (DEMO READY VERSION)")
     logger.info("=" * 80)
-    logger.info(f"Python version: {sys.version}")  # FIXED: Use sys directly
-    logger.info(f"Total events in history: {get_engine().event_store.count()}")
-    logger.info(f"Vector index size: {get_faiss_index().get_count()}")
-    logger.info(f"Agents initialized: {len(get_engine().orchestrator.agents)}")
-    logger.info(f"Policies loaded: {len(get_engine().policy_engine.policies)}")
-    logger.info(f"Demo scenarios loaded: {len(DEMO_SCENARIOS)}")
-    logger.info(f"Configuration: HF_TOKEN={'SET' if config.hf_api_key else 'NOT SET'}")
-    logger.info(f"Rate limit: {Constants.MAX_REQUESTS_PER_MINUTE} requests/minute")
-    logger.info("=" * 80)
+    logger.info(f"Python version: {sys.version}")
     
     try:
+        engine = get_engine()
+        faiss_index = get_faiss_index()
+        business_metrics = get_business_metrics()
+        
+        logger.info(f"Total events in history: {getattr(engine.event_store, 'count', lambda: 0)() if hasattr(engine, 'event_store') else 'N/A'}")
+        logger.info(f"Vector index size: {faiss_index.get_count() if faiss_index and hasattr(faiss_index, 'get_count') else 'N/A'}")
+        logger.info(f"Agents initialized: {len(engine.orchestrator.agents) if hasattr(engine, 'orchestrator') and hasattr(engine.orchestrator, 'agents') else 'N/A'}")
+        logger.info(f"Policies loaded: {len(engine.policy_engine.policies) if hasattr(engine, 'policy_engine') and hasattr(engine.policy_engine, 'policies') else 'N/A'}")
+        logger.info(f"Demo scenarios loaded: {len(DEMO_SCENARIOS)}")
+        logger.info(f"Configuration: HF_TOKEN={'SET' if getattr(config, 'hf_api_key', None) else 'NOT SET'}")
+        logger.info(f"Rate limit: {Constants.MAX_REQUESTS_PER_MINUTE} requests/minute")
+        logger.info("=" * 80)
+        
         demo = create_enhanced_ui()
         
         logger.info("Launching Gradio UI on 0.0.0.0:7860...")
@@ -1386,6 +1461,7 @@ if __name__ == "__main__":
             share=False,
             show_error=True
         )
+        
     except KeyboardInterrupt:
         logger.info("Received shutdown signal...")
     except Exception as e:
@@ -1394,10 +1470,15 @@ if __name__ == "__main__":
         # Graceful shutdown
         logger.info("Shutting down gracefully...")
         
-        if get_faiss_index():
+        faiss_index = get_faiss_index()
+        if faiss_index and hasattr(faiss_index, 'shutdown'):
             logger.info("Saving pending vectors before shutdown...")
-            get_faiss_index().shutdown()
+            faiss_index.shutdown()
         
         logger.info("=" * 80)
         logger.info("Application shutdown complete")
         logger.info("=" * 80)
+
+
+if __name__ == "__main__":
+    main()
