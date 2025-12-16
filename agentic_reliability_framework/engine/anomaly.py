@@ -6,7 +6,7 @@ Extracted from app.py for modularity
 import numpy as np
 import threading
 import logging
-from typing import Dict, List # noqa: F401
+from typing import Dict, List
 from collections import deque
 
 from ..models import ReliabilityEvent
@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 class AdvancedAnomalyDetector:
     """Enhanced anomaly detection with adaptive thresholds"""
     
-    def __init__(self):
-        self.historical_data = deque(maxlen=100)
-        self.adaptive_thresholds = {
+    def __init__(self) -> None:
+        self.historical_data: deque[ReliabilityEvent] = deque(maxlen=100)
+        self.adaptive_thresholds: Dict[str, float] = {
             'latency_p99': config.latency_warning,
             'error_rate': config.error_rate_warning
         }
@@ -30,18 +30,18 @@ class AdvancedAnomalyDetector:
     def detect_anomaly(self, event: ReliabilityEvent) -> bool:
         """Detect if event is anomalous using adaptive thresholds"""
         with self._lock:
-            latency_anomaly = event.latency_p99 > self.adaptive_thresholds['latency_p99']
-            error_anomaly = event.error_rate > self.adaptive_thresholds['error_rate']
+            latency_anomaly: bool = event.latency_p99 > self.adaptive_thresholds['latency_p99']
+            error_anomaly: bool = event.error_rate > self.adaptive_thresholds['error_rate']
             
-            resource_anomaly = False
-            if event.cpu_util and event.cpu_util > config.cpu_critical:
+            resource_anomaly: bool = False
+            if event.cpu_util is not None and event.cpu_util > config.cpu_critical:
                 resource_anomaly = True
-            if event.memory_util and event.memory_util > config.memory_critical:
+            if event.memory_util is not None and event.memory_util > config.memory_critical:
                 resource_anomaly = True
             
             self._update_thresholds(event)
             
-            is_anomaly = latency_anomaly or error_anomaly or resource_anomaly
+            is_anomaly: bool = latency_anomaly or error_anomaly or resource_anomaly
             
             if is_anomaly:
                 logger.info(
@@ -57,8 +57,8 @@ class AdvancedAnomalyDetector:
         self.historical_data.append(event)
         
         if len(self.historical_data) > 10:
-            recent_latencies = [e.latency_p99 for e in list(self.historical_data)[-20:]]
-            new_threshold = np.percentile(recent_latencies, 90)
+            recent_latencies: List[float] = [e.latency_p99 for e in list(self.historical_data)[-20:]]
+            new_threshold: float = float(np.percentile(recent_latencies, 90))
             self.adaptive_thresholds['latency_p99'] = new_threshold
             logger.debug(f"Updated adaptive latency threshold to {new_threshold:.2f}ms")
     
