@@ -104,14 +104,17 @@ class EnhancedFAISSIndex:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            # FIXED: Proper numpy scalar to Python float conversion
+            # FIXED: Type-safe float conversion
             if len(dist_result) > 0:
                 min_val = np.min(dist_result)
-                # Convert numpy scalar to Python float safely using .item()
-                if isinstance(min_val, np.generic):
+                # Convert numpy scalar to Python float safely
+                if hasattr(min_val, 'item'):
                     min_distance_value = float(min_val.item())
-                else:
+                elif isinstance(min_val, (int, float, np.integer, np.floating)):
                     min_distance_value = float(min_val)
+                else:
+                    # Fallback for any other type
+                    min_distance_value = 0.0
                 
                 logger.debug(
                     f"FAISS search completed: k={actual_k}, "
@@ -169,11 +172,15 @@ class EnhancedFAISSIndex:
                 text = self._get_text_by_index(int(idx))
                 
                 if text:
-                    # FIXED: Use .item() to safely convert numpy types to Python float
-                    if isinstance(distance, np.generic):
+                    # FIXED: Type-safe float conversion
+                    distance_float: float
+                    if hasattr(distance, 'item'):
                         distance_float = float(distance.item())
-                    else:
+                    elif isinstance(distance, (int, float, np.integer, np.floating)):
                         distance_float = float(distance)
+                    else:
+                        # Fallback
+                        distance_float = 0.0
                     
                     similarity_float = float(1.0 / (1.0 + distance_float))
                     
@@ -268,12 +275,12 @@ class EnhancedFAISSIndex:
                         # If vec doesn't have astype, wrap it in numpy array
                         vectors.append(np.array(vec, dtype=np.float32))
                 
-                # FIXED: Explicit type annotation
+                # FIXED: Removed duplicate variable definition and added explicit type
                 if vectors:
-                    result: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
+                    final_result: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
+                    return final_result
                 else:
-                    result: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
-                return result
+                    return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
             else:
                 # If reconstruction is not available, return empty array
                 logger.warning("FAISS index does not support reconstruct_n, returning empty array")
@@ -335,7 +342,7 @@ class EnhancedFAISSIndex:
             actual_k = min(k, ntotal) if ntotal > 0 else 0
             
             if actual_k == 0:
-                # FIXED: Return empty array with explicit dtype
+                # FIXED: Return is reachable - this is the proper flow
                 return np.array([], dtype=np.int32)
             
             distances, indices = self.faiss.index.search(query_vector, actual_k)
@@ -352,5 +359,4 @@ class EnhancedFAISSIndex:
         except Exception as e:
             logger.error(f"Error searching vectors: {e}")
             # Consistent return type on error
-            # FIXED: Remove unreachable code
             return np.array([], dtype=np.int32)
