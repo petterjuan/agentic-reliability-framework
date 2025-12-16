@@ -7,7 +7,7 @@ import datetime
 import threading
 import logging
 from collections import OrderedDict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, cast
 from .models import HealingPolicy, HealingAction, ReliabilityEvent, PolicyCondition
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class PolicyEngine:
         policies: Optional[List[HealingPolicy]] = None,
         max_cooldown_history: int = 100,
         max_execution_history: int = 1000
-    ):
+    ) -> None:
         """
         Initialize policy engine
         
@@ -129,7 +129,7 @@ class PolicyEngine:
         Returns:
             List of healing actions to execute
         """
-        applicable_actions = []
+        applicable_actions: List[HealingAction] = []
         current_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
         
         # Evaluate policies in priority order
@@ -159,8 +159,10 @@ class PolicyEngine:
                     )
                     continue
                 
-                # FIXED: Only update timestamp if conditions match
-                if self._evaluate_conditions(policy.conditions, event):
+                # Evaluate conditions first (FIX: only update if conditions match)
+                should_execute = self._evaluate_conditions(policy.conditions, event)
+                
+                if should_execute:
                     applicable_actions.extend(policy.actions)
                     
                     # Update cooldown timestamp (INSIDE lock, AFTER condition check)
@@ -176,7 +178,7 @@ class PolicyEngine:
         
         # Deduplicate actions while preserving order
         seen = set()
-        unique_actions = []
+        unique_actions: List[HealingAction] = []
         for action in applicable_actions:
             if action not in seen:
                 seen.add(action)
@@ -212,7 +214,7 @@ class PolicyEngine:
             
             # Evaluate operator
             if not self._compare_values(
-                event_value,
+                float(event_value),  # Ensure float type
                 condition.operator,
                 condition.threshold
             ):
@@ -244,19 +246,6 @@ class PolicyEngine:
             Comparison result
         """
         try:
-            # Type validation
-            if not isinstance(event_value, (int, float)):
-                logger.error(
-                    f"Invalid event_value type: {type(event_value)}, expected number"
-                )
-                return False
-            
-            if not isinstance(threshold, (int, float)):
-                logger.error(
-                    f"Invalid threshold type: {type(threshold)}, expected number"
-                )
-                return False
-            
             # Operator evaluation
             if operator == "gt":
                 return event_value > threshold
@@ -294,8 +283,9 @@ class PolicyEngine:
         
         # LRU eviction if too large
         while len(self.last_execution) > self.max_cooldown_history:
-            evicted_key, _ = self.last_execution.popitem(last=False)
-            logger.debug(f"Evicted cooldown entry: {evicted_key}")
+            old_key = next(iter(self.last_execution))
+            self.last_execution.popitem(last=False)
+            logger.debug(f"Evicted cooldown entry: {old_key}")
     
     def _is_rate_limited(
         self,
@@ -319,8 +309,9 @@ class PolicyEngine:
         
         # Remove executions older than 1 hour
         one_hour_ago = current_time - 3600
+        timestamps = self.execution_timestamps[policy_key]
         recent_executions = [
-            ts for ts in self.execution_timestamps[policy_key]
+            ts for ts in timestamps
             if ts > one_hour_ago
         ]
         
@@ -344,10 +335,12 @@ class PolicyEngine:
         
         # Limit history size (memory management)
         if len(self.execution_timestamps[policy_key]) > self.max_execution_history:
+            # Keep only the most recent entries
+            timestamps = self.execution_timestamps[policy_key]
             self.execution_timestamps[policy_key] = \
-                self.execution_timestamps[policy_key][-self.max_execution_history:]
+                timestamps[-self.max_execution_history:]
     
-    def get_policy_stats(self) -> Dict[str, Dict]:
+    def get_policy_stats(self) -> Dict[str, Dict[str, Any]]:
         """
         Get statistics about policy execution
         
@@ -355,21 +348,92 @@ class PolicyEngine:
             Dictionary of policy statistics
         """
         with self._lock:
-            stats = {}
+            stats: Dict[str, Dict[str, Any]] = {}
             
             for policy in self.policies:
+                # Count components for this policy
+                total_components = 0
+                for key in self.last_execution.keys():
+                    if key.startswith(f"{policy.name}_"):
+                        total_components += 1
+                
                 policy_stats = {
                     "name": policy.name,
                     "priority": policy.priority,
                     "enabled": policy.enabled,
                     "cooldown_seconds": policy.cool_down_seconds,
                     "max_per_hour": policy.max_executions_per_hour,
-                    "total_components": sum(
-                        1 for key in self.last_execution.keys()
-                        if key.startswith(f"{policy.name}_")
-                    )
+                    "total_components": total_components
                 }
                 
                 stats[policy.name] = policy_stats
             
             return stats
+
+
+# Helper function to create a default policy engine
+def create_default_policy_engine() -> PolicyEngine:
+    """
+    Create a default policy engine with standard policies
+    
+    Returns:
+        PolicyEngine instance
+    """
+    return PolicyEngine()
+
+
+# Helper function to test if a policy would trigger for an event
+def would_policy_trigger(
+    policy: HealingPolicy,
+    event: ReliabilityEvent,
+    last_execution_time: Optional[float] = None,
+    execution_count_last_hour: int = 0
+) -> bool:
+    """
+    Test if a policy would trigger for an event without actually executing it
+    
+    Args:
+        policy: The policy to test
+        event: The event to test against
+        last_execution_time: Optional last execution time (for cooldown check)
+        execution_count_last_hour: Number of executions in last hour (for rate limit)
+        
+    Returns:
+        True if policy would trigger, False otherwise
+    """
+    # Check if policy is enabled
+    if not policy.enabled:
+        return False
+    
+    # Check cooldown if last_execution_time provided
+    if last_execution_time is not None:
+        current_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
+        if current_time - last_execution_time < policy.cool_down_seconds:
+            return False
+    
+    # Check rate limit if execution count provided
+    if execution_count_last_hour >= policy.max_executions_per_hour:
+        return False
+    
+    # Check conditions
+    engine = PolicyEngine(policies=[policy], max_cooldown_history=0)
+    
+    # Use a temporary evaluation (not thread-safe, but okay for testing)
+    # We need to access the protected method
+    for condition in policy.conditions:
+        # Get event value
+        event_value = getattr(event, condition.metric, None)
+        
+        # Handle None values
+        if event_value is None:
+            return False
+        
+        # Evaluate operator
+        if not engine._compare_values(
+            float(event_value),
+            condition.operator,
+            condition.threshold
+        ):
+            return False
+    
+    return True
