@@ -2,8 +2,6 @@
 Simple lazy loading for ARF - No circular dependencies!
 Pythonic improvements with type safety
 """
-
-# ========== ALL IMPORTS MUST BE HERE AT THE TOP ==========
 import logging
 import threading
 from contextlib import suppress
@@ -137,6 +135,8 @@ def _load_engine() -> Optional['ReliabilityEngineProtocol']:
         from .engine.reliability import EnhancedReliabilityEngine
         logger.info("Loading EnhancedReliabilityEngine directly")
         _engine_instance = EnhancedReliabilityEngine()
+        # Cast to the protocol type
+        from typing import cast
         return cast('ReliabilityEngineProtocol', _engine_instance)
     
     logger.error("Failed to load reliability engine")
