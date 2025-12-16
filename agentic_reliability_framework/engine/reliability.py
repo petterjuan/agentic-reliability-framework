@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from typing import List, Dict, Any, Optional, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from agentic_reliability_framework.memory.rag_graph import RAGGraphMemory
 from agentic_reliability_framework.mcp.server import MCPServer
@@ -26,12 +26,13 @@ class MCPResponse:
     """MCP response data structure"""
     executed: bool = False
     status: str = "unknown"
-    result: Dict[str, Any] = None  # This line has a type issue - None assigned to Dict
+    result: Dict[str, Any] = field(default_factory=dict)  # FIXED: Use field with default_factory
     message: str = ""
     
     def __post_init__(self):
+        # Ensure result is never None
         if self.result is None:
-            self.result = {}  # This fixes the None assignment
+            self.result = {}
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
@@ -64,8 +65,8 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # Initialize event store - FIX: Create proper instance, not None
-        self.event_store = ThreadSafeEventStore()
+        # FIXED: Create proper instance with explicit type annotation
+        self.event_store: ThreadSafeEventStore = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Original v2 processing logic"""
