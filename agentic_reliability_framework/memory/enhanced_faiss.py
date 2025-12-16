@@ -5,10 +5,12 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional, cast
+from typing import List, Dict, Any, Optional, Tuple
 import asyncio
+from numpy.typing import NDArray
 
 from .constants import MemoryConstants
+from .faiss_index import ProductionFAISSIndex
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class EnhancedFAISSIndex:
     V3 Feature: Adds thread-safe similarity search
     """
     
-    def __init__(self, faiss_index):
+    def __init__(self, faiss_index: ProductionFAISSIndex) -> None:
         """
         Initialize enhanced FAISS index
         
@@ -31,7 +33,7 @@ class EnhancedFAISSIndex:
         self._lock = faiss_index._lock if hasattr(faiss_index, '_lock') else None
         logger.info("Initialized EnhancedFAISSIndex for v3 RAG search")
     
-    def search(self, query_vector: np.ndarray, k: int = 5) -> tuple[np.ndarray, np.ndarray]:
+    def search(self, query_vector: NDArray[np.float32], k: int = 5) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """
         Thread-safe similarity search in FAISS index
         
@@ -54,7 +56,7 @@ class EnhancedFAISSIndex:
         else:
             return self._safe_search(query_vector, k)
     
-    def _safe_search(self, query_vector: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    def _safe_search(self, query_vector: NDArray[np.float32], k: int) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """Perform search with error handling"""
         try:
             # Ensure proper dimensionality
@@ -74,7 +76,7 @@ class EnhancedFAISSIndex:
             
             if actual_k == 0:
                 logger.debug("No vectors in index, returning empty results")
-                return np.array([]), np.array([])
+                return np.array([], dtype=np.float32), np.array([], dtype=np.int64)
             
             # Perform search
             distances, indices = self.faiss.index.search(query_vector, actual_k)
@@ -85,13 +87,13 @@ class EnhancedFAISSIndex:
                 f"min_distance={np.min(distances[0]) if len(distances[0]) > 0 else 0:.4f}"
             )
             
-            return distances[0], indices[0]
+            return distances[0].astype(np.float32), indices[0].astype(np.int64)
             
         except Exception as e:
             logger.error(f"FAISS search error: {e}", exc_info=True)
             raise RuntimeError(f"Search failed: {str(e)}")
     
-    async def search_async(self, query_vector: np.ndarray, k: int = 5) -> tuple[np.ndarray, np.ndarray]:
+    async def search_async(self, query_vector: NDArray[np.float32], k: int = 5) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """
         Async version of similarity search
         
@@ -128,7 +130,7 @@ class EnhancedFAISSIndex:
                     continue
                 
                 # Get text from FAISS storage
-                text = self._get_text_by_index(idx)
+                text = self._get_text_by_index(int(idx))
                 
                 if text:
                     results.append({
@@ -140,7 +142,7 @@ class EnhancedFAISSIndex:
                     })
             
             # Sort by similarity (highest first)
-            results.sort(key=lambda x: cast(float, x["similarity"]), reverse=True)
+            results.sort(key=lambda x: x["similarity"], reverse=True)
             
             logger.info(
                 f"Semantic search for '{query_text[:50]}...' "
@@ -153,7 +155,7 @@ class EnhancedFAISSIndex:
             logger.error(f"Semantic search error: {e}", exc_info=True)
             return []
     
-    def _embed_text(self, text: str) -> np.ndarray:
+    def _embed_text(self, text: str) -> NDArray[np.float32]:
         """Embed text into vector"""
         # Use existing embedding model or create simple embedding
         try:
@@ -192,6 +194,46 @@ class EnhancedFAISSIndex:
         if hasattr(self.faiss, 'texts') and index < len(self.faiss.texts):
             return self.faiss.texts[index]
         return None
+    
+    def get_embeddings(self) -> NDArray[np.float32]:
+        """
+        Get all embeddings stored in the index.
+        
+        Returns:
+            numpy.ndarray: Array of all embeddings
+        """
+        try:
+            # Check if the underlying FAISS index has a way to retrieve vectors
+            if hasattr(self.faiss.index, 'reconstruct_n'):
+                total = self.faiss.get_count()
+                if total == 0:
+                    return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                
+                # Reconstruct all vectors
+                vectors = []
+                for i in range(total):
+                    vec = self.faiss.index.reconstruct(i)
+                    vectors.append(vec)
+                return np.array(vectors, dtype=np.float32)
+            else:
+                # If reconstruction is not available, return empty array
+                logger.warning("FAISS index does not support reconstruct_n, returning empty array")
+                return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+        except Exception as e:
+            logger.error(f"Error getting embeddings: {e}")
+            return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+    
+    def get_text_by_index(self, index: int) -> Optional[str]:
+        """
+        Get text by index.
+        
+        Args:
+            index: Index of the text to retrieve
+            
+        Returns:
+            Optional[str]: Text if found, None otherwise
+        """
+        return self._get_text_by_index(index)
     
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics"""
