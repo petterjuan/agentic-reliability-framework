@@ -1,56 +1,64 @@
-import os  # noqa: F401
-import sys  # FIXED: Added sys import
-import json  # noqa: F401
-import numpy as np  # noqa: F401
-import gradio as gr
-import datetime  # noqa: F401  # Added back for line 827
-import threading
+import asyncio
+import datetime
+import json
 import logging
-import asyncio  # noqa: F401
-import tempfile  # noqa: F401
-from typing import List, Dict, Any, Optional, Tuple, Literal  # noqa: F401
+import os
+import sys
+import tempfile
+import threading
 from collections import deque
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
-from concurrent.futures import ProcessPoolExecutor  # noqa: F401
-from queue import Queue  # noqa: F401
+from queue import Queue
+from typing import Any, Literal
+
+import atomicwrites
+import gradio as gr
+import numpy as np
 from circuitbreaker import circuit
-import atomicwrites  # noqa: F401
 
 # Add these imports with other engine imports
+from .engine.anomaly import AdvancedAnomalyDetector
+from .engine.business import BusinessImpactCalculator, BusinessMetricsTracker
 from .engine.predictive import SimplePredictiveEngine
-from .engine.anomaly import AdvancedAnomalyDetector  # noqa: F401
-from .engine.business import BusinessImpactCalculator, BusinessMetricsTracker  # noqa: F401
-from .engine.reliability import EnhancedReliabilityEngine, ThreadSafeEventStore  # noqa: F401
-from .memory.faiss_index import ProductionFAISSIndex, create_faiss_index  # noqa: F401
+from .engine.reliability import EnhancedReliabilityEngine, ThreadSafeEventStore
+from .memory.faiss_index import ProductionFAISSIndex, create_faiss_index
 
 # Import our modules
-from .models import (
-    ReliabilityEvent, 
-    EventSeverity,  # noqa: F401
-    HealingAction,  # noqa: F401
-    ForecastResult  # noqa: F401
-)
-from .healing_policies import PolicyEngine  # noqa: F401
 from .config import config
+from .healing_policies import PolicyEngine
+from .models import (
+    EventSeverity,  # noqa: F401
+    ForecastResult,  # noqa: F401
+    HealingAction,  # noqa: F401
+    ReliabilityEvent,
+)
+
 
 def get_engine():
     from .lazy import get_engine as _get_engine
     return _get_engine()
 
+
 def get_agents():
     from .lazy import get_agents as _get_agents
     return _get_agents()
+
 
 def get_faiss_index():
     from .lazy import get_faiss_index as _get_faiss_index
     return _get_faiss_index()
 
+
 def get_business_metrics():
     from .lazy import get_business_metrics as _get_business_metrics
     return _get_business_metrics()
 
+
 def enhanced_engine():
     return get_engine()
+
 
 """
 Enterprise Agentic Reliability Framework - Main Application (FIXED VERSION)
@@ -118,6 +126,7 @@ class Constants:
     # Rate limiting
     MAX_REQUESTS_PER_MINUTE = 60
     MAX_REQUESTS_PER_HOUR = 500
+
 
 # === Configuration ===
 HEADERS = {"Authorization": f"Bearer {config.hf_api_key}"} if config.hf_api_key else {}
@@ -245,7 +254,7 @@ Use this to show how ARF distinguishes between normal operations and actual inci
 }
 
 # === Input Validation (FIXED: Comprehensive validation) ===
-def validate_component_id(component_id: str) -> Tuple[bool, str]:
+def validate_component_id(component_id: str) -> tuple[bool, str]:
     """Validate component ID format"""
     if not isinstance(component_id, str):
         return False, "Component ID must be a string"
@@ -259,13 +268,14 @@ def validate_component_id(component_id: str) -> Tuple[bool, str]:
     
     return True, ""
 
+
 def validate_inputs(
     latency: Any,
     error_rate: Any,
     throughput: Any,
     cpu_util: Any,
     memory_util: Any
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Comprehensive input validation with type checking
     
@@ -325,12 +335,14 @@ def validate_inputs(
         logger.error(f"Validation error: {e}", exc_info=True)
         return False, f"❌ Validation error: {str(e)}"
 
+
 # === Multi-Agent System ===
 class AgentSpecialization(Enum):
     """Agent specialization types"""
     DETECTIVE = "anomaly_detection"
     DIAGNOSTICIAN = "root_cause_analysis"
     PREDICTIVE = "predictive_analytics"
+
 
 class BaseAgent:
     """Base class for all specialized agents"""
@@ -343,9 +355,10 @@ class BaseAgent:
             'average_confidence': 0.0
         }
     
-    async def analyze(self, event: ReliabilityEvent) -> Dict[str, Any]:
+    async def analyze(self, event: ReliabilityEvent) -> dict[str, Any]:
         """Base analysis method to be implemented by specialized agents"""
         raise NotImplementedError
+
 
 class AnomalyDetectionAgent(BaseAgent):
     """Specialized agent for anomaly detection and pattern recognition"""
@@ -354,7 +367,7 @@ class AnomalyDetectionAgent(BaseAgent):
         super().__init__(AgentSpecialization.DETECTIVE)
         logger.info("Initialized AnomalyDetectionAgent")
     
-    async def analyze(self, event: ReliabilityEvent) -> Dict[str, Any]:
+    async def analyze(self, event: ReliabilityEvent) -> dict[str, Any]:
         """Perform comprehensive anomaly analysis"""
         try:
             anomaly_score = self._calculate_anomaly_score(event)
@@ -413,7 +426,7 @@ class AnomalyDetectionAgent(BaseAgent):
         else:
             return "LOW"
     
-    def _identify_affected_metrics(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
+    def _identify_affected_metrics(self, event: ReliabilityEvent) -> list[dict[str, Any]]:
         """Identify which metrics are outside normal ranges"""
         affected = []
         
@@ -501,7 +514,7 @@ class AnomalyDetectionAgent(BaseAgent):
         self,
         event: ReliabilityEvent,
         anomaly_score: float
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate actionable recommendations"""
         recommendations = []
         affected_metrics = self._identify_affected_metrics(event)
@@ -564,6 +577,7 @@ class AnomalyDetectionAgent(BaseAgent):
         
         return recommendations[:4]
 
+
 class RootCauseAgent(BaseAgent):
     """Specialized agent for root cause analysis"""
     
@@ -571,7 +585,7 @@ class RootCauseAgent(BaseAgent):
         super().__init__(AgentSpecialization.DIAGNOSTICIAN)
         logger.info("Initialized RootCauseAgent")
     
-    async def analyze(self, event: ReliabilityEvent) -> Dict[str, Any]:
+    async def analyze(self, event: ReliabilityEvent) -> dict[str, Any]:
         """Perform root cause analysis"""
         try:
             causes = self._analyze_potential_causes(event)
@@ -597,7 +611,7 @@ class RootCauseAgent(BaseAgent):
                 'recommendations': [f"Analysis error: {str(e)}"]
             }
     
-    def _analyze_potential_causes(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
+    def _analyze_potential_causes(self, event: ReliabilityEvent) -> list[dict[str, Any]]:
         """Analyze potential root causes based on event patterns"""
         causes = []
         
@@ -650,7 +664,7 @@ class RootCauseAgent(BaseAgent):
         
         return causes
     
-    def _identify_evidence(self, event: ReliabilityEvent) -> List[str]:
+    def _identify_evidence(self, event: ReliabilityEvent) -> list[str]:
         """Identify evidence patterns in the event data"""
         evidence = []
         
@@ -666,12 +680,13 @@ class RootCauseAgent(BaseAgent):
         
         return evidence
     
-    def _prioritize_investigation(self, causes: List[Dict[str, Any]]) -> str:
+    def _prioritize_investigation(self, causes: list[dict[str, Any]]) -> str:
         """Determine investigation priority"""
         for cause in causes:
             if "Database" in cause["cause"] or "Resource Exhaustion" in cause["cause"]:
                 return "HIGH"
         return "MEDIUM"
+
 
 class PredictiveAgent(BaseAgent):
     """Specialized agent for predictive analytics"""
@@ -681,7 +696,7 @@ class PredictiveAgent(BaseAgent):
         self.engine = engine
         logger.info("Initialized PredictiveAgent")
     
-    async def analyze(self, event: ReliabilityEvent) -> Dict[str, Any]:
+    async def analyze(self, event: ReliabilityEvent) -> dict[str, Any]:
         """Perform predictive analysis for future risks"""
         try:
             event_data = {
@@ -710,9 +725,10 @@ class PredictiveAgent(BaseAgent):
                 'recommendations': [f"Analysis error: {str(e)}"]
             }
 
+
 # FIXED: Add circuit breaker for agent resilience
 @circuit(failure_threshold=3, recovery_timeout=30, name="agent_circuit_breaker")
-async def call_agent_with_protection(agent: BaseAgent, event: ReliabilityEvent) -> Dict[str, Any]:
+async def call_agent_with_protection(agent: BaseAgent, event: ReliabilityEvent) -> dict[str, Any]:
     """
     Call agent with circuit breaker protection
     
@@ -731,14 +747,15 @@ async def call_agent_with_protection(agent: BaseAgent, event: ReliabilityEvent) 
         logger.error(f"Agent {agent.specialization.value} error: {e}", exc_info=True)
         raise
 
+
 class OrchestrationManager:
     """Orchestrates multiple specialized agents for comprehensive analysis"""
     
     def __init__(
         self,
-        detective: Optional[AnomalyDetectionAgent] = None,
-        diagnostician: Optional[RootCauseAgent] = None,
-        predictive: Optional[PredictiveAgent] = None
+        detective: AnomalyDetectionAgent | None = None,
+        diagnostician: RootCauseAgent | None = None,
+        predictive: PredictiveAgent | None = None
     ):
         """
         Initialize orchestration manager
@@ -752,7 +769,7 @@ class OrchestrationManager:
         }
         logger.info(f"Initialized OrchestrationManager with {len(self.agents)} agents")
     
-    async def orchestrate_analysis(self, event: ReliabilityEvent) -> Dict[str, Any]:
+    async def orchestrate_analysis(self, event: ReliabilityEvent) -> dict[str, Any]:
         """
         Coordinate multiple agents for comprehensive analysis
         
@@ -767,7 +784,7 @@ class OrchestrationManager:
             agent_specs.append(spec)
         
         # FIXED: Parallel execution with global timeout
-        agent_results = {}
+        agent_results: dict[str, Any] = {}
         
         try:
             # Run all agents in parallel with global timeout
@@ -777,7 +794,7 @@ class OrchestrationManager:
             )
             
             # Process results
-            for spec, result in zip(agent_specs, results):
+            for spec, result in zip(agent_specs, results, strict=False):
                 if isinstance(result, Exception):
                     logger.error(f"Agent {spec.value} failed: {result}")
                     continue
@@ -795,8 +812,8 @@ class OrchestrationManager:
     def _synthesize_agent_findings(
         self,
         event: ReliabilityEvent,
-        agent_results: Dict
-    ) -> Dict[str, Any]:
+        agent_results: dict
+    ) -> dict[str, Any]:
         """Combine insights from all specialized agents"""
         detective_result = agent_results.get(AgentSpecialization.DETECTIVE.value)
         diagnostician_result = agent_results.get(AgentSpecialization.DIAGNOSTICIAN.value)
@@ -832,10 +849,10 @@ class OrchestrationManager:
     
     def _prioritize_actions(
         self,
-        detection_actions: List[str],
-        diagnosis_actions: List[str],
-        predictive_actions: List[str]
-    ) -> List[str]:
+        detection_actions: list[str],
+        diagnosis_actions: list[str],
+        predictive_actions: list[str]
+    ) -> list[str]:
         """Combine and prioritize actions from multiple agents"""
         all_actions = detection_actions + diagnosis_actions + predictive_actions
         seen = set()
@@ -845,6 +862,7 @@ class OrchestrationManager:
                 seen.add(action)
                 unique_actions.append(action)
         return unique_actions[:5]
+
 
 # NOTE: Removed duplicate EnhancedReliabilityEngine class (using module version from engine/reliability.py)
 # NOTE: Removed duplicate ThreadSafeEventStore class (using module version from engine/reliability.py)
@@ -857,10 +875,9 @@ class RateLimiter:
         self.requests: deque = deque(maxlen=max_per_minute)
         self._lock = threading.RLock()
     
-    def is_allowed(self) -> Tuple[bool, str]:
+    def is_allowed(self) -> tuple[bool, str]:
         """Check if request is allowed"""
         with self._lock:
-            import datetime  # Import here since we removed the global import
             now = datetime.datetime.now(datetime.timezone.utc)
             
             # Remove requests older than 1 minute
@@ -875,6 +892,7 @@ class RateLimiter:
             # Add current request
             self.requests.append(now)
             return True, ""
+
 
 rate_limiter = RateLimiter()
 
@@ -1082,7 +1100,7 @@ def create_enhanced_ui():
             gr.Markdown("\n\n".join(policy_info))
         
         # Scenario change handler
-        def on_scenario_change(scenario_name: str) -> Dict[str, Any]:  # FIXED: Add type annotations
+        def on_scenario_change(scenario_name: str) -> dict[str, Any]:
             """Update input fields when demo scenario is selected"""
             if scenario_name == "Manual Entry":
                 return {
@@ -1110,7 +1128,7 @@ def create_enhanced_ui():
             }
         
         # Reset metrics handler
-        def reset_metrics() -> Tuple[int, int, float, float, float, float]:  # FIXED: Add type annotations
+        def reset_metrics() -> tuple[int, int, float, float, float, float]:
             """Reset business metrics for demo purposes"""
             get_business_metrics().reset()
             return 0, 0, 0.0, 0.0, 2.3, 83.6
@@ -1141,9 +1159,9 @@ def create_enhanced_ui():
             latency: float,
             error_rate: float,
             throughput: float,
-            cpu_util: Optional[float],
-            memory_util: Optional[float]
-        ) -> Tuple[str, Dict[str, Any], Dict[str, Any], Any, int, int, float, float, float, float]:  # FIXED: Add return type
+            cpu_util: float | None,
+            memory_util: float | None
+        ) -> tuple[str, dict[str, Any], dict[str, Any], Any, int, int, float, float, float, float]:
             """
             Async event handler - uses Gradio's native async support
             
@@ -1232,13 +1250,13 @@ def create_enhanced_ui():
                 if get_engine().event_store.count() == 0:
                     print('DEBUG: No events in store, adding demo events...')
                     from .models import ReliabilityEvent, EventSeverity
-                    for j in range(3):
+                    for _ in range(3):
                         demo_event = ReliabilityEvent(
-                            component=f'demo-event-{j}',
-                            latency_p99=100 + j*150,
-                            error_rate=0.05 + j*0.08,
-                            throughput=1000 + j*300,
-                            severity=EventSeverity.HIGH if j > 1 else EventSeverity.MEDIUM
+                            component=f'demo-event-{_}',
+                            latency_p99=100 + _*150,
+                            error_rate=0.05 + _*0.08,
+                            throughput=1000 + _*300,
+                            severity=EventSeverity.HIGH if _ > 1 else EventSeverity.MEDIUM
                         )
                         get_engine().event_store.add(demo_event)
                     print(f'DEBUG: Added demo events. Total now: {get_engine().event_store.count()}')
