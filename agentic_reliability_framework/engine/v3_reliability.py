@@ -16,7 +16,7 @@ from .reliability import EnhancedReliabilityEngine as V2Engine
 from .mcp_server import MCPServer
 from ..config import config
 from ..models import ReliabilityEvent
-from .interfaces import ReliabilityEngineProtocol, RAGProtocol, MCPProtocol
+from .interfaces import RAGProtocol, MCPProtocol  # Remove ReliabilityEngineProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -548,7 +548,7 @@ class V3ReliabilityEngine(V2Engine):
 def create_v3_engine(
     rag_graph: Optional[RAGProtocol] = None,
     mcp_server: Optional[MCPProtocol] = None
-) -> Optional[V3ReliabilityEngine]:
+) -> Optional['V3ReliabilityEngine']:  # Use forward reference
     """
     Factory function to create V3 engine with optional dependencies
     
@@ -575,10 +575,19 @@ def create_v3_engine(
             return None
         
         # Cast protocols to concrete types for V3ReliabilityEngine
-        rag_concrete = cast(RAGGraphMemory, rag_graph)
-        mcp_concrete = cast(MCPServer, mcp_server)
+        from .mcp_server import MCPServer
+        from ..memory.rag_graph import RAGGraphMemory
         
-        return V3ReliabilityEngine(rag_graph=rag_concrete, mcp_server=mcp_concrete)
+        # Check types and cast
+        if not isinstance(rag_graph, RAGGraphMemory):
+            logger.warning(f"RAG graph has unexpected type: {type(rag_graph)}")
+            return None
+            
+        if not isinstance(mcp_server, MCPServer):
+            logger.warning(f"MCP server has unexpected type: {type(mcp_server)}")
+            return None
+        
+        return V3ReliabilityEngine(rag_graph=rag_graph, mcp_server=mcp_server)
         
     except ImportError as e:
         logger.error(f"Error creating V3 engine: {e}")
