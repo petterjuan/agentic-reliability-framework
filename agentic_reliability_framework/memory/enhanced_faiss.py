@@ -5,7 +5,7 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union, cast
 import asyncio
 from numpy.typing import NDArray
 
@@ -104,7 +104,7 @@ class EnhancedFAISSIndex:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            # FIX FOR LINE 176: Ensure we convert to Python float properly
+            # FIX: Proper numpy scalar to Python float conversion
             min_distance_value: float
             if len(dist_result) > 0:
                 min_val = np.min(dist_result)
@@ -172,14 +172,20 @@ class EnhancedFAISSIndex:
                 text = self._get_text_by_index(int(idx))
                 
                 if text:
-                    # FIX FOR LINE 176: Use .item() to safely convert numpy types to Python float
-                    distance_float = float(distance.item()) if hasattr(distance, 'item') else float(distance)
+                    # FIX: Use .item() to safely convert numpy types to Python float
+                    distance_obj = distance
+                    distance_float: float
+                    if hasattr(distance_obj, 'item'):
+                        distance_float = float(distance_obj.item())
+                    else:
+                        distance_float = float(distance_obj)
+                    
                     similarity_float = float(1.0 / (1.0 + distance_float))
                     
                     results.append({
                         "index": int(idx),
                         "distance": distance_float,
-                        "similarity": similarity_float,  # Convert distance to similarity
+                        "similarity": similarity_float,
                         "text": text,
                         "rank": i + 1
                     })
@@ -210,14 +216,14 @@ class EnhancedFAISSIndex:
                 # Note: This might need adjustment based on actual implementation
                 embedding = loop.run_until_complete(
                     loop.run_in_executor(
-                        None,  # Use default executor
+                        None,
                         lambda: model.encode([text])
                     )
                 )
                 return np.array(embedding, dtype=np.float32)
         except Exception as e:
             logger.debug(f"Could not use embedding model: {e}")
-            # Don't use pass, just continue to fallback
+            # Continue to fallback
         
         # Fallback: create simple embedding from text hash
         # This is for development only - in production use proper embedding model
@@ -233,7 +239,6 @@ class EnhancedFAISSIndex:
         if norm > 0:
             embedding = embedding / norm
         
-        # FIX FOR LINE 302: Ensure this return is reachable by removing unreachable code
         return embedding[0]
     
     def _get_text_by_index(self, index: int) -> Optional[str]:
@@ -264,7 +269,6 @@ class EnhancedFAISSIndex:
                     if hasattr(vec, 'astype'):
                         vec = vec.astype(np.float32)
                     vectors.append(vec)
-                # FIX FOR LINE 313: Explicitly return with proper type
                 result = np.array(vectors, dtype=np.float32)
                 return result
             else:
@@ -305,7 +309,6 @@ class EnhancedFAISSIndex:
         
         return stats
     
-    # FIX FOR LINE 222: Explicit return type to avoid "no-any-return" error
     def search_vectors(self, query_vector: np.ndarray, k: int = 5) -> NDArray[np.int32]:
         """
         Search for similar vectors.
@@ -324,12 +327,19 @@ class EnhancedFAISSIndex:
             if query_vector.ndim == 1:
                 query_vector = query_vector.reshape(1, -1)
             
-            distances, indices = self.faiss.index.search(query_vector, min(k, self.faiss.index.ntotal))
+            # Get number of vectors in index
+            ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
+            actual_k = min(k, ntotal) if ntotal > 0 else 0
+            
+            if actual_k == 0:
+                return np.array([], dtype=np.int32)
+            
+            distances, indices = self.faiss.index.search(query_vector, actual_k)
             
             # Explicitly return int32 array to match declared return type
             if indices.size > 0:
                 # Use .astype() for explicit type conversion
-                result = indices.astype(np.int32)
+                result = indices[0].astype(np.int32)
                 return result
             else:
                 # Return empty array with explicit dtype
