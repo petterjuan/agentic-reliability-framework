@@ -16,7 +16,7 @@ from .reliability import EnhancedReliabilityEngine as V2Engine
 from .mcp_server import MCPServer
 from ..config import config
 from ..models import ReliabilityEvent
-from .interfaces import RAGProtocol, MCPProtocol  # Added for protocol types
+from .interfaces import ReliabilityEngineProtocol, RAGProtocol, MCPProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,6 @@ class V3ReliabilityEngine(V2Engine):
     @asynccontextmanager
     async def _v3_execution_context(self, event: ReliabilityEvent) -> Any:
         """Context manager for v3 feature execution with metrics"""
-        # Removed unused start_time variable
         try:
             yield
         finally:
@@ -104,6 +103,20 @@ class V3ReliabilityEngine(V2Engine):
             with self._v3_lock:
                 self.v3_metrics["rag_queries"] += 1
                 self.v3_metrics["similar_incidents_found"] += 1
+    
+    async def process_event(self, event: ReliabilityEvent) -> Dict[str, Any]:
+        """
+        Process event using v3 enhanced pipeline.
+        Required by ReliabilityEngineProtocol
+        """
+        return await self.process_event_enhanced(event=event)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Get engine statistics.
+        Required by ReliabilityEngineProtocol
+        """
+        return self.get_engine_stats()
     
     async def process_event_enhanced(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
@@ -138,7 +151,7 @@ class V3ReliabilityEngine(V2Engine):
             similar_incidents: List[Any] = []
             rag_context: Dict[str, Any] = {}
             
-            if self.rag and self.rag.is_enabled():
+            if self.rag and hasattr(self.rag, 'find_similar'):
                 async with self._v3_execution_context(event):
                     similar_incidents = self.rag.find_similar(event, k=3)
                     
@@ -178,14 +191,24 @@ class V3ReliabilityEngine(V2Engine):
             # 4. MCP EXECUTION BOUNDARY - Execute via MCP server
             mcp_results: List[Dict[str, Any]] = []
             
-            if enhanced_actions and self.mcp:
+            if enhanced_actions and self.mcp and hasattr(self.mcp, 'execute_tool'):
                 for action in enhanced_actions[:3]:  # Limit to top 3 actions
                     try:
                         mcp_request = self._create_mcp_request(action, event, similar_incidents, rag_context)
                         
                         # Execute via MCP
                         mcp_response = await self.mcp.execute_tool(mcp_request)
-                        mcp_response_dict = mcp_response.to_dict()  # FIXED: Convert to dict
+                        
+                        # Convert response to dict
+                        if hasattr(mcp_response, 'to_dict'):
+                            mcp_response_dict = mcp_response.to_dict()
+                        elif hasattr(mcp_response, 'dict'):
+                            mcp_response_dict = mcp_response.dict()
+                        elif isinstance(mcp_response, dict):
+                            mcp_response_dict = mcp_response
+                        else:
+                            mcp_response_dict = {"status": "unknown", "executed": False}
+                        
                         mcp_results.append(mcp_response_dict)
                         
                         # Update metrics
@@ -199,7 +222,7 @@ class V3ReliabilityEngine(V2Engine):
                             await self._record_outcome(
                                 incident_id=result.get("incident_id", ""),
                                 action=action,
-                                mcp_response=mcp_response_dict,  # FIXED: Pass dict, not object
+                                mcp_response=mcp_response_dict,
                                 event=event,
                                 similar_incidents=similar_incidents
                             )
@@ -214,13 +237,13 @@ class V3ReliabilityEngine(V2Engine):
             
             # Update final result with v3 enhancements
             result["v3_enhancements"] = {
-                "rag_enabled": self.rag.is_enabled() if self.rag else False,
-                "mcp_enabled": True,
+                "rag_enabled": bool(self.rag),
+                "mcp_enabled": bool(self.mcp),
                 "similar_incidents_found": len(similar_incidents),
                 "enhanced_actions_count": len(enhanced_actions),
                 "mcp_executions": len(mcp_results),
                 "mcp_successful": sum(1 for r in mcp_results if r.get("status") == "completed"),
-                "learning_updated": True if mcp_results else False,
+                "learning_updated": bool(mcp_results),
             }
             
             # Add detailed context if available
@@ -263,9 +286,11 @@ class V3ReliabilityEngine(V2Engine):
             return None
         
         try:
-            # Get most effective actions from RAG
-            effective_actions = self.rag.get_most_effective_actions(component, k=1)
-            return effective_actions[0] if effective_actions else None
+            # Try to get effective actions if method exists
+            if hasattr(self.rag, 'get_most_effective_actions'):
+                effective_actions = self.rag.get_most_effective_actions(component, k=1)
+                return effective_actions[0] if effective_actions else None
+            return None
         except Exception as e:
             logger.debug(f"Error getting most effective action: {e}")
             return None
@@ -369,12 +394,12 @@ class V3ReliabilityEngine(V2Engine):
         self, 
         incident_id: str, 
         action: Dict[str, Any], 
-        mcp_response: Dict[str, Any],  # FIXED: Changed from MCPResponse to dict
+        mcp_response: Dict[str, Any],
         event: ReliabilityEvent,
         similar_incidents: List[Any]
     ) -> None:
         """Record outcome for learning loop"""
-        if not self.rag or not self.rag.is_enabled():
+        if not self.rag:
             return
         
         try:
@@ -399,28 +424,29 @@ class V3ReliabilityEngine(V2Engine):
                     f"Based on {len(similar_incidents)} similar historical incidents"
                 )
             
-            # Store outcome in RAG
-            outcome_id = self.rag.store_outcome(
-                incident_id=incident_id,
-                actions_taken=actions_taken,
-                success=success,
-                resolution_time_minutes=resolution_time_minutes,
-                lessons_learned=lessons_learned if lessons_learned else None
-            )
-            
-            if outcome_id:
-                # Update learning state
-                self._update_learning_state(success, {
-                    "action": action.get("action"),
-                    "component": event.component,
-                    "similar_incidents": len(similar_incidents),
-                    "historical_confidence": action.get("historical_confidence", 0.0)
-                })
-                
-                logger.info(
-                    f"Recorded outcome {outcome_id} for incident {incident_id}: "
-                    f"success={success}, actions={actions_taken}"
+            # Store outcome in RAG if method exists
+            if hasattr(self.rag, 'store_outcome'):
+                outcome_id = self.rag.store_outcome(
+                    incident_id=incident_id,
+                    actions_taken=actions_taken,
+                    success=success,
+                    resolution_time_minutes=resolution_time_minutes,
+                    lessons_learned=lessons_learned if lessons_learned else None
                 )
+                
+                if outcome_id:
+                    # Update learning state
+                    self._update_learning_state(success, {
+                        "action": action.get("action"),
+                        "component": event.component,
+                        "similar_incidents": len(similar_incidents),
+                        "historical_confidence": action.get("historical_confidence", 0.0)
+                    })
+                    
+                    logger.info(
+                        f"Recorded outcome {outcome_id} for incident {incident_id}: "
+                        f"success={success}, actions={actions_taken}"
+                    )
             
         except Exception as e:
             logger.error(f"Error recording outcome: {e}", exc_info=True)
@@ -429,7 +455,7 @@ class V3ReliabilityEngine(V2Engine):
         self, 
         success: bool,
         context: Dict[str, Any]
-    ):
+    ) -> None:
         """Update learning state based on outcome"""
         if not config.learning_enabled:
             return
@@ -448,15 +474,15 @@ class V3ReliabilityEngine(V2Engine):
                 self.learning_state["failed_predictions"]
             )
             
-            if total_predictions % config.learning_min_data_points == 0:
-                self._extract_learning_patterns(context)
-                self.learning_state["total_learned_patterns"] += 1
-                self.v3_metrics["learning_updates"] += 1
+            if hasattr(config, 'learning_min_data_points'):
+                if total_predictions % config.learning_min_data_points == 0:
+                    self._extract_learning_patterns(context)
+                    self.learning_state["total_learned_patterns"] += 1
+                    self.v3_metrics["learning_updates"] += 1
     
-    def _extract_learning_patterns(self, context: Dict[str, Any]):
+    def _extract_learning_patterns(self, context: Dict[str, Any]) -> None:
         """Extract learning patterns from context"""
         # Placeholder for pattern extraction logic
-        # In production, this would use ML to identify patterns
         logger.debug("Extracting learning patterns from context")
     
     def get_v3_metrics(self) -> Dict[str, Any]:
@@ -478,17 +504,17 @@ class V3ReliabilityEngine(V2Engine):
             metrics["feature_status"] = {
                 "rag_available": self.rag is not None,
                 "mcp_available": self.mcp is not None,
-                "rag_enabled": config.rag_enabled,
-                "mcp_enabled": config.mcp_enabled,
-                "learning_enabled": config.learning_enabled,
-                "rollout_percentage": config.rollout_percentage,
+                "rag_enabled": getattr(config, 'rag_enabled', False),
+                "mcp_enabled": getattr(config, 'mcp_enabled', False),
+                "learning_enabled": getattr(config, 'learning_enabled', False),
+                "rollout_percentage": getattr(config, 'rollout_percentage', 0),
             }
             
             return metrics
     
     def get_engine_stats(self) -> Dict[str, Any]:
         """Get comprehensive engine statistics including v3"""
-        base_stats = super().get_engine_stats()
+        base_stats = super().get_engine_stats() if hasattr(super(), 'get_engine_stats') else {}
         
         # Add v3 metrics
         v3_stats = self.get_v3_metrics()
@@ -499,29 +525,29 @@ class V3ReliabilityEngine(V2Engine):
             "v3_features": v3_stats["v3_features_active"],
             "v3_metrics": v3_stats,
             "processing_version": "v3" if v3_stats["v3_features_active"] else "v2",
-            "rag_graph_stats": self.rag.get_graph_stats() if self.rag else None
+            "rag_graph_stats": self.rag.get_graph_stats() if self.rag and hasattr(self.rag, 'get_graph_stats') else None
         }
         
         return combined_stats
     
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Graceful shutdown of v3 engine"""
         logger.info("Shutting down V3ReliabilityEngine...")
         
         # Save any pending learning data
-        if config.learning_enabled:
+        if getattr(config, 'learning_enabled', False):
             logger.info(f"Saved {self.learning_state['total_learned_patterns']} learning patterns")
         
         # Call parent shutdown
-        super().shutdown()
+        super().shutdown() if hasattr(super(), 'shutdown') else None
         
         logger.info("V3ReliabilityEngine shutdown complete")
 
 
 # Factory function for backward compatibility
 def create_v3_engine(
-    rag_graph: Optional[RAGProtocol] = None,  # FIXED: Changed to protocol type
-    mcp_server: Optional[MCPProtocol] = None   # FIXED: Changed to protocol type
+    rag_graph: Optional[RAGProtocol] = None,
+    mcp_server: Optional[MCPProtocol] = None
 ) -> Optional[V3ReliabilityEngine]:
     """
     Factory function to create V3 engine with optional dependencies
@@ -548,7 +574,7 @@ def create_v3_engine(
             logger.warning("Cannot create V3 engine: missing dependencies")
             return None
         
-        # FIXED: Cast protocols to concrete types for V3ReliabilityEngine
+        # Cast protocols to concrete types for V3ReliabilityEngine
         rag_concrete = cast(RAGGraphMemory, rag_graph)
         mcp_concrete = cast(MCPServer, mcp_server)
         
