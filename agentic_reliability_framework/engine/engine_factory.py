@@ -44,13 +44,12 @@ def _create_v2_engine() -> ReliabilityEngineProtocol:
         from .reliability import EnhancedReliabilityEngine
         logger.info("Creating v2 reliability engine")
         engine = EnhancedReliabilityEngine()
-        return engine
+        # Cast to protocol - this tells mypy that EnhancedReliabilityEngine implements the protocol
+        from typing import cast
+        return cast(ReliabilityEngineProtocol, engine)
     
-    # Fallback to basic engine if Enhanced not available
-    from .reliability import ReliabilityEngine
-    logger.info("Creating basic reliability engine")
-    engine = ReliabilityEngine()
-    return engine
+    # If EnhancedReliabilityEngine is not available, raise error
+    raise ImportError("EnhancedReliabilityEngine not available")
 
 
 def _create_v3_engine() -> ReliabilityEngineProtocol:
@@ -69,7 +68,10 @@ def _create_v3_engine() -> ReliabilityEngineProtocol:
             return _create_v2_engine()
         
         logger.info("Creating v3 reliability engine with RAG and MCP")
-        return V3ReliabilityEngine(rag_graph=rag_graph, mcp_server=mcp_server)
+        engine = V3ReliabilityEngine(rag_graph=rag_graph, mcp_server=mcp_server)
+        # Cast to protocol
+        from typing import cast
+        return cast(ReliabilityEngineProtocol, engine)
         
     except ImportError as e:
         logger.warning(f"v3 engine not available: {e}")
