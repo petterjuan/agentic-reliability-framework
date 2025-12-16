@@ -1,6 +1,8 @@
-# ruff.toml — compatible with Ruff >=0.14
+# ruff.toml — compatible with ruff >= 0.14.0 (works with 0.14.9)
+# NOTE: avoid `indent-width` here — older/newer ruff releases differ on that key.
+
 line-length = 88
-target-version = "py310"
+target-version = "py312"
 builtins = ["_"]
 exclude = [".venv", "build", "dist", "__pycache__", ".ruff_cache"]
 extend-exclude = ["tests", "src/bad.py"]
@@ -10,12 +12,14 @@ force-exclude = true
 respect-gitignore = true
 output-format = "grouped"
 unsafe-fixes = true
+preview = true
 
 [format]
+# Keep docstring formatting settings here.
 docstring-code-format = true
-docstring-code-line-length = 60
+docstring-code-line-length = "dynamic"
 indent-style = "space"
-indent-width = 4
+# (intentionally omitting `indent-width` to avoid the parse error in this Ruff version)
 
 [analyze]
 detect-string-imports = true
@@ -24,4 +28,3 @@ exclude = ["generated"]
 preview = true
 string-imports-min-dots = 2
 type-checking-imports = true
-include-dependencies = { "foo/bar.py" = ["foo/baz/*.py"] }
