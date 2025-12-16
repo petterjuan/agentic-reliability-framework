@@ -3,7 +3,7 @@ Engine factory for creating v2/v3 engines without circular imports
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from contextlib import suppress
 
 from ..config import config
@@ -89,31 +89,32 @@ class EngineFactory:
     @staticmethod
     def get_engine_info() -> Dict[str, Any]:
         """Get engine information"""
+        # FIXED: Use available functions from lazy.py instead of non-existent loader attributes
         from ..lazy import (
-            rag_graph_loader, 
-            mcp_server_loader, 
-            engine_loader
+            is_engine_loaded,
+            is_rag_loaded,
+            is_mcp_loaded,
+            get_rag_graph,
+            get_mcp_server
         )
         
         # Check actual types loaded
         rag_type = "unknown"
         mcp_type = "unknown"
         
-        if rag_graph_loader.is_loaded:
-            from ..lazy import get_rag_graph
+        if is_rag_loaded():
             rag_instance = get_rag_graph()
             rag_type = type(rag_instance).__name__ if rag_instance else "None"
             
-        if mcp_server_loader.is_loaded:
-            from ..lazy import get_mcp_server
+        if is_mcp_loaded():
             mcp_instance = get_mcp_server()
             mcp_type = type(mcp_instance).__name__ if mcp_instance else "None"
         
         return {
-            "engine_loaded": engine_loader.is_loaded,
-            "rag_loaded": rag_graph_loader.is_loaded,
+            "engine_loaded": is_engine_loaded(),
+            "rag_loaded": is_rag_loaded(),
             "rag_type": rag_type,
-            "mcp_loaded": mcp_server_loader.is_loaded,
+            "mcp_loaded": is_mcp_loaded(),
             "mcp_type": mcp_type,
             "v3_features_enabled": {
                 "rag": config.rag_enabled,
@@ -122,8 +123,8 @@ class EngineFactory:
                 "rollout": config.rollout_percentage,
             },
             "engine_type": "v3" if (
-                rag_graph_loader.is_loaded and 
-                mcp_server_loader.is_loaded and 
+                is_rag_loaded() and 
+                is_mcp_loaded() and 
                 config.rollout_percentage > 0
             ) else "v2",
         }
