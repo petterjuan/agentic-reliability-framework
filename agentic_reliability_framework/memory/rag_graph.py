@@ -927,7 +927,7 @@ class RAGGraphMemory:
                 "failure_threshold": config.safety_guardrails.get("circuit_breaker", {}).get("failures", 5)
             }
             
-            # FIXED: Remove redundant cast, just return the dict directly
+            # FIXED LINE 824: Remove redundant cast - return dict directly
             return {
                 "incident_nodes": incident_count,
                 "outcome_nodes": len(self.outcome_nodes),
