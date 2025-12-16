@@ -2,6 +2,7 @@
 Simple test to verify ARF works after bug fix
 """
 import asyncio
+
 from agentic_reliability_framework import get_engine
 
 async def main():
