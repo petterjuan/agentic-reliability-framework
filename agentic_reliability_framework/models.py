@@ -114,4 +114,57 @@ class ReliabilityEvent(BaseModel):
         components = [
             self.component,
             self.service_mesh,
-            f"{self.late
+            f"{self.latency_p99:.2f}",
+            f"{self.error_rate:.4f}",
+            f"{self.throughput:.2f}"
+        ]
+        fingerprint_str = ":".join(components)
+        return hashlib.sha256(fingerprint_str.encode()).hexdigest()
+
+    def model_post_init(self, __context: Optional[dict] = None) -> None:
+        """Validate cross-field constraints after initialization"""
+        upstream_set: set[str] = set(self.upstream_deps)
+        downstream_set: set[str] = set(self.downstream_deps)
+        circular: set[str] = upstream_set & downstream_set
+        if circular:
+            raise ValueError(
+                f"Circular dependencies detected: {circular}. "
+                "A component cannot be both upstream and downstream."
+            )
+
+
+class HealingPolicy(BaseModel):
+    """Policy definition for automated healing actions"""
+    name: str = Field(min_length=1, max_length=255, description="Policy name")
+    conditions: List[PolicyCondition] = Field(min_length=1, description="List of conditions (all must match)")
+    actions: List[HealingAction] = Field(min_length=1, description="Actions to execute when policy triggers")
+    priority: int = Field(ge=1, le=5, default=3, description="Policy priority (1=highest, 5=lowest)")
+    cool_down_seconds: int = Field(ge=0, default=300, description="Cooldown period between executions")
+    enabled: bool = Field(default=True, description="Whether policy is active")
+    max_executions_per_hour: int = Field(ge=1, default=10, description="Rate limit: max executions per hour")
+
+    model_config = ConfigDict(frozen=True)
+
+
+class AnomalyResult(BaseModel):
+    """Result from anomaly detection"""
+    is_anomaly: bool
+    confidence: float = Field(ge=0, le=1)
+    anomaly_score: float = Field(ge=0, le=1)
+    affected_metrics: List[str] = Field(default_factory=list)
+    detection_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    model_config = ConfigDict(frozen=True)
+
+
+class ForecastResult(BaseModel):
+    """Result from predictive forecasting"""
+    metric: str
+    predicted_value: float
+    confidence: float = Field(ge=0, le=1)
+    trend: Literal["increasing", "decreasing", "stable"]
+    time_to_threshold: Optional[float] = Field(default=None, description="Minutes until threshold breach")
+    risk_level: Literal["low", "medium", "high", "critical"]
+    forecast_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    model_config = ConfigDict(frozen=True)
