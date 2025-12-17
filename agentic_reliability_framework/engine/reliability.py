@@ -1,4 +1,10 @@
+"""
+V2 Reliability Engine - Core anomaly detection and healing action generation.
+Base implementation for ARF v2 functionality.
+"""
+
 from __future__ import annotations
+
 import asyncio
 import logging
 import threading
@@ -7,46 +13,42 @@ from typing import List, Dict, Any, Optional, Union, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from agentic_reliability_framework.memory.rag_graph import RAGGraphMemory
-from agentic_reliability_framework.mcp.server import MCPServer
-from agentic_reliability_framework.policy.actions import HealingAction
-from agentic_reliability_framework.models import ReliabilityEvent, EventSeverity
-from agentic_reliability_framework.config import config
+from ..models import ReliabilityEvent, EventSeverity
+from ..config import config
 
 logger = logging.getLogger(__name__)
 
 # Default thresholds
 DEFAULT_ERROR_THRESHOLD = 0.05
 DEFAULT_LATENCY_THRESHOLD = 150.0
-DEFAULT_LEARNING_MIN_DATA_POINTS = 5
 
 
 @dataclass
-class MCPResponse:
-    """MCP response data structure"""
-    executed: bool = False
-    status: str = "unknown"
-    result: Dict[str, Any] = field(default_factory=dict)
-    message: str = ""
+class V2HealingAction:
+    """V2 healing action data structure"""
+    action: str
+    component: str
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    confidence: float = 0.0
+    description: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            "executed": self.executed,
-            "status": self.status,
-            "result": self.result,
-            "message": self.message
+            "action": self.action,
+            "component": self.component,
+            "parameters": self.parameters,
+            "confidence": self.confidence,
+            "description": self.description,
+            "metadata": self.metadata
         }
 
 
-class V3ReliabilityEngine:
-    """Enhanced engine with learning capability"""
+class V2ReliabilityEngine:
+    """V2 reliability engine with basic anomaly detection and healing"""
 
-    def __init__(self, rag_graph: Optional[RAGGraphMemory] = None,
-                 mcp_server: Optional[MCPServer] = None):
-        self.rag: Optional[RAGGraphMemory] = rag_graph
-        self.mcp: Optional[MCPServer] = mcp_server
-        self.policy_engine: Any = None  # Replace with actual PolicyEngine type
+    def __init__(self):
         self._lock = threading.RLock()
         self._start_time = time.time()
         
@@ -54,14 +56,23 @@ class V3ReliabilityEngine:
         self.metrics: Dict[str, Union[int, float]] = {
             "events_processed": 0,
             "anomalies_detected": 0,
-            "rag_queries": 0,
-            "mcp_executions": 0,
-            "successful_outcomes": 0,
-            "failed_outcomes": 0,
+            "healing_actions_generated": 0,
         }
         
-        # Initialize event store directly
+        # Initialize event store
         self.event_store = ThreadSafeEventStore()
+
+    async def process_event(self, event: ReliabilityEvent) -> Dict[str, Any]:
+        """
+        Process event using v2 pipeline
+        
+        Args:
+            event: ReliabilityEvent to process
+            
+        Returns:
+            Dictionary with processing results
+        """
+        return await self._v2_process(event)
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Original v2 processing logic"""
@@ -77,7 +88,7 @@ class V3ReliabilityEngine:
             severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
             severity_numeric: int
             
-            # FIXED: Proper enum value handling
+            # Proper enum value handling
             if isinstance(severity_value, str):
                 # Map string severity to numeric value
                 severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -122,6 +133,7 @@ class V3ReliabilityEngine:
                 self.metrics["events_processed"] += 1
                 if is_anomaly:
                     self.metrics["anomalies_detected"] += 1
+                    self.metrics["healing_actions_generated"] += len(result["healing_actions"])
             
             return result
             
@@ -166,7 +178,7 @@ class V3ReliabilityEngine:
         severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
         severity_numeric: int
         
-        # FIXED: Proper enum value handling (same as above)
+        # Proper enum value handling (same as above)
         if isinstance(severity_value, str):
             severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
             severity_numeric = severity_map.get(severity_value.lower(), 1)
@@ -202,18 +214,23 @@ class V3ReliabilityEngine:
         actions.sort(key=lambda x: float(x.get("confidence", 0.0)), reverse=True)
         return actions
 
-    # ... [rest of the file remains unchanged - keep all other methods] ...
+    def get_stats(self) -> Dict[str, Any]:
+        """Get engine statistics"""
+        return {
+            **self.metrics,
+            "uptime_seconds": time.time() - self._start_time,
+            "engine_version": "v2",
+            "event_store_count": self.event_store.count(),
+        }
 
-# Factory function for compatibility
-def EnhancedReliabilityEngine(*args: Any, **kwargs: Any) -> V3ReliabilityEngine:
-    """Alias for V3ReliabilityEngine for backward compatibility"""
-    logger.warning("EnhancedReliabilityEngine is deprecated, use V3ReliabilityEngine instead")
-    return V3ReliabilityEngine(*args, **kwargs)
+    def get_engine_stats(self) -> Dict[str, Any]:
+        """Alias for get_stats"""
+        return self.get_stats()
 
 
-# Thread-safe event store for compatibility
+# Thread-safe event store
 class ThreadSafeEventStore:
-    """Thread-safe event store for compatibility"""
+    """Thread-safe event store for v2 engine"""
     def __init__(self) -> None:
         self._events: List[Any] = []
         self._lock = threading.RLock()
@@ -245,3 +262,9 @@ class ThreadSafeEventStore:
         """Count events in store"""
         with self._lock:
             return len(self._events)
+
+
+# Factory function for backward compatibility
+def ReliabilityEngine(*args: Any, **kwargs: Any) -> V2ReliabilityEngine:
+    """Factory function for v2 engine"""
+    return V2ReliabilityEngine(*args, **kwargs)
