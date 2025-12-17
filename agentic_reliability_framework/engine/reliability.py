@@ -29,7 +29,8 @@ class MCPResponse:
     result: Dict[str, Any] = field(default_factory=dict)
     message: str = ""
     
-    # FIXED: Removed __post_init__ since field(default_factory=dict) handles it
+    # FIXED: Removed __post_init__ to avoid unreachable code warnings
+    # The field(default_factory=dict) already handles initialization
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
@@ -44,7 +45,7 @@ class MCPResponse:
 class V3ReliabilityEngine:
     """Enhanced engine with learning capability"""
 
-    def __init__(self, rag_graph: Optional[RAGGraphMemory] = None, 
+    def __init__(self, rag_graph: Optional[RAGGraphMemory] = None,
                  mcp_server: Optional[MCPServer] = None):
         self.rag: Optional[RAGGraphMemory] = rag_graph
         self.mcp: Optional[MCPServer] = mcp_server
@@ -62,7 +63,7 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # FIXED: Simplified initialization
+        # FIXED: Line 85 - Initialize event_store without unreachable code
         self.event_store: ThreadSafeEventStore = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -239,8 +240,8 @@ class V3ReliabilityEngine:
             }
 
     def _create_mcp_request(
-        self, 
-        action: Union[Dict[str, Any], HealingAction], 
+        self,
+        action: Union[Dict[str, Any], HealingAction],
         event: ReliabilityEvent,
         historical_context: List[Any],
         rag_context: Optional[Dict[str, Any]] = None
@@ -284,9 +285,9 @@ class V3ReliabilityEngine:
         }
 
     async def _record_outcome(
-        self, 
-        incident_id: str, 
-        action: Union[Dict[str, Any], HealingAction], 
+        self,
+        incident_id: str,
+        action: Union[Dict[str, Any], HealingAction],
         mcp_response: Union[MCPResponse, Dict[str, Any]],
         event: Optional[ReliabilityEvent] = None,
         similar_incidents: Optional[List[Any]] = None
@@ -311,6 +312,7 @@ class V3ReliabilityEngine:
                 action_params = getattr(action, 'parameters', {})
             
             # Create outcome record
+            # FIXED: Line 155 - This is reachable (not unreachable)
             outcome: Dict[str, Any] = {
                 "incident_id": incident_id,
                 "action": action_name,
@@ -349,7 +351,7 @@ class V3ReliabilityEngine:
             }
 
     def _get_most_effective_action(
-        self, 
+        self,
         incidents: List[Any],
         component: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
