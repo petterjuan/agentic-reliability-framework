@@ -298,41 +298,41 @@ class EnhancedFAISSIndex:
         
         return stats
     
-    def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> np.ndarray:
-        """
-        Search for similar vectors.
+def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> np.ndarray:
+    """
+    Search for similar vectors.
+    
+    Args:
+        query_vector: Query vector
+        k: Number of results to return
         
-        Args:
-            query_vector: Query vector
-            k: Number of results to return
-            
-        Returns:
-            np.ndarray: Array of indices of similar vectors
-        """
-        try:
-            if not isinstance(query_vector, np.ndarray):
-                query_vector_array: NDArray[np.float32] = np.array(query_vector, dtype=np.float32)
-            else:
-                query_vector_array = query_vector.astype(np.float32)
-            
-            if query_vector_array.ndim == 1:
-                query_vector_array = query_vector_array.reshape(1, -1)
-            
-            # Get number of vectors in index
-            ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
-            
-            if ntotal == 0:
-                return np.array([], dtype=np.int32)
-            
-            # This code is reachable when ntotal > 0
-            actual_k = min(k, ntotal)
-            distances, indices = self.faiss.index.search(query_vector_array, actual_k)
-            
-            if indices.size > 0:
-                return indices[0].astype(np.int32)
-            else:
-                return np.array([], dtype=np.int32)
-                
-        except Exception as e:
-            logger.error(f"Error searching vectors: {e}")
+    Returns:
+        np.ndarray: Array of indices of similar vectors (int32)
+    """
+    try:
+        if not isinstance(query_vector, np.ndarray):
+            query_vector_array: np.ndarray = np.array(query_vector, dtype=np.float32)
+        else:
+            query_vector_array = query_vector.astype(np.float32)
+        
+        if query_vector_array.ndim == 1:
+            query_vector_array = query_vector_array.reshape(1, -1)
+        
+        # Get number of vectors in index
+        ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
+        
+        if ntotal == 0:
             return np.array([], dtype=np.int32)
+        
+        # This code is reachable when ntotal > 0
+        actual_k = min(k, ntotal)
+        distances, indices = self.faiss.index.search(query_vector_array, actual_k)
+        
+        if indices.size > 0:
+            return indices[0].astype(np.int32)
+        else:
+            return np.array([], dtype=np.int32)
+            
+    except Exception as e:
+        logger.error(f"Error searching vectors: {e}")
+        return np.array([], dtype=np.int32)
