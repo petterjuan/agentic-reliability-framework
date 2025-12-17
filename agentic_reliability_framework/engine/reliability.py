@@ -59,7 +59,7 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # FIXED: Line 83 - Initialize directly, no branching
+        # FIXED: Line 83 - Simple initialization
         self.event_store = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -203,10 +203,9 @@ class V3ReliabilityEngine:
             # Calculate most common action
             most_common_action: Optional[str] = None
             if action_counts:
-                # FIXED: Line 222 - Handle tuple correctly
+                # FIXED: Line 222 - Extract tuple properly
                 max_pair = max(action_counts.items(), key=lambda x: x[1])
-                if max_pair:
-                    most_common_action = max_pair[0]
+                most_common_action = max_pair[0]  # This is a string
             
             # Calculate most effective action
             most_effective_action: Optional[str] = None
@@ -220,8 +219,7 @@ class V3ReliabilityEngine:
                 
                 if action_success_rates:
                     max_pair = max(action_success_rates.items(), key=lambda x: x[1])
-                    if max_pair:
-                        most_effective_action = max_pair[0]
+                    most_effective_action = max_pair[0]  # This is a string
             
             return {
                 "total_incidents": total_incidents,
@@ -297,11 +295,12 @@ class V3ReliabilityEngine:
     ) -> Dict[str, Any]:
         """Record outcome of MCP execution"""
         # FIXED: Line 154 - Remove try block to avoid unreachable code
+        # Convert mcp_response to dict
         response_dict: Dict[str, Any]
         if isinstance(mcp_response, MCPResponse):
             response_dict = mcp_response.to_dict()
         else:
-            response_dict = mcp_response
+            response_dict = mcp_response  # type: ignore
         
         # Determine success
         success = response_dict.get("status") == "completed" or response_dict.get("executed", False)
