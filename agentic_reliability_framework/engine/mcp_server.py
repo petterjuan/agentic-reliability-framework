@@ -801,8 +801,10 @@ class MCPServer:
             errors.append(f"Unknown tool: {request.tool}")
 
         # Check component
-        if not request.component or len(request.component) > 255:
-            errors.append("Invalid component name")
+        if not request.component:
+            errors.append("Component name is required")
+        elif len(request.component) > 255:
+            errors.append("Component name too long (max 255 characters)")
 
         # Check justification
         if len(request.justification) < 10:
@@ -812,11 +814,14 @@ class MCPServer:
         if not isinstance(request.parameters, dict):
             errors.append("Parameters must be a dictionary")
 
-        return {
+        # Always return a result - no early returns
+        result: Dict[str, Any] = {
             "valid": len(errors) == 0,
             "errors": errors,
             "warnings": []
         }
+        
+        return result
 
     def _check_permissions(self, request: MCPRequest) -> bool:
         """Check permissions for request"""
@@ -1090,10 +1095,8 @@ class MCPServer:
         Returns:
             MCPResponse with result
         """
-        # 1. Check if approval request exists - clear early exit
-        request_exists = approval_id in self._approval_requests
-        
-        if not request_exists:
+        # Direct dictionary check without intermediate variable
+        if approval_id not in self._approval_requests:
             # Create a dummy request for error response
             dummy_request = MCPRequest(
                 request_id=approval_id,
@@ -1107,10 +1110,10 @@ class MCPServer:
                 f"Approval request not found: {approval_id}"
             )
         
-        # 2. Retrieve and remove the request (this is reachable when request_exists is True)
+        # Retrieve and remove the request
         request = self._approval_requests.pop(approval_id)
         
-        # 3. Handle rejection case
+        # Handle rejection case
         if not approved:
             return MCPResponse(
                 request_id=request.request_id,
@@ -1119,7 +1122,7 @@ class MCPServer:
                 executed=False
             )
         
-        # 4. Handle approval - create new request with autonomous mode
+        # Handle approval - create new request with autonomous mode
         new_request = MCPRequest(
             request_id=request.request_id,
             tool=request.tool,
@@ -1130,7 +1133,7 @@ class MCPServer:
             metadata=request.metadata
         )
         
-        # 5. Execute in autonomous mode
+        # Execute in autonomous mode
         return await self._handle_autonomous_mode(new_request)
 
     def get_server_stats(self) -> Dict[str, Any]:
