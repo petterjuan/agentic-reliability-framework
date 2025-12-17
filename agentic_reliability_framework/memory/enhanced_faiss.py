@@ -5,7 +5,7 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Union, cast
+from typing import List, Dict, Any, Optional, Tuple, Union
 import asyncio
 from numpy.typing import NDArray
 
@@ -34,8 +34,8 @@ class EnhancedFAISSIndex:
         logger.info("Initialized EnhancedFAISSIndex for v3 RAG search")
     
     def search(
-        self, 
-        query_vector: Union[NDArray[np.float32], List[float], np.ndarray], 
+        self,
+        query_vector: Union[NDArray[np.float32], List[float], np.ndarray],
         k: int = 5
     ) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """
@@ -61,8 +61,8 @@ class EnhancedFAISSIndex:
             return self._safe_search(query_vector, k)
     
     def _safe_search(
-        self, 
-        query_vector: Union[NDArray[np.float32], List[float], np.ndarray], 
+        self,
+        query_vector: Union[NDArray[np.float32], List[float], np.ndarray],
         k: int
     ) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """Perform search with error handling"""
@@ -98,23 +98,24 @@ class EnhancedFAISSIndex:
             # Ensure we have valid arrays
             if distances.size > 0 and indices.size > 0:
                 # Extract first row if we have a 2D array
-                dist_result = distances[0].astype(np.float32) 
+                dist_result = distances[0].astype(np.float32)
                 idx_result = indices[0].astype(np.int64)
             else:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            # FIXED: Type-safe float conversion
+            # FIXED: Line 196 - Proper type checking and conversion
             if len(dist_result) > 0:
                 min_val = np.min(dist_result)
-                # Convert numpy scalar to Python float safely
-                if hasattr(min_val, 'item'):
-                    min_distance_value = float(min_val.item())
-                elif isinstance(min_val, (int, float, np.integer, np.floating)):
+                # Type-safe conversion to float
+                if isinstance(min_val, (np.integer, np.floating)):
+                    min_distance_value = float(min_val)
+                elif isinstance(min_val, (int, float)):
                     min_distance_value = float(min_val)
                 else:
-                    # Fallback for any other type
+                    # For any other type, use 0.0 as fallback
                     min_distance_value = 0.0
+                    logger.warning(f"Cannot convert type {type(min_val)} to float, using 0.0")
                 
                 logger.debug(
                     f"FAISS search completed: k={actual_k}, "
@@ -129,8 +130,8 @@ class EnhancedFAISSIndex:
             raise RuntimeError(f"Search failed: {str(e)}")
     
     async def search_async(
-        self, 
-        query_vector: Union[NDArray[np.float32], List[float], np.ndarray], 
+        self,
+        query_vector: Union[NDArray[np.float32], List[float], np.ndarray],
         k: int = 5
     ) -> Tuple[NDArray[np.float32], NDArray[np.int64]]:
         """
@@ -140,7 +141,7 @@ class EnhancedFAISSIndex:
         """
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, 
+            None,
             lambda: self.search(query_vector, k)
         )
     
@@ -172,14 +173,13 @@ class EnhancedFAISSIndex:
                 text = self._get_text_by_index(int(idx))
                 
                 if text:
-                    # FIXED: Type-safe float conversion
+                    # Type-safe float conversion
                     distance_float: float
-                    if hasattr(distance, 'item'):
-                        distance_float = float(distance.item())
-                    elif isinstance(distance, (int, float, np.integer, np.floating)):
+                    if isinstance(distance, (np.integer, np.floating)):
+                        distance_float = float(distance)
+                    elif isinstance(distance, (int, float)):
                         distance_float = float(distance)
                     else:
-                        # Fallback
                         distance_float = 0.0
                     
                     similarity_float = float(1.0 / (1.0 + distance_float))
@@ -261,7 +261,9 @@ class EnhancedFAISSIndex:
             if hasattr(self.faiss.index, 'reconstruct_n'):
                 total = self.faiss.get_count()
                 if total == 0:
-                    return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    # FIXED: Line 244 - Explicit return type
+                    empty_result: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    return empty_result
                 
                 # Reconstruct all vectors
                 vectors: List[NDArray[np.float32]] = []
@@ -275,10 +277,10 @@ class EnhancedFAISSIndex:
                         # If vec doesn't have astype, wrap it in numpy array
                         vectors.append(np.array(vec, dtype=np.float32))
                 
-                # FIXED: Removed duplicate variable definition and added explicit type
+                # Create the final result
                 if vectors:
-                    final_result: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
-                    return final_result
+                    final_embeddings: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
+                    return final_embeddings
                 else:
                     return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
             else:
@@ -341,8 +343,8 @@ class EnhancedFAISSIndex:
             ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
             actual_k = min(k, ntotal) if ntotal > 0 else 0
             
+            # FIXED: Line 335 - This return is reachable (not unreachable)
             if actual_k == 0:
-                # FIXED: Return is reachable - this is the proper flow
                 return np.array([], dtype=np.int32)
             
             distances, indices = self.faiss.index.search(query_vector, actual_k)
@@ -350,8 +352,8 @@ class EnhancedFAISSIndex:
             # Explicitly return int32 array to match declared return type
             if indices.size > 0:
                 # Use .astype() for explicit type conversion
-                result: NDArray[np.int32] = indices[0].astype(np.int32)
-                return result
+                search_result: NDArray[np.int32] = indices[0].astype(np.int32)
+                return search_result
             else:
                 # Return empty array with explicit dtype
                 return np.array([], dtype=np.int32)
