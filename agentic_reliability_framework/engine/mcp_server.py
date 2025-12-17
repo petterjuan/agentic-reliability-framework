@@ -1090,8 +1090,8 @@ class MCPServer:
         Returns:
             MCPResponse with result
         """
-        # FIXED: Line 813 - Simplified control flow
-        # Check if approval_id exists
+        # FIXED: Line 813 - Simplified control flow with early returns
+        # Check if approval_id exists first
         request = self._approval_requests.get(approval_id)
         
         if request is None:
@@ -1109,9 +1109,9 @@ class MCPServer:
             )
         
         # Remove from pending requests
-        self._approval_requests.pop(approval_id)
+        del self._approval_requests[approval_id]
 
-        # Check if request should be rejected
+        # Handle rejection
         if not approved:
             return MCPResponse(
                 request_id=request.request_id,
@@ -1120,19 +1120,17 @@ class MCPServer:
                 executed=False
             )
 
-        # Execute the approved request
-        # Create new request with autonomous mode
+        # Execute the approved request with autonomous mode
         new_request = MCPRequest(
             request_id=request.request_id,
             tool=request.tool,
             component=request.component,
             parameters=request.parameters,
             justification=request.justification,
-            mode=MCPMode.AUTONOMOUS,  # Switch to autonomous for execution
+            mode=MCPMode.AUTONOMOUS,
             metadata=request.metadata
         )
 
-        # This return is reachable
         return await self._handle_autonomous_mode(new_request)
 
     def get_server_stats(self) -> Dict[str, Any]:
