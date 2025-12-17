@@ -104,16 +104,17 @@ class EnhancedFAISSIndex:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            # FIXED: Line 196 - Proper type checking and conversion
+            # FIXED: Line 196 - Use type-safe float conversion
             if len(dist_result) > 0:
                 min_val = np.min(dist_result)
-                # Type-safe conversion to float
-                if isinstance(min_val, (np.integer, np.floating)):
-                    min_distance_value = float(min_val)
+                # Convert numpy scalar to Python float safely
+                min_distance_value: float
+                if isinstance(min_val, np.generic):
+                    min_distance_value = float(min_val.item())
                 elif isinstance(min_val, (int, float)):
                     min_distance_value = float(min_val)
                 else:
-                    # For any other type, use 0.0 as fallback
+                    # Fallback for any other type
                     min_distance_value = 0.0
                     logger.warning(f"Cannot convert type {type(min_val)} to float, using 0.0")
                 
@@ -175,8 +176,8 @@ class EnhancedFAISSIndex:
                 if text:
                     # Type-safe float conversion
                     distance_float: float
-                    if isinstance(distance, (np.integer, np.floating)):
-                        distance_float = float(distance)
+                    if isinstance(distance, np.generic):
+                        distance_float = float(distance.item())
                     elif isinstance(distance, (int, float)):
                         distance_float = float(distance)
                     else:
@@ -261,7 +262,7 @@ class EnhancedFAISSIndex:
             if hasattr(self.faiss.index, 'reconstruct_n'):
                 total = self.faiss.get_count()
                 if total == 0:
-                    # FIXED: Line 244 - Explicit return type
+                    # FIXED: Line 244 - Explicit return type annotation
                     empty_result: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
                     return empty_result
                 
@@ -282,7 +283,8 @@ class EnhancedFAISSIndex:
                     final_embeddings: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
                     return final_embeddings
                 else:
-                    return np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    empty_array: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    return empty_array
             else:
                 # If reconstruction is not available, return empty array
                 logger.warning("FAISS index does not support reconstruct_n, returning empty array")
@@ -343,8 +345,11 @@ class EnhancedFAISSIndex:
             ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
             actual_k = min(k, ntotal) if ntotal > 0 else 0
             
-            # FIXED: Line 335 - This return is reachable (not unreachable)
+            # FIXED: Line 337 - This return is reachable (not unreachable)
+            # The issue was that mypy thought this return was unreachable due to control flow
+            # We'll make the logic clearer
             if actual_k == 0:
+                # This is reachable when ntotal is 0
                 return np.array([], dtype=np.int32)
             
             distances, indices = self.faiss.index.search(query_vector, actual_k)
