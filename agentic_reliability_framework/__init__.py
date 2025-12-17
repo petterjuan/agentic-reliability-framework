@@ -10,7 +10,10 @@ from .__version__ import __version__  # runtime import for __version__
 
 __all__ = [
     "__version__",
-    "EnhancedReliabilityEngine",
+    "V2ReliabilityEngine",
+    "V3ReliabilityEngine",
+    "EnhancedReliabilityEngine",  # Backward compatibility alias
+    "ReliabilityEngine",  # Backward compatibility alias
     "SimplePredictiveEngine",
     "BusinessImpactCalculator",
     "AdvancedAnomalyDetector",
@@ -26,7 +29,10 @@ __all__ = [
 # We intentionally *don't* import real symbols here (no `from .app import ...`) so we
 # preserve lazy runtime imports and avoid mypy trying to resolve attributes on modules.
 if TYPE_CHECKING:  # pragma: no cover - static-analysis only
-    EnhancedReliabilityEngine: Any
+    V2ReliabilityEngine: Any
+    V3ReliabilityEngine: Any
+    EnhancedReliabilityEngine: Any  # Backward compatibility
+    ReliabilityEngine: Any  # Backward compatibility
     SimplePredictiveEngine: Any
     BusinessImpactCalculator: Any
     AdvancedAnomalyDetector: Any
@@ -45,13 +51,21 @@ def __getattr__(name: str) -> Any:
     static analyzers from trying to resolve attributes of other modules.
     """
     map_module_attr: dict[str, tuple[str, str]] = {
-        # from .app
-        "EnhancedReliabilityEngine": (".app", "EnhancedReliabilityEngine"),
+        # V2 engine (basic functionality)
+        "V2ReliabilityEngine": (".engine.reliability", "V2ReliabilityEngine"),
+        "ReliabilityEngine": (".engine.reliability", "ReliabilityEngine"),
+        
+        # V3 engine (enhanced with RAG+MCP)
+        "V3ReliabilityEngine": (".engine.v3_reliability", "V3ReliabilityEngine"),
+        "EnhancedReliabilityEngine": (".engine.v3_reliability", "V3ReliabilityEngine"),  # Alias
+        
+        # Other engines
         "SimplePredictiveEngine": (".app", "SimplePredictiveEngine"),
         "BusinessImpactCalculator": (".app", "BusinessImpactCalculator"),
         "AdvancedAnomalyDetector": (".app", "AdvancedAnomalyDetector"),
         "create_enhanced_ui": (".app", "create_enhanced_ui"),
-        # from .lazy
+        
+        # Lazy loaders
         "get_engine": (".lazy", "get_engine"),
         "get_agents": (".lazy", "get_agents"),
         "get_faiss_index": (".lazy", "get_faiss_index"),
