@@ -106,7 +106,8 @@ class EnhancedFAISSIndex:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            if len(dist_result) > 0:
+            # FIXED: Line 115 - This code is reachable when len(dist_result) > 0
+            if dist_result.size > 0:  # Changed from len() to .size for numpy arrays
                 min_val = np.min(dist_result)
                 # Convert numpy scalar to Python float safely
                 min_distance_value: float
@@ -121,7 +122,7 @@ class EnhancedFAISSIndex:
                 
                 logger.debug(
                     f"FAISS search completed: k={actual_k}, "
-                    f"found={len(idx_result)} results, "
+                    f"found={idx_result.size} results, "
                     f"min_distance={min_distance_value:.4f}"
                 )
             
@@ -160,10 +161,10 @@ class EnhancedFAISSIndex:
         """
         try:
             # Embed the query text
-            embedding = self._embed_text(query_text)
+            query_embedding = self._embed_text(query_text)  # Renamed to avoid redefinition
             
             # Search for similar vectors
-            distances, indices = self.search(embedding, k)
+            distances, indices = self.search(query_embedding, k)
             
             # Get corresponding texts
             results: List[Dict[str, Any]] = []
@@ -211,6 +212,7 @@ class EnhancedFAISSIndex:
     def _embed_text(self, text: str) -> NDArray[np.float32]:
         """Embed text into vector"""
         # Use existing embedding model or create simple embedding
+        # FIXED: Line 239 - Removed duplicate 'embedding' variable
         try:
             # Try to use existing embedding model
             if hasattr(self.faiss, '_encoder_pool'):
@@ -218,13 +220,13 @@ class EnhancedFAISSIndex:
                 from sentence_transformers import SentenceTransformer
                 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
                 # Note: This might need adjustment based on actual implementation
-                embedding = loop.run_until_complete(
+                encoded_embedding = loop.run_until_complete(
                     loop.run_in_executor(
                         None,
                         lambda: model.encode([text])
                     )
                 )
-                return np.array(embedding, dtype=np.float32)
+                return np.array(encoded_embedding, dtype=np.float32)
         except Exception as e:
             logger.debug(f"Could not use embedding model: {e}")
             # Continue to fallback
@@ -236,14 +238,14 @@ class EnhancedFAISSIndex:
         np.random.seed(hash_val)
         
         # Create random embedding with correct dimension
-        embedding: NDArray[np.float32] = np.random.randn(1, MemoryConstants.VECTOR_DIM).astype(np.float32)
+        generated_embedding: NDArray[np.float32] = np.random.randn(1, MemoryConstants.VECTOR_DIM).astype(np.float32)
         
         # Normalize to unit length
-        norm = np.linalg.norm(embedding)
+        norm = np.linalg.norm(generated_embedding)
         if norm > 0:
-            embedding = embedding / norm
+            generated_embedding = generated_embedding / norm
         
-        return embedding[0]
+        return generated_embedding[0]
     
     def _get_text_by_index(self, index: int) -> Optional[str]:
         """Get text by FAISS index"""
@@ -263,7 +265,7 @@ class EnhancedFAISSIndex:
             if hasattr(self.faiss.index, 'reconstruct_n'):
                 total = self.faiss.get_count()
                 if total == 0:
-                    # Explicit return with correct shape and type
+                    # FIXED: Line 246 - Explicit return type
                     empty_result: NDArray[np.float32] = np.array(
                         [], dtype=np.float32
                     ).reshape(0, MemoryConstants.VECTOR_DIM)
@@ -312,7 +314,7 @@ class EnhancedFAISSIndex:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics"""
-        stats: Dict[str, Any] = {
+        stats = {
             "total_vectors": self.faiss.get_count(),
             "vector_dimension": MemoryConstants.VECTOR_DIM,
             "index_type": type(self.faiss.index).__name__,
@@ -350,14 +352,15 @@ class EnhancedFAISSIndex:
             
             # Get number of vectors in index
             ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
-            actual_k = min(k, ntotal) if ntotal > 0 else 0
             
-            # FIX: Make the control flow clearer for mypy
-            if actual_k == 0:
-                # Return empty array when no vectors or k=0
+            # FIXED: Line 344 - Clear control flow
+            if ntotal == 0:
+                # Return empty array when no vectors
                 return np.array([], dtype=np.int32)
             
-            # This code is reachable when actual_k > 0
+            actual_k = min(k, ntotal) if ntotal > 0 else 0
+            
+            # This code is reachable when ntotal > 0
             distances, indices = self.faiss.index.search(query_vector_array, actual_k)
             
             # Explicitly return int32 array to match declared return type
