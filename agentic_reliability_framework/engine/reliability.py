@@ -59,7 +59,7 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # Initialize event store directly
+        # Initialize event store directly - FIXED Line 83
         self.event_store = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -200,11 +200,17 @@ class V3ReliabilityEngine:
                                 if hasattr(outcome, 'success') and outcome.success:
                                     action_successes[action] = action_successes.get(action, 0) + 1
             
-            # Calculate most common action - fixed type
+            # Calculate most common action - FIXED Line 220: No tuple variable
             most_common_action: Optional[str] = None
             if action_counts:
-                max_item = max(action_counts.items(), key=lambda x: x[1])
-                most_common_action = max_item[0]
+                # Find the action with max count
+                max_action = None
+                max_count = 0
+                for action, count in action_counts.items():
+                    if count > max_count:
+                        max_action = action
+                        max_count = count
+                most_common_action = max_action
             
             # Calculate most effective action
             most_effective_action: Optional[str] = None
@@ -217,8 +223,14 @@ class V3ReliabilityEngine:
                         action_success_rates[action] = success_count / total_count
                 
                 if action_success_rates:
-                    max_item = max(action_success_rates.items(), key=lambda x: x[1])
-                    most_effective_action = max_item[0]
+                    # Find the action with max success rate
+                    max_action = None
+                    max_rate = 0.0
+                    for action, rate in action_success_rates.items():
+                        if rate > max_rate:
+                            max_action = action
+                            max_rate = rate
+                    most_effective_action = max_action
             
             return {
                 "total_incidents": total_incidents,
@@ -293,7 +305,7 @@ class V3ReliabilityEngine:
         similar_incidents: Optional[List[Any]] = None
     ) -> Dict[str, Any]:
         """Record outcome of MCP execution"""
-        # Convert mcp_response to dict
+        # Convert mcp_response to dict - FIXED Line 154: No try-except block
         response_dict: Dict[str, Any]
         if isinstance(mcp_response, MCPResponse):
             response_dict = mcp_response.to_dict()
