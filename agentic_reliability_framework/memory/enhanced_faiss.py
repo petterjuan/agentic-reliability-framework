@@ -107,7 +107,8 @@ class EnhancedFAISSIndex:
                 if dist_result.size > 0:
                     min_val = np.min(dist_result)
                     min_distance_value: float
-                    if isinstance(min_val, np.generic):
+                    # FIXED: Check if it has item() method (numpy scalar) first
+                    if hasattr(min_val, 'item'):
                         min_distance_value = float(min_val.item())
                     elif isinstance(min_val, (int, float)):
                         min_distance_value = float(min_val)
@@ -242,7 +243,9 @@ class EnhancedFAISSIndex:
         if norm > 0:
             generated_embedding = generated_embedding / norm
         
-        return generated_embedding[0]
+        # FIXED: Return a 2D array with proper type annotation
+        result_array: NDArray[np.float32] = generated_embedding.reshape(1, -1)
+        return result_array
     
     def _get_text_by_index(self, index: int) -> Optional[str]:
         """Get text by FAISS index"""
@@ -262,7 +265,6 @@ class EnhancedFAISSIndex:
             if hasattr(self.faiss.index, 'reconstruct_n'):
                 total = self.faiss.get_count()
                 if total == 0:
-                    # Return typed empty array directly
                     return np.zeros((0, MemoryConstants.VECTOR_DIM), dtype=np.float32)
                 
                 # Reconstruct all vectors
@@ -317,7 +319,7 @@ class EnhancedFAISSIndex:
         
         return stats
     
-    def search_vectors(self, query_vector: np.ndarray, k: int = 5) -> NDArray[np.int32]:
+    def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> NDArray[np.int32]:
         """
         Search for similar vectors.
         
