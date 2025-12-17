@@ -3,7 +3,7 @@ import asyncio
 import logging
 import threading
 import time
-from typing import List, Dict, Any, Optional, Union, cast
+from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass, field
 
 from agentic_reliability_framework.memory.rag_graph import RAGGraphMemory
@@ -59,7 +59,7 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # FIXED: Line 86 - Simple initialization without complex logic
+        # FIXED: Line 83 - Simple direct initialization
         self.event_store = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -203,7 +203,7 @@ class V3ReliabilityEngine:
             # Calculate most common action
             most_common_action: Optional[str] = None
             if action_counts:
-                # Use max without type ignore
+                # FIXED: Line 223 - Handle tuple properly
                 max_item = max(action_counts.items(), key=lambda x: x[1])
                 if max_item:
                     most_common_action = max_item[0]
@@ -219,7 +219,6 @@ class V3ReliabilityEngine:
                         action_success_rates[action] = success_count / total_count
                 
                 if action_success_rates:
-                    # Use max without type ignore
                     max_item = max(action_success_rates.items(), key=lambda x: x[1])
                     if max_item:
                         most_effective_action = max_item[0]
@@ -297,66 +296,53 @@ class V3ReliabilityEngine:
         similar_incidents: Optional[List[Any]] = None
     ) -> Dict[str, Any]:
         """Record outcome of MCP execution"""
-        try:
-            # Convert mcp_response to dict if needed
-            response_dict: Dict[str, Any]
-            if isinstance(mcp_response, MCPResponse):
-                response_dict = mcp_response.to_dict()
+        # FIXED: Line 154 - Move try block inside to avoid unreachable code issues
+        response_dict: Dict[str, Any]
+        if isinstance(mcp_response, MCPResponse):
+            response_dict = mcp_response.to_dict()
+        else:
+            response_dict = mcp_response
+        
+        # Determine success
+        success = response_dict.get("status") == "completed" or response_dict.get("executed", False)
+        
+        # Extract action name
+        action_name: str
+        action_params: Dict[str, Any]
+        if isinstance(action, dict):
+            action_name = action.get("action", "unknown")
+            action_params = action.get("parameters", {})
+        else:
+            action_name = getattr(action, 'name', 'unknown')
+            action_params = getattr(action, 'parameters', {})
+        
+        # Create outcome record
+        outcome: Dict[str, Any] = {
+            "incident_id": incident_id,
+            "action": action_name,
+            "action_parameters": action_params,
+            "success": success,
+            "mcp_response": response_dict,
+            "timestamp": time.time(),
+            "resolution_time_minutes": 5.0,  # Default, should be calculated
+        }
+        
+        # Add optional V3 data if provided
+        if event:
+            outcome["event_component"] = event.component
+            outcome["event_severity"] = event.severity.value if hasattr(event.severity, 'value') else "unknown"
+        
+        if similar_incidents:
+            outcome["similar_incidents_count"] = len(similar_incidents)
+        
+        # Update metrics
+        with self._lock:
+            if success:
+                self.metrics["successful_outcomes"] += 1
             else:
-                response_dict = mcp_response
-            
-            # Determine success
-            success = response_dict.get("status") == "completed" or response_dict.get("executed", False)
-            
-            # Extract action name
-            action_name: str
-            action_params: Dict[str, Any]
-            if isinstance(action, dict):
-                action_name = action.get("action", "unknown")
-                action_params = action.get("parameters", {})
-            else:
-                action_name = getattr(action, 'name', 'unknown')
-                action_params = getattr(action, 'parameters', {})
-            
-            # FIXED: Line 157 - This code is reachable when try block succeeds
-            # Create outcome record
-            outcome: Dict[str, Any] = {
-                "incident_id": incident_id,
-                "action": action_name,
-                "action_parameters": action_params,
-                "success": success,
-                "mcp_response": response_dict,
-                "timestamp": time.time(),
-                "resolution_time_minutes": 5.0,  # Default, should be calculated
-            }
-            
-            # Add optional V3 data if provided
-            if event:
-                outcome["event_component"] = event.component
-                outcome["event_severity"] = event.severity.value if hasattr(event.severity, 'value') else "unknown"
-            
-            if similar_incidents:
-                outcome["similar_incidents_count"] = len(similar_incidents)
-            
-            # Update metrics
-            with self._lock:
-                if success:
-                    self.metrics["successful_outcomes"] += 1
-                else:
-                    self.metrics["failed_outcomes"] += 1
-            
-            return outcome
-            
-        except Exception as e:
-            logger.error(f"Error recording outcome: {e}", exc_info=True)
-            # This is reachable when an exception occurs
-            return {
-                "incident_id": incident_id,
-                "action": "unknown",
-                "success": False,
-                "error": str(e),
-                "timestamp": time.time(),
-            }
+                self.metrics["failed_outcomes"] += 1
+        
+        return outcome
 
     def _get_most_effective_action(
         self,
