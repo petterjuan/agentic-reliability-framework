@@ -820,7 +820,7 @@ class MCPServer:
 
     def _check_permissions(self, request: MCPRequest) -> bool:
         """Check permissions for request"""
-        # FIXED: Added type checking for safety_guardrails
+        # Check action blacklist
         action_blacklist = self.safety_guardrails.get("action_blacklist", [])
         if isinstance(action_blacklist, list):
             if request.tool.upper() in action_blacklist:
@@ -1090,12 +1090,9 @@ class MCPServer:
         Returns:
             MCPResponse with result
         """
-        # FIXED: Line 813 - Complete restructuring with clear control flow
         # Check if approval request exists
-        request_exists = approval_id in self._approval_requests
-        
-        if not request_exists:
-            # Early return for missing approval
+        if approval_id not in self._approval_requests:
+            # Create a dummy request for error response
             dummy_request = MCPRequest(
                 request_id=approval_id,
                 tool="unknown",
