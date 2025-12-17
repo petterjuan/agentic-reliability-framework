@@ -5,7 +5,6 @@ import threading
 import time
 from typing import List, Dict, Any, Optional, Union, cast
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from agentic_reliability_framework.memory.rag_graph import RAGGraphMemory
 from agentic_reliability_framework.mcp.server import MCPServer
@@ -13,7 +12,6 @@ from agentic_reliability_framework.policy.actions import HealingAction
 from agentic_reliability_framework.models import ReliabilityEvent, EventSeverity
 from agentic_reliability_framework.config import config
 
-# Placeholder types; replace with actual classes if available
 logger = logging.getLogger(__name__)
 
 # Default thresholds
@@ -29,8 +27,6 @@ class MCPResponse:
     status: str = "unknown"
     result: Dict[str, Any] = field(default_factory=dict)
     message: str = ""
-    
-    # No __post_init__ needed since we're using field(default_factory=dict)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
@@ -53,7 +49,7 @@ class V3ReliabilityEngine:
         self._lock = threading.RLock()
         self._start_time = time.time()
         
-        # Initialize metrics with explicit type hints
+        # Initialize metrics
         self.metrics: Dict[str, Union[int, float]] = {
             "events_processed": 0,
             "anomalies_detected": 0,
@@ -63,7 +59,7 @@ class V3ReliabilityEngine:
             "failed_outcomes": 0,
         }
         
-        # FIXED: Line 86 - Initialize event_store directly without any branching that could confuse mypy
+        # FIXED: Line 86 - Simple initialization without complex logic
         self.event_store = ThreadSafeEventStore()
 
     async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -207,8 +203,10 @@ class V3ReliabilityEngine:
             # Calculate most common action
             most_common_action: Optional[str] = None
             if action_counts:
-                # Use type: ignore to handle max with custom key function
-                most_common_action = max(action_counts.items(), key=lambda x: x[1])[0]  # type: ignore
+                # Use max without type ignore
+                max_item = max(action_counts.items(), key=lambda x: x[1])
+                if max_item:
+                    most_common_action = max_item[0]
             
             # Calculate most effective action
             most_effective_action: Optional[str] = None
@@ -221,8 +219,10 @@ class V3ReliabilityEngine:
                         action_success_rates[action] = success_count / total_count
                 
                 if action_success_rates:
-                    # Use type: ignore to handle max with custom key function
-                    most_effective_action = max(action_success_rates.items(), key=lambda x: x[1])[0]  # type: ignore
+                    # Use max without type ignore
+                    max_item = max(action_success_rates.items(), key=lambda x: x[1])
+                    if max_item:
+                        most_effective_action = max_item[0]
             
             return {
                 "total_incidents": total_incidents,
@@ -318,8 +318,7 @@ class V3ReliabilityEngine:
                 action_name = getattr(action, 'name', 'unknown')
                 action_params = getattr(action, 'parameters', {})
             
-            # FIXED: Line 156 - This code is reachable
-            # The try block ensures this code is executed unless an exception occurs
+            # FIXED: Line 157 - This code is reachable when try block succeeds
             # Create outcome record
             outcome: Dict[str, Any] = {
                 "incident_id": incident_id,
@@ -350,7 +349,7 @@ class V3ReliabilityEngine:
             
         except Exception as e:
             logger.error(f"Error recording outcome: {e}", exc_info=True)
-            # Return error outcome - this is reachable from the exception
+            # This is reachable when an exception occurs
             return {
                 "incident_id": incident_id,
                 "action": "unknown",
