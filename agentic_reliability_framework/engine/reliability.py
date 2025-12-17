@@ -179,7 +179,7 @@ class V3ReliabilityEngine:
             }
 
     def _generate_healing_actions(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
-        """Generate healing actions based on event"""
+        """Generate healing actions based on event - minimal version"""
         actions: List[Dict[str, Any]] = []
         
         # Get thresholds from config or use defaults
@@ -206,35 +206,20 @@ class V3ReliabilityEngine:
                 "metadata": {"trigger": "latency", "threshold": latency_threshold}
             })
         
-        # SIMPLEST FIX: Direct severity check without complex logic
-        try:
-            severity_value = event.severity.value if hasattr(event.severity, 'value') else 'low'
-            if isinstance(severity_value, str) and severity_value.lower() in ['high', 'critical']:
-                actions.append({
-                    "action": "escalate_to_team",
-                    "component": event.component,
-                    "parameters": {"team": "sre", "urgency": "high"},
-                    "confidence": 0.9,
-                    "description": f"Escalate {event.component} to SRE team",
-                    "metadata": {"trigger": "severity", "level": severity_value}
-                })
-            elif isinstance(severity_value, (int, float)) and severity_value >= 3:
-                actions.append({
-                    "action": "escalate_to_team",
-                    "component": event.component,
-                    "parameters": {"team": "sre", "urgency": "high"},
-                    "confidence": 0.9,
-                    "description": f"Escalate {event.component} to SRE team",
-                    "metadata": {"trigger": "severity", "level": severity_value}
-                })
-        except Exception:
-            # If anything goes wrong with severity, just continue without it
-            pass
+        # MINIMAL FIX: Just check severity without complex logic
+        severity_str = str(getattr(event.severity, 'value', 'low')).lower()
+        if severity_str in ['high', 'critical', '3', '4']:
+            actions.append({
+                "action": "escalate_to_team",
+                "component": event.component,
+                "parameters": {"team": "sre", "urgency": "high"},
+                "confidence": 0.9,
+                "description": f"Escalate {event.component} to SRE team",
+                "metadata": {"trigger": "severity", "level": severity_str}
+            })
         
         # Sort by confidence
         actions.sort(key=lambda x: float(x.get("confidence", 0.0)), reverse=True)
-        
-        # Always return - no conditions
         return actions
 
     def get_stats(self) -> Dict[str, Any]:
