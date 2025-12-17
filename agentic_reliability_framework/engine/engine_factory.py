@@ -39,42 +39,42 @@ def create_engine() -> ReliabilityEngineProtocol:
 
 
 def _create_v2_engine() -> ReliabilityEngineProtocol:
-    """Create v2 reliability engine"""
+    """Create v2 reliability engine (base V3 engine)"""
     with suppress(ImportError):
-        from .reliability import EnhancedReliabilityEngine
-        logger.info("Creating v2 reliability engine")
-        engine = EnhancedReliabilityEngine()
-        # Cast to protocol - this tells mypy that EnhancedReliabilityEngine implements the protocol
+        from .reliability import V3ReliabilityEngine
+        logger.info("Creating base V3 reliability engine (v2 functionality)")
+        engine = V3ReliabilityEngine()
+        # Cast to protocol
         from typing import cast
         return cast(ReliabilityEngineProtocol, engine)
     
-    # If EnhancedReliabilityEngine is not available, raise error
-    raise ImportError("EnhancedReliabilityEngine not available")
+    # If V3ReliabilityEngine is not available, raise error
+    raise ImportError("V3ReliabilityEngine not available")
 
 
 def _create_v3_engine() -> ReliabilityEngineProtocol:
-    """Create v3 reliability engine with RAG and MCP"""
+    """Create enhanced v3 reliability engine with RAG and MCP"""
     try:
         # Import lazily to avoid circular dependencies
         from ..lazy import get_rag_graph, get_mcp_server
-        from .v3_reliability import V3ReliabilityEngine
+        from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
         
         rag_graph = get_rag_graph()
         mcp_server = get_mcp_server()
         
         # Check if we have the required v3 components
         if not (rag_graph and mcp_server):
-            logger.warning("v3 components not available, falling back to v2")
+            logger.warning("v3 components not available, falling back to base engine")
             return _create_v2_engine()
         
-        logger.info("Creating v3 reliability engine with RAG and MCP")
-        engine = V3ReliabilityEngine(rag_graph=rag_graph, mcp_server=mcp_server)
+        logger.info("Creating enhanced V3 reliability engine with RAG and MCP")
+        engine = EnhancedV3Engine(rag_graph=rag_graph, mcp_server=mcp_server)
         # Cast to protocol
         from typing import cast
         return cast(ReliabilityEngineProtocol, engine)
         
     except ImportError as e:
-        logger.warning(f"v3 engine not available: {e}")
+        logger.warning(f"Enhanced v3 engine not available: {e}")
         return _create_v2_engine()
 
 
@@ -89,7 +89,7 @@ class EngineFactory:
     @staticmethod
     def get_engine_info() -> Dict[str, Any]:
         """Get engine information"""
-        # FIXED: Use available functions from lazy.py instead of non-existent loader attributes
+        # Use available functions from lazy.py
         from ..lazy import (
             is_engine_loaded,
             is_rag_loaded,
@@ -110,6 +110,9 @@ class EngineFactory:
             mcp_instance = get_mcp_server()
             mcp_type = type(mcp_instance).__name__ if mcp_instance else "None"
         
+        # Determine engine type
+        engine_type = "v3_enhanced" if (is_rag_loaded() and is_mcp_loaded()) else "v3_base"
+        
         return {
             "engine_loaded": is_engine_loaded(),
             "rag_loaded": is_rag_loaded(),
@@ -122,9 +125,5 @@ class EngineFactory:
                 "learning": config.learning_enabled,
                 "rollout": config.rollout_percentage,
             },
-            "engine_type": "v3" if (
-                is_rag_loaded() and 
-                is_mcp_loaded() and 
-                config.rollout_percentage > 0
-            ) else "v2",
+            "engine_type": engine_type,
         }
