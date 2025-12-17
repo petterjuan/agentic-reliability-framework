@@ -298,7 +298,7 @@ class EnhancedFAISSIndex:
         
         return stats
     
-def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> np.ndarray:
+def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> NDArray[np.int32]:
     """
     Search for similar vectors.
     
@@ -307,11 +307,11 @@ def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 
         k: Number of results to return
         
     Returns:
-        np.ndarray: Array of indices of similar vectors (int32)
+        NDArray[np.int32]: Array of indices of similar vectors
     """
     try:
         if not isinstance(query_vector, np.ndarray):
-            query_vector_array: np.ndarray = np.array(query_vector, dtype=np.float32)
+            query_vector_array: NDArray[np.float32] = np.array(query_vector, dtype=np.float32)
         else:
             query_vector_array = query_vector.astype(np.float32)
         
