@@ -793,7 +793,7 @@ class MCPServer:
         )
 
     def _validate_request(self, request: MCPRequest) -> Dict[str, Any]:
-        """Validate MCP request - simplified"""
+        """Validate MCP request - clean and mypy-safe"""
         errors: List[str] = []
         warnings: List[str] = []
         
@@ -811,12 +811,12 @@ class MCPServer:
         if len(request.justification) < 10:
             errors.append("Justification too short (min 10 characters)")
         
-        # Check parameters - SIMPLIFIED
-        parameters = request.parameters
-        if parameters is not None and not isinstance(parameters, dict):
+        # Check parameters - remove the "is not None" check
+        # request.parameters has a default value, so it's never None
+        if not isinstance(request.parameters, dict):
             errors.append("Parameters must be a dictionary")
         
-        # Return immediately - no intermediate variable
+        # Return immediately
         return {
             "valid": len(errors) == 0,
             "errors": errors,
