@@ -1,13 +1,18 @@
-# Test/test_input_validation.py
-import pytest
-pytest.skip("Skipping due to missing validate_component_id import", allow_module_level=True)
-
-"""
-Unit tests for input validation functions
-"""
+"""Unit tests for input validation functions"""
 
 import pytest
-from agentic_reliability_framework.app import validate_inputs, validate_component_id
+
+# Put the try/except around the problematic import
+try:
+    from agentic_reliability_framework.app import validate_inputs, validate_component_id
+    SKIP_TESTS = False
+except ImportError:
+    SKIP_TESTS = True
+
+
+# Skip all tests if imports failed
+if SKIP_TESTS:
+    pytest.skip("Skipping due to missing validate_component_id import", allow_module_level=True)
 
 
 class TestComponentIDValidation:
