@@ -121,24 +121,22 @@ class V3ReliabilityEngine:
             severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
             severity_numeric: int
             
-            # Proper enum value handling
+            # FIXED: Simplified logic to avoid unreachable code
             if isinstance(severity_value, str):
                 # Map string severity to numeric value
                 severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
                 severity_numeric = severity_map.get(severity_value.lower(), 1)
             elif isinstance(severity_value, Enum):
-                # Handle enum members - get their value
+                # Handle enum members
                 enum_value = severity_value.value
                 if isinstance(enum_value, (int, float)):
                     severity_numeric = int(enum_value)
                 elif isinstance(enum_value, str):
-                    # Map string enum value
                     severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
                     severity_numeric = severity_map.get(enum_value.lower(), 1)
                 else:
                     severity_numeric = 1
             else:
-                # Handle direct numeric values (for IntEnum or similar)
                 try:
                     severity_numeric = int(severity_value)
                 except (TypeError, ValueError):
@@ -158,6 +156,7 @@ class V3ReliabilityEngine:
                 "severity": severity_numeric,
                 "detected_at": time.time(),
                 "confidence": 0.85 if is_anomaly else 0.95,
+                # FIXED: Call the method that's defined below
                 "healing_actions": self._generate_healing_actions(event) if is_anomaly else [],
                 "processing_version": "v3_base",
             }
@@ -179,83 +178,89 @@ class V3ReliabilityEngine:
                 "healing_actions": []
             }
 
-def _generate_healing_actions(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
-    """Generate healing actions based on event"""
-    actions: List[Dict[str, Any]] = []
-    
-    # Get thresholds from config or use defaults
-    error_threshold = getattr(config, 'error_threshold', DEFAULT_ERROR_THRESHOLD)
-    latency_threshold = getattr(config, 'latency_threshold', DEFAULT_LATENCY_THRESHOLD)
-    
-    if event.error_rate > error_threshold:
-        actions.append({
-            "action": "restart_service",
-            "component": event.component,
-            "parameters": {"force": True},
-            "confidence": 0.7,
-            "description": f"Restart {event.component} due to high error rate",
-            "metadata": {"trigger": "error_rate", "threshold": error_threshold}
-        })
-    
-    if event.latency_p99 > latency_threshold:
-        actions.append({
-            "action": "scale_up",
-            "component": event.component,
-            "parameters": {"instances": 2},
-            "confidence": 0.6,
-            "description": f"Scale up {event.component} due to high latency",
-            "metadata": {"trigger": "latency", "threshold": latency_threshold}
-        })
-    
-    # Convert severity value to int if needed
-    severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
-    severity_numeric: int
-    
-    # FIXED: Simplified logic to avoid unreachable code
-    try:
+    def _generate_healing_actions(self, event: ReliabilityEvent) -> List[Dict[str, Any]]:
+        """Generate healing actions based on event"""
+        actions: List[Dict[str, Any]] = []
+        
+        # Get thresholds from config or use defaults
+        error_threshold = getattr(config, 'error_threshold', DEFAULT_ERROR_THRESHOLD)
+        latency_threshold = getattr(config, 'latency_threshold', DEFAULT_LATENCY_THRESHOLD)
+        
+        if event.error_rate > error_threshold:
+            actions.append({
+                "action": "restart_service",
+                "component": event.component,
+                "parameters": {"force": True},
+                "confidence": 0.7,
+                "description": f"Restart {event.component} due to high error rate",
+                "metadata": {"trigger": "error_rate", "threshold": error_threshold}
+            })
+        
+        if event.latency_p99 > latency_threshold:
+            actions.append({
+                "action": "scale_up",
+                "component": event.component,
+                "parameters": {"instances": 2},
+                "confidence": 0.6,
+                "description": f"Scale up {event.component} due to high latency",
+                "metadata": {"trigger": "latency", "threshold": latency_threshold}
+            })
+        
+        # Convert severity value to int if needed
+        severity_value = event.severity.value if hasattr(event.severity, 'value') else "low"
+        severity_numeric: int
+        
+        # FIXED: Simplified logic to avoid unreachable code
         if isinstance(severity_value, str):
             # Map string severity to numeric value
             severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
             severity_numeric = severity_map.get(severity_value.lower(), 1)
         elif isinstance(severity_value, Enum):
-            # Handle enum members - get their value
+            # Handle enum members
             enum_value = severity_value.value
             if isinstance(enum_value, (int, float)):
                 severity_numeric = int(enum_value)
             elif isinstance(enum_value, str):
-                # Map string enum value
                 severity_map = {"low": 1, "medium": 2, "high": 3, "critical": 4}
                 severity_numeric = severity_map.get(enum_value.lower(), 1)
             else:
                 severity_numeric = 1
         else:
-            # Handle direct numeric values
-            severity_numeric = int(severity_value)
-    except (TypeError, ValueError):
-        severity_numeric = 1
-    
-    if severity_numeric >= 3:
-        actions.append({
-            "action": "escalate_to_team",
-            "component": event.component,
-            "parameters": {"team": "sre", "urgency": "high"},
-            "confidence": 0.9,
-            "description": f"Escalate {event.component} to SRE team",
-            "metadata": {"trigger": "severity", "level": severity_numeric}
-        })
-    
-    # Sort by confidence
-    actions.sort(key=lambda x: float(x.get("confidence", 0.0)), reverse=True)
-    return actions
-    
+            try:
+                severity_numeric = int(severity_value)
+            except (TypeError, ValueError):
+                severity_numeric = 1
+        
+        if severity_numeric >= 3:
+            actions.append({
+                "action": "escalate_to_team",
+                "component": event.component,
+                "parameters": {"team": "sre", "urgency": "high"},
+                "confidence": 0.9,
+                "description": f"Escalate {event.component} to SRE team",
+                "metadata": {"trigger": "severity", "level": severity_numeric}
+            })
+        
+        # Sort by confidence
+        actions.sort(key=lambda x: float(x.get("confidence", 0.0)), reverse=True)
+        return actions
+
     def get_stats(self) -> Dict[str, Any]:
         """Get engine statistics"""
-        return {
-            **self.metrics,
+        # FIXED: Always reachable return statement
+        stats: Dict[str, Any] = {
+            "events_processed": self.metrics["events_processed"],
+            "anomalies_detected": self.metrics["anomalies_detected"],
+            "rag_queries": self.metrics["rag_queries"],
+            "mcp_executions": self.metrics["mcp_executions"],
+            "successful_outcomes": self.metrics["successful_outcomes"],
+            "failed_outcomes": self.metrics["failed_outcomes"],
             "uptime_seconds": time.time() - self._start_time,
             "engine_version": "v3_base",
             "event_store_count": self.event_store.count(),
         }
+        
+        return stats
 
     def get_engine_stats(self) -> Dict[str, Any]:
         """Alias for get_stats"""
