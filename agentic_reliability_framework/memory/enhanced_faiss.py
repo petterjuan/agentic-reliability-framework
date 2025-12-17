@@ -5,7 +5,7 @@ Adds search capability to existing ProductionFAISSIndex
 
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union, cast
 import asyncio
 from numpy.typing import NDArray
 
@@ -90,7 +90,9 @@ class EnhancedFAISSIndex:
             
             if actual_k == 0:
                 logger.debug("No vectors in index, returning empty results")
-                return np.array([], dtype=np.float32), np.array([], dtype=np.int64)
+                empty_distances: NDArray[np.float32] = np.array([], dtype=np.float32)
+                empty_indices: NDArray[np.int64] = np.array([], dtype=np.int64)
+                return empty_distances, empty_indices
             
             # Perform search
             distances, indices = self.faiss.index.search(query_vector_array, actual_k)
@@ -98,13 +100,12 @@ class EnhancedFAISSIndex:
             # Ensure we have valid arrays
             if distances.size > 0 and indices.size > 0:
                 # Extract first row if we have a 2D array
-                dist_result = distances[0].astype(np.float32)
-                idx_result = indices[0].astype(np.int64)
+                dist_result: NDArray[np.float32] = distances[0].astype(np.float32)
+                idx_result: NDArray[np.int64] = indices[0].astype(np.int64)
             else:
                 dist_result = np.array([], dtype=np.float32)
                 idx_result = np.array([], dtype=np.int64)
             
-            # FIXED: Line 196 - Use type-safe float conversion
             if len(dist_result) > 0:
                 min_val = np.min(dist_result)
                 # Convert numpy scalar to Python float safely
@@ -165,7 +166,7 @@ class EnhancedFAISSIndex:
             distances, indices = self.search(embedding, k)
             
             # Get corresponding texts
-            results = []
+            results: List[Dict[str, Any]] = []
             for i, (distance, idx) in enumerate(zip(distances, indices)):
                 if idx == -1:  # FAISS returns -1 for no match
                     continue
@@ -235,7 +236,7 @@ class EnhancedFAISSIndex:
         np.random.seed(hash_val)
         
         # Create random embedding with correct dimension
-        embedding = np.random.randn(1, MemoryConstants.VECTOR_DIM).astype(np.float32)
+        embedding: NDArray[np.float32] = np.random.randn(1, MemoryConstants.VECTOR_DIM).astype(np.float32)
         
         # Normalize to unit length
         norm = np.linalg.norm(embedding)
@@ -262,8 +263,10 @@ class EnhancedFAISSIndex:
             if hasattr(self.faiss.index, 'reconstruct_n'):
                 total = self.faiss.get_count()
                 if total == 0:
-                    # FIXED: Line 244 - Explicit return type annotation
-                    empty_result: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    # Explicit return with correct shape and type
+                    empty_result: NDArray[np.float32] = np.array(
+                        [], dtype=np.float32
+                    ).reshape(0, MemoryConstants.VECTOR_DIM)
                     return empty_result
                 
                 # Reconstruct all vectors
@@ -283,7 +286,9 @@ class EnhancedFAISSIndex:
                     final_embeddings: NDArray[np.float32] = np.vstack(vectors).astype(np.float32)
                     return final_embeddings
                 else:
-                    empty_array: NDArray[np.float32] = np.array([], dtype=np.float32).reshape(0, MemoryConstants.VECTOR_DIM)
+                    empty_array: NDArray[np.float32] = np.array(
+                        [], dtype=np.float32
+                    ).reshape(0, MemoryConstants.VECTOR_DIM)
                     return empty_array
             else:
                 # If reconstruction is not available, return empty array
@@ -307,7 +312,7 @@ class EnhancedFAISSIndex:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics"""
-        stats = {
+        stats: Dict[str, Any] = {
             "total_vectors": self.faiss.get_count(),
             "vector_dimension": MemoryConstants.VECTOR_DIM,
             "index_type": type(self.faiss.index).__name__,
@@ -336,23 +341,24 @@ class EnhancedFAISSIndex:
         """
         try:
             if not isinstance(query_vector, np.ndarray):
-                query_vector = np.array(query_vector, dtype=np.float32)
+                query_vector_array: NDArray[np.float32] = np.array(query_vector, dtype=np.float32)
+            else:
+                query_vector_array = query_vector.astype(np.float32)
             
-            if query_vector.ndim == 1:
-                query_vector = query_vector.reshape(1, -1)
+            if query_vector_array.ndim == 1:
+                query_vector_array = query_vector_array.reshape(1, -1)
             
             # Get number of vectors in index
             ntotal = self.faiss.index.ntotal if hasattr(self.faiss.index, 'ntotal') else 0
             actual_k = min(k, ntotal) if ntotal > 0 else 0
             
-            # FIXED: Line 337 - This return is reachable (not unreachable)
-            # The issue was that mypy thought this return was unreachable due to control flow
-            # We'll make the logic clearer
+            # FIX: Make the control flow clearer for mypy
             if actual_k == 0:
-                # This is reachable when ntotal is 0
+                # Return empty array when no vectors or k=0
                 return np.array([], dtype=np.int32)
             
-            distances, indices = self.faiss.index.search(query_vector, actual_k)
+            # This code is reachable when actual_k > 0
+            distances, indices = self.faiss.index.search(query_vector_array, actual_k)
             
             # Explicitly return int32 array to match declared return type
             if indices.size > 0:
