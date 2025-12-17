@@ -106,8 +106,7 @@ class EnhancedFAISSIndex:
                 # Log search results
                 if dist_result.size > 0:
                     min_val = np.min(dist_result)
-                    # FIXED: Use type-ignored conversion to avoid numpy type conflicts
-                    min_distance_value: float = float(min_val)  # type: ignore
+                    min_distance_value: float = float(min_val)
                     
                     logger.debug(
                         f"FAISS search completed: k={actual_k}, "
@@ -168,8 +167,7 @@ class EnhancedFAISSIndex:
                 text = self._get_text_by_index(int(idx))
                 
                 if text:
-                    # Type-safe float conversion with type ignore
-                    distance_float: float = float(distance)  # type: ignore
+                    distance_float: float = float(distance)
                     similarity_float = float(1.0 / (1.0 + distance_float))
                     
                     results.append({
@@ -203,7 +201,6 @@ class EnhancedFAISSIndex:
                 loop = asyncio.get_event_loop()
                 from sentence_transformers import SentenceTransformer
                 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-                # Note: This might need adjustment based on actual implementation
                 encoded_embedding = loop.run_until_complete(
                     loop.run_in_executor(
                         None,
@@ -216,7 +213,6 @@ class EnhancedFAISSIndex:
             pass
         
         # Fallback: create simple embedding from text hash
-        # This is for development only - in production use proper embedding model
         import hashlib
         hash_val = int(hashlib.sha256(text.encode()).hexdigest()[:8], 16)
         np.random.seed(hash_val)
@@ -256,7 +252,6 @@ class EnhancedFAISSIndex:
                 vectors: List[NDArray[np.float32]] = []
                 for i in range(total):
                     vec = self.faiss.index.reconstruct(i)
-                    # Ensure the vector is converted to float32
                     vec_array: NDArray[np.float32] = np.array(vec, dtype=np.float32)
                     vectors.append(vec_array)
                 
@@ -303,7 +298,7 @@ class EnhancedFAISSIndex:
         
         return stats
     
-    def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> NDArray[np.int32]:
+    def search_vectors(self, query_vector: Union[np.ndarray, List[float]], k: int = 5) -> np.ndarray:
         """
         Search for similar vectors.
         
