@@ -1,6 +1,6 @@
 """
-V2 Reliability Engine - Core anomaly detection and healing action generation.
-Base implementation for ARF v2 functionality.
+V3 Reliability Engine - Core implementation with backward compatibility.
+This file contains the base V3 engine that v3_reliability.py extends.
 """
 
 from __future__ import annotations
@@ -21,34 +21,42 @@ logger = logging.getLogger(__name__)
 # Default thresholds
 DEFAULT_ERROR_THRESHOLD = 0.05
 DEFAULT_LATENCY_THRESHOLD = 150.0
+DEFAULT_LEARNING_MIN_DATA_POINTS = 5
 
 
 @dataclass
-class V2HealingAction:
-    """V2 healing action data structure"""
-    action: str
-    component: str
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    confidence: float = 0.0
-    description: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+class MCPResponse:
+    """MCP response data structure for backward compatibility"""
+    executed: bool = False
+    status: str = "unknown"
+    result: Dict[str, Any] = field(default_factory=dict)
+    message: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""
         return {
-            "action": self.action,
-            "component": self.component,
-            "parameters": self.parameters,
-            "confidence": self.confidence,
-            "description": self.description,
-            "metadata": self.metadata
+            "executed": self.executed,
+            "status": self.status,
+            "result": self.result,
+            "message": self.message
         }
 
 
-class V2ReliabilityEngine:
-    """V2 reliability engine with basic anomaly detection and healing"""
-
-    def __init__(self):
+class V3ReliabilityEngine:
+    """Base V3 reliability engine with core functionality"""
+    
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Initialize base V3 engine.
+        
+        Args:
+            *args: Positional arguments for backward compatibility
+            **kwargs: Keyword arguments for backward compatibility
+        """
+        # Extract RAG and MCP from kwargs if provided (for backward compatibility)
+        self.rag = kwargs.get('rag_graph')
+        self.mcp = kwargs.get('mcp_server')
+        
         self._lock = threading.RLock()
         self._start_time = time.time()
         
@@ -56,15 +64,20 @@ class V2ReliabilityEngine:
         self.metrics: Dict[str, Union[int, float]] = {
             "events_processed": 0,
             "anomalies_detected": 0,
-            "healing_actions_generated": 0,
+            "rag_queries": 0,
+            "mcp_executions": 0,
+            "successful_outcomes": 0,
+            "failed_outcomes": 0,
         }
         
         # Initialize event store
         self.event_store = ThreadSafeEventStore()
+        
+        logger.info("Initialized V3ReliabilityEngine (base implementation)")
 
     async def process_event(self, event: ReliabilityEvent) -> Dict[str, Any]:
         """
-        Process event using v2 pipeline
+        Process event - main entry point
         
         Args:
             event: ReliabilityEvent to process
@@ -72,13 +85,33 @@ class V2ReliabilityEngine:
         Returns:
             Dictionary with processing results
         """
-        return await self._v2_process(event)
+        return await self.process_event_enhanced(event)
 
-    async def _v2_process(self, event: ReliabilityEvent, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        """Original v2 processing logic"""
+    async def process_event_enhanced(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Enhanced event processing with v2 logic
+        
+        This is the base implementation that v3_reliability.py will extend.
+        
+        Args:
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+            
+        Returns:
+            Dictionary with processing results
+        """
+        event = kwargs.get("event") or (args[0] if args else None)
+        if not event or not isinstance(event, ReliabilityEvent):
+            return {
+                "status": "ERROR",
+                "incident_id": "",
+                "error": "Invalid event",
+                "healing_actions": []
+            }
+        
         try:
             # Simulate v2 processing
-            await asyncio.sleep(0.01)  # Simulate processing time
+            await asyncio.sleep(0.01)
             
             # Get thresholds from config or use defaults
             error_threshold = getattr(config, 'error_threshold', DEFAULT_ERROR_THRESHOLD)
@@ -126,6 +159,7 @@ class V2ReliabilityEngine:
                 "detected_at": time.time(),
                 "confidence": 0.85 if is_anomaly else 0.95,
                 "healing_actions": self._generate_healing_actions(event) if is_anomaly else [],
+                "processing_version": "v3_base",
             }
             
             # Update metrics
@@ -133,7 +167,6 @@ class V2ReliabilityEngine:
                 self.metrics["events_processed"] += 1
                 if is_anomaly:
                     self.metrics["anomalies_detected"] += 1
-                    self.metrics["healing_actions_generated"] += len(result["healing_actions"])
             
             return result
             
@@ -219,18 +252,32 @@ class V2ReliabilityEngine:
         return {
             **self.metrics,
             "uptime_seconds": time.time() - self._start_time,
-            "engine_version": "v2",
+            "engine_version": "v3_base",
             "event_store_count": self.event_store.count(),
         }
 
     def get_engine_stats(self) -> Dict[str, Any]:
         """Alias for get_stats"""
         return self.get_stats()
+    
+    def shutdown(self) -> None:
+        """Graceful shutdown"""
+        logger.info("Shutting down V3ReliabilityEngine...")
+
+
+# Backward compatibility aliases
+class EnhancedReliabilityEngine(V3ReliabilityEngine):
+    """Alias for V3ReliabilityEngine for backward compatibility"""
+    
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        logger.warning("EnhancedReliabilityEngine is an alias for V3ReliabilityEngine")
+        super().__init__(*args, **kwargs)
 
 
 # Thread-safe event store
 class ThreadSafeEventStore:
-    """Thread-safe event store for v2 engine"""
+    """Thread-safe event store"""
+    
     def __init__(self) -> None:
         self._events: List[Any] = []
         self._lock = threading.RLock()
@@ -265,6 +312,6 @@ class ThreadSafeEventStore:
 
 
 # Factory function for backward compatibility
-def ReliabilityEngine(*args: Any, **kwargs: Any) -> V2ReliabilityEngine:
-    """Factory function for v2 engine"""
-    return V2ReliabilityEngine(*args, **kwargs)
+def ReliabilityEngine(*args: Any, **kwargs: Any) -> V3ReliabilityEngine:
+    """Factory function for backward compatibility"""
+    return V3ReliabilityEngine(*args, **kwargs)
