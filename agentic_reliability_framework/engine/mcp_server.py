@@ -814,7 +814,7 @@ class MCPServer:
         # Check parameters - remove the "is not None" check
         # request.parameters has a default value, so it's never None
         if not isinstance(request.parameters, dict):
-            errors.append("Parameters must be a dictionary")
+            errors.append("Parameters must be a dictionary") # type: ignore[unreachable]
         
         # Return immediately
         return {
