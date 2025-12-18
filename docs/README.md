@@ -947,7 +947,15 @@ export MCP_MODE=approval  # advisory, approval, or autonomous
 
 ### **Compliance Features**
 
-FeatureDescriptionConfiguration**Audit Trail**Every MCP request/response logged with justificationAutomatic**Approval Workflows**Human review for sensitive actionsConfigurable**Data Retention**Configurable retention policiesDefault: 30 days**Access Control**Tool-level permission requirementsRequired**Change Management**Business hour restrictions for production changesConfigurable
+*   **Audit Trail**: Every MCP request/response logged with justification
+    
+*   **Approval Workflows**: Human review for sensitive actions
+    
+*   **Data Retention**: Configurable retention policies (default: 30 days)
+    
+*   **Access Control**: Tool-level permission requirements
+    
+*   **Change Management**: Business hour restrictions for production changes
 
 ### **Security Best Practices**
 
