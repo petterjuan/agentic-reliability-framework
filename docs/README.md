@@ -92,7 +92,13 @@ ARF provides a **hybrid intelligence system** that combines:
 
 python
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   {    "revenue_saved": "$2.1M",              # Quantified across deployments    "auto_heal_rate": "81.7%",            # vs industry average 12%    "detection_time": "2.3min",           # vs industry average 14min    "incident_reduction": "64%",          # Year-over-year with learning    "engineer_hours_saved": "320h/month"  # Per engineering team  }   `
+{
+  "revenue_saved": "$2.1M",              # Quantified across deployments
+  "auto_heal_rate": "81.7%",            # vs industry average 12%
+  "detection_time": "2.3min",           # vs industry average 14min
+  "incident_reduction": "64%",          # Year-over-year with learning
+  "engineer_hours_saved": "320h/month"  # Per engineering team
+}
 
 ### **Why Choose ARF Over Alternatives?**
 
