@@ -87,7 +87,7 @@ ARF provides a **hybrid intelligence system** that combines:
   "engineer_hours_saved": "320h/month"  # Per engineering team
 }
 ```
-## ⚖️ Why Choose ARF Over Alternatives
+## ⚖️ Why Choose ARF Over Alternatives <a id="why-choose-arf-over-alternatives"></a>
 
 ### **Comparison Matrix**
 
@@ -154,7 +154,7 @@ ARF provides a **hybrid intelligence system** that combines:
 
 *ARF provides the intelligence of AI agents with the reliability of traditional automation, creating a new category of "Reliable AI Systems."*
 
-## 🏗️ Core Architecture
+## 🏗️ Core Architecture <a id="core-architecture"></a>
 
 ### **Three-Layer Hybrid Intelligence: The ARF Paradigm**
 
@@ -1019,7 +1019,7 @@ OperationLatency (p99)ThroughputMemory**Event Processing**1.8s550 req/s45MB**RAG
     
 *   **CPU**: RAG search is O(log n) with FAISS IVF indexes
     
-## 🗺️ Roadmap
+## 🗺️ Roadmap <a id="roadmap"></a>
 
 ### **v3.1 (Q1 2026)**
 
