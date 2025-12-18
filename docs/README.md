@@ -31,14 +31,14 @@
 ## 📋 Table of Contents
 
 - [🎯 Executive Summary](#-executive-summary)
-- [⚖️ Why Choose ARF Over Alternatives](#-why-choose-arf-over-alternatives)
-- [🏗️ Core Architecture](#-core-architecture)
+- [⚖️ Why Choose ARF Over Alternatives](#why-choose-arf-over-alternatives)
+- [🏗️ Core Architecture](#core-architecture)
 - [💰 Business Value and ROI](#-business-value-and-roi)
 - [🏢 Industry Applications](#-industry-applications)
 - [🚀 Quick Start (5 Minutes)](#-quick-start-5-minutes)
 - [🔒 Security & Compliance](#-security--compliance)
 - [⚡ Performance & Scaling](#-performance--scaling)
-- [🗺️ Roadmap](#-roadmap)
+- [🗺️ Roadmap](#roadmap)
 - [❓ FAQ](#-faq)
 - [🤝 Support & Community](#-support--community)
 - [📄 License & Citation](#-license--citation)
