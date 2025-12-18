@@ -165,54 +165,166 @@ ARF provides a **hybrid intelligence system** that combines:
 | **ROI Timeline** | 6-12 months | Unpredictable | 3-6 months | **30 days** |
 
 *ARF provides the intelligence of AI agents with the reliability of traditional automation, creating a new category of "Reliable AI Systems."*
+## 🏗️ Core Architecture
 
-🏗️ Core Architecture
----------------------
+### **Three-Layer Hybrid Intelligence: The ARF Paradigm**
 
-### **Three-Layer Hybrid Intelligence**
+ARF introduces a **hybrid intelligence architecture** that combines the best of three worlds: **AI reasoning**, **deterministic rules**, and **continuous learning**. This three-layer approach ensures both innovation and reliability in production environments.
+
+```mermaid
+graph TB
+    subgraph "Layer 1: Cognitive Intelligence"
+        A1[Multi-Agent Orchestration] --> A2[Detective Agent]
+        A1 --> A3[Diagnostician Agent]
+        A1 --> A4[Predictive Agent]
+        A2 --> A5[Anomaly Detection & Pattern Recognition]
+        A3 --> A6[Root Cause Analysis & Investigation]
+        A4 --> A7[Future Risk Forecasting & Trend Analysis]
+    end
+    
+    subgraph "Layer 2: Memory & Learning"
+        B1[RAG Graph Memory] --> B2[FAISS Vector Database]
+        B1 --> B3[Incident-Outcome Knowledge Graph]
+        B1 --> B4[Historical Effectiveness Database]
+        B2 --> B5[Semantic Similarity Search]
+        B3 --> B6[Connected Incident → Outcome Edges]
+        B4 --> B7[Success Rate Analytics]
+    end
+    
+    subgraph "Layer 3: Safe Execution"
+        C1[MCP Server] --> C2[Advisory Mode - OSS Default]
+        C1 --> C3[Approval Mode - Human-in-Loop]
+        C1 --> C4[Autonomous Mode - Enterprise]
+        C1 --> C5[Safety Guardrails & Circuit Breakers]
+        C2 --> C6[What-If Analysis Only]
+        C3 --> C7[Audit Trail & Approval Workflows]
+        C4 --> C8[Auto-Execution with Guardrails]
+    end
+    
+    D[Reliability Event] --> A1
+    A1 --> E[Policy Engine]
+    A1 --> B1
+    E & B1 --> C1
+    C1 --> F[Healing Actions]
+    F --> G[Business Impact Dashboard]
+    F --> B1[Continuous Learning Loop]
+    G --> H[Quantified ROI: Revenue Saved, MTTR Reduction]
+```
+**Architecture Philosophy**: Each layer addresses a critical failure mode of current AI systems:
+
+1.  **Cognitive Layer** prevents "reasoning from scratch" for each incident
+    
+2.  **Memory Layer** prevents "forgetting past learnings"
+    
+3.  **Execution Layer** prevents "unsafe, unconstrained actions"
 
 ### **Component Deep Dive**
 
 #### **1\. EnhancedV3ReliabilityEngine** (engine/v3\_reliability.py)
 
-**The Orchestrator** that ties everything together:
+**The Central Orchestrator** that coordinates all components into a unified workflow.
 
-python
+**Key Orchestration Steps:**
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   from agentic_reliability_framework import EnhancedV3ReliabilityEngine  engine = EnhancedV3ReliabilityEngine(      rag_enabled=True,      # Enable RAG Graph memory      mcp_mode="approval",   # Start with human oversight      learning_enabled=True  # Learn from outcomes  )  # Full pipeline execution  result = await engine.process_event_enhanced(      component="payment-service",      latency_p99=450.0,      error_rate=0.25,      throughput=1800.0,      cpu_util=0.92  )  # Result includes:  # - Multi-agent analysis  # - RAG historical context    # - Business impact assessment  # - Recommended healing actions  # - MCP execution results   `
+1.  **Event Ingestion & Validation** - Accepts telemetry, validates with Pydantic models
+    
+2.  **Multi-Agent Analysis** - Parallel execution of specialized agents
+    
+3.  **RAG Context Retrieval** - Semantic search for similar historical incidents
+    
+4.  **Policy Evaluation** - Deterministic rule-based action determination
+    
+5.  **Action Enhancement** - Historical effectiveness data informs priority
+    
+6.  **MCP Execution** - Safe tool execution with guardrails
+    
+7.  **Outcome Recording** - Results stored in RAG Graph for learning
+    
+8.  **Business Impact Calculation** - Revenue and user impact quantification
+    
 
 #### **2\. RAG Graph Memory** (memory/rag\_graph.py)
 
-**Not just vector search** - a **graph database** of incidents and outcomes:
+**Not Just Vector Search** - A knowledge graph connecting incidents to outcomes with semantic understanding.
 
-python
+**RAG Graph Innovations:**
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   from agentic_reliability_framework.memory import RAGGraphMemory  rag = RAGGraphMemory(faiss_index)  # Store incidents with embeddings  incident_id = rag.store_incident(event, agent_analysis)  # Semantic search for similar incidents  similar = rag.find_similar(current_event, k=5)  # Returns IncidentNodes with connected outcomes  # Get historically effective actions  effective_actions = rag.get_most_effective_actions(      component="payment-service",       k=3  )  # Returns: [{"action": "scale_out", "success_rate": 0.92, ...}]  # Record outcomes for learning  rag.store_outcome(      incident_id=incident_id,      actions_taken=["scale_out", "circuit_breaker"],      success=True,      resolution_time_minutes=8.5,      lessons_learned=["Scale before circuit breaking works better"]  )   `
+*   **FAISS + Graph Hybrid**: Combines vector similarity search with graph relationship traversal
+    
+*   **Incident-Outcome Edges**: IncidentNode → RESOLVED\_BY → OutcomeNode relationships
+    
+*   **Deterministic Hashing**: SHA-256 fingerprints for idempotent storage
+    
+*   **LRU Memory Management**: Configurable limits with intelligent eviction
+    
+*   **Circuit Breakers**: Protects against search failures cascading
+    
+*   **Thread-Safe Operations**: RLock-protected transactions for concurrent access
+    
 
 #### **3\. MCP Server** (engine/mcp\_server.py)
 
-**Safe execution boundary** with three operational modes:
+**Safe Execution Boundary** with Model Context Protocol implementation and three operational modes.
 
-python
+**MCP Safety Features:**
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   from agentic_reliability_framework.engine import MCPServer, MCPMode  # Choose your risk profile  mcp = MCPServer(mode=MCPMode.APPROVAL)  # advisory, approval, or autonomous  # All tools implement the MCPTool protocol  class CustomTool:      @property      def metadata(self) -> ToolMetadata:          return {              "name": "database_optimize",              "safety_level": "high",              "timeout_seconds": 120,              "required_permissions": ["db.admin"]          }      async def execute(self, context: ToolContext) -> ToolResult:          # Your implementation          pass      def validate(self, context: ToolContext) -> ValidationResult:          # Safety checks          pass  # Execute with comprehensive safety  response = await mcp.execute_tool({      "tool": "rollback",      "component": "payment-service",      "mode": "autonomous",      "justification": "30% error rate with 450ms latency",      "metadata": {          "environment": "production",          "has_healthy_revision": True,          "blast_radius": 2      }  })   `
+*   **Three Operational Modes**: Advisory (OSS), Approval (Enterprise), Autonomous (Production)
+    
+*   **Tool Validation Protocol**: Every tool must implement validate() with safety checks
+    
+*   **Circuit Breakers**: Prevents tool spam and cascading failures
+    
+*   **Cooldown Periods**: Configurable cool-downs between tool executions
+    
+*   **Audit Trail**: Complete history of all requests and responses
+    
+*   **Permission System**: Tool-level permission requirements
+    
+*   **Blast Radius Limiting**: Configurable maximum affected services
+    
+*   **Business Hour Restrictions**: Avoids risky changes during peak hours
+    
 
 #### **4\. Policy Engine** (healing\_policies.py)
 
-**Deterministic rules** for fast, reliable response:
+**Deterministic Rules** for fast, reliable response to known failure patterns.
 
-python
+**Policy Engine Features:**
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   from agentic_reliability_framework import PolicyEngine, HealingPolicy, PolicyCondition  # Define policies  policies = [      HealingPolicy(          name="latency_spike_scale",          conditions=[              PolicyCondition(                  metric="latency_p99",                  operator="gt",                  threshold=300.0              )          ],          actions=[HealingAction.SCALE_OUT],          priority=2,          cool_down_seconds=300,          max_executions_per_hour=10      )  ]  # Thread-safe evaluation  engine = PolicyEngine(policies=policies)  actions = engine.evaluate_policies(event)  # Returns [HealingAction.SCALE_OUT]   `
+*   **Priority-Based Evaluation**: Lower priority numbers evaluate first (1 = highest)
+    
+*   **Thread-Safe Operations**: RLock protection for concurrent access
+    
+*   **Rate Limiting**: max\_executions\_per\_hour per policy per component
+    
+*   **Cooldown Management**: Configurable cool-down periods between executions
+    
+*   **LRU Eviction**: Prevents memory leaks in cooldown tracking
+    
+*   **Deterministic Rules**: All conditions must match (AND logic)
+    
+*   **Extensible Conditions**: Support for gt, lt, eq, gte, lte operators
+    
 
 #### **5\. Multi-Agent System** (app.py)
 
-**Specialized AI agents** working in concert:
+**Specialized AI Agents** working in concert through orchestrated collaboration.
 
-python
+**Multi-Agent System Features:**
 
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   from agentic_reliability_framework.app import (      AnomalyDetectionAgent,      RootCauseAgent,      PredictiveAgent,      OrchestrationManager  )  # Each agent specializes  detective = AnomalyDetectionAgent()      # Finds anomalies  diagnostician = RootCauseAgent()         # Identifies root causes  predictive = PredictiveAgent(engine)     # Forecasts future risks  # Orchestrator coordinates them  orchestrator = OrchestrationManager(      detective=detective,      diagnostician=diagnostician,      predictive=predictive  )  # Get comprehensive analysis  analysis = await orchestrator.orchestrate_analysis(event)  # Returns synthesis from all agents   `
-
+*   **Specialized Expertise**: Each agent focuses on a specific domain
+    
+*   **Parallel Execution**: Agents run concurrently with timeout protection
+    
+*   **Circuit Breakers**: Individual agent failures don't cascade
+    
+*   **Result Synthesis**: Orchestrator combines insights into cohesive analysis
+    
+*   **Extensible Architecture**: Easy to add new specialized agents
+    
+*   **Confidence Scoring**: Each agent provides confidence metrics
+    
+*   **Timeout Protection**: Global and per-agent timeouts prevent hangs
 💰 Business Value & ROI
 -----------------------
 
