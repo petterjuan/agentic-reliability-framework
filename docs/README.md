@@ -31,9 +31,9 @@
 ## 📋 Table of Contents
 
 - [🎯 Executive Summary](#-executive-summary)
-- [⚖️ Why Choose ARF Over Alternatives?](#-why-choose-arf-over-alternatives)
+- [⚖️ Why Choose ARF Over Alternatives](#-why-choose-arf-over-alternatives)
 - [🏗️ Core Architecture](#-core-architecture)
-- [💰 Business Value & ROI](#-business-value--roi)
+- [💰 Business Value and ROI](#-business-value--roi)
 - [🏢 Industry Applications](#-industry-applications)
 - [🚀 Quick Start (5 Minutes)](#-quick-start-5-minutes)
 - [🔒 Security & Compliance](#-security--compliance)
@@ -87,7 +87,7 @@ ARF provides a **hybrid intelligence system** that combines:
   "engineer_hours_saved": "320h/month"  # Per engineering team
 }
 ```
-## ⚖️ Why Choose ARF Over Alternatives?
+## ⚖️ Why Choose ARF Over Alternatives
 
 ### **Comparison Matrix**
 
@@ -391,7 +391,7 @@ sequenceDiagram
 | **Policy Engine** | Deterministic, predictable responses | Meets compliance and reliability requirements |
 | **Thread-Safe Design** | Production-ready concurrency | Handles high-volume telemetry streams |
 
-## 💰 Business Value & ROI
+## 💰 Business Value and ROI
 
 ```mermaid
 graph TD
@@ -872,6 +872,9 @@ graph LR
 
 ## 🚀 Quick Start (5 Minutes)
 
+```
+pip install agentic-reliability-framework
+```
 ### **Installation**
 ```
 from agentic_reliability_framework import EnhancedV3ReliabilityEngine, create_enhanced_ui
@@ -1120,14 +1123,6 @@ If you use the Agentic Reliability Framework in production or research, please c
   version = {3.0.0},
   url = {https://github.com/petterjuan/agentic-reliability-framework}
 }
-```
-
-## 🚀 Getting Started
-------------------
-
-Get up and running with ARF in minutes:
-```
-pip install agentic-reliability-framework
 ```
 
 **Quick Installation & Verification**
