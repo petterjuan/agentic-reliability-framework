@@ -90,8 +90,6 @@ ARF provides a **hybrid intelligence system** that combines:
 
 ### **Business Impact**
 
-python
-
 ```
 {
   "revenue_saved": "$2.1M",              # Quantified across deployments
