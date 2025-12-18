@@ -27,41 +27,67 @@
 **ARF is the first enterprise framework that enables autonomous, self-healing, context-aware AI agents for infrastructure reliability monitoring and remediation at scale.**
 
 "Traditional monitoring tells you what broke. ARF prevents it from breaking in the first place, then fixes it if it does."
+    
+## 📋 Table of Contents
 
-    
-📋 Table of Contents
---------------------
+### **Quick Navigation**
+- [🎯 Executive Summary](#🎯-executive-summary)
+- [⚖️ Why Choose ARF Over Alternatives?](#⚖️-why-choose-arf-over-alternatives)
+- [🏗️ Core Architecture](#🏗️-core-architecture)
+- [💰 Business Value & ROI](#💰-business-value--roi)
+- [🏢 Industry Applications](#🏢-industry-applications)
+- [🚀 Quick Start](#🚀-quick-start-5-minutes)
+- [🔒 Security & Compliance](#🔒-security--compliance)
+- [⚡ Performance & Scaling](#⚡-performance--scaling)
+- [🗺️ Roadmap](#🗺️-roadmap)
+- [❓ FAQ](#❓-faq)
+- [🤝 Support & Community](#🤝-support--community)
+- [📄 License & Citation](#📄-license--citation)
+- [📞 Contact & Support](#📞-contact--support)
 
-*   Executive Summary
-    
-*   Core Architecture
-    
-*   Business Value
-    
-*   Quick Start
-    
-*   Technical Deep Dive
-    
-*   Use Cases
-    
-*   Security & Compliance
-    
-*   API Reference
-    
-*   Deployment
-    
-*   Performance
-    
-*   Development
-    
-*   Roadmap
-    
-*   FAQ
-    
-*   Support
-    
+### **Detailed Sections**
 
-🎯 Executive Summary (CTOs, Founders, Investors)
+#### **Core Framework**
+- [The Problem](#the-problem)
+- [The ARF Solution](#the-arf-solution)
+- [Business Impact](#business-impact)
+- [Comparison Matrix](#comparison-matrix)
+- [Key Differentiators](#key-differentiators)
+- [Migration Paths](#migration-paths)
+- [Three-Layer Architecture](#three-layer-hybrid-intelligence-the-arf-paradigm)
+- [Component Deep Dive](#component-deep-dive)
+
+#### **Business & Industry**
+- [Financial Impact](#financial-impact)
+- [Industry Scenarios](#🏢-nyc-industry-scenarios)
+- [Finance: HFT Latency](#🏦-wall-street-finance-hft-latency-crisis)
+- [Healthcare: ICU Monitoring](#🏥-healthcare-icu-patient-monitoring-failure)
+- [SaaS: AI Platform](#🚀-saas-ai-inference-platform-meltdown)
+- [Media: Ad Server](#📺-media--advertising-real-time-ad-server-crash)
+- [Logistics: Tracking System](#🚚-logistics-port-authority-tracking-system-failure)
+
+#### **Getting Started**
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Safety Guardrails](#safety-guardrails-architecture)
+- [Compliance Features](#compliance-features)
+- [Security Best Practices](#security-best-practices)
+- [Benchmarks](#benchmarks)
+- [Scaling Guidelines](#scaling-guidelines)
+
+#### **Resources**
+- [Getting Help](#getting-help)
+- [Enterprise Support](#enterprise-support)
+- [Contributing](#contributing)
+- [Citing ARF](#citing-arf)
+
+---
+
+**📌 Quick Jump:**
+[🚀 Get Started Now](#🚀-quick-start-5-minutes) • [💰 See Business Value](#💰-business-value--roi) • [🔒 Review Security](#🔒-security--compliance) • [📞 Contact Us](#📞-contact--support)
+ 
+
+🎯 Executive Summary 
 ------------------------------------------------
 
 ### **The Problem**
@@ -403,7 +429,7 @@ sequenceDiagram
 | **Thread-Safe Design** | Production-ready concurrency | Handles high-volume telemetry streams |
 
 -------------------------------------------------------------
-💰 **Business Value & ROI: The ARF Financial Transformation**
+##💰 **Business Value & ROI: The ARF Financial Transformation**
 -------------------------------------------------------------
 ```mermaid
 graph TD
@@ -520,8 +546,6 @@ This table compares the operational and financial impact of different approaches
 **The Bottom Line**: ARF transforms reliability from a **cost center** (consuming 2-5% of engineering budget) to a **profit engine** delivering **5.2x+ ROI** while creating **sustainable competitive differentiation**.
 
 
-### 📈 **Performance Benchmarks: ARF vs Industry**
-
 💸 **The ARF Value Matrix: Transforming Reliability From Cost to Profit**
 -------------------------------------------------------------------------
 
@@ -587,6 +611,8 @@ xychart-beta
     bar [14, 20, 45, 30, 90]
 ```
 ### **Key Insight**: ARF achieves **74-91% faster resolution** across all industries compared to manual processes.
+
+### 📈 **Performance Benchmarks: ARF vs Industry**
 
 🏦 **Wall Street Finance: HFT Latency Crisis**
 ----------------------------------------------
@@ -847,7 +873,7 @@ flowchart TD
 | **⚙️ Policy Engine** | Deterministic rule-based response | **Reliable, predictable behavior** |
 | **📊 ROI Dashboard** | Track revenue saved, auto-heal rates | **Prove AI agent value** to leadership |
 
-🏢 Industry Applications
+##🏢 Industry Applications
 ------------------------
 
 _ARF is battle-tested across demanding NYC industries:_
@@ -883,7 +909,7 @@ graph LR
     style Logistics fill:#8b5cf6
 ```
 
-🚀 Quick Start (5 Minutes)
+##🚀 Quick Start (5 Minutes)
 --------------------------
 
 ### **Installation**
@@ -923,7 +949,7 @@ SAFETY_ACTION_BLACKLIST=DATABASE_DROP,FULL_ROLLOUT
 SAFETY_MAX_BLAST_RADIUS=3  # Max services affected by an action
 ```
 
-🔒 Security & Compliance
+##🔒 Security & Compliance
 ------------------------
 
 ### **Safety Guardrails Architecture**
@@ -1013,7 +1039,7 @@ export BUSINESS_HOURS_END=17💯
     
 5.  **Optimization**: Adjust parameters based on audit findings
     
-⚡ Performance & Scaling
+##⚡ Performance & Scaling
 -----------------------
 
 ### **Benchmarks**
@@ -1032,7 +1058,7 @@ OperationLatency (p99)ThroughputMemory**Event Processing**1.8s550 req/s45MB**RAG
     
 *   **CPU**: RAG search is O(log n) with FAISS IVF indexes
     
-**🗺️ Roadmap**
+##**🗺️ Roadmap**
 -----------
 
 ### **v3.1 (Q1 2026)**
@@ -1068,7 +1094,7 @@ OperationLatency (p99)ThroughputMemory**Event Processing**1.8s550 req/s45MB**RAG
 *   **Mobile Ops**: Mobile app for on-call engineers
     
 
-❓ FAQ
+##❓ FAQ
 -----
 
 ### **General Questions**
@@ -1095,7 +1121,7 @@ OperationLatency (p99)ThroughputMemory**Event Processing**1.8s550 req/s45MB**RAG
 
 **Q: Is there an on-premises version?**A: Yes, ARF can be deployed on-premises, in VPCs, or in air-gapped environments.
 
-🤝 Support & Community
+##🤝 Support & Community
 ----------------------
 
 ### **Getting Help**
@@ -1122,7 +1148,7 @@ OperationLatency (p99)ThroughputMemory**Event Processing**1.8s550 req/s45MB**RAG
 
 We welcome contributions! Please see [CONTRIBUTING.md](https://contributing.md/) for guidelines.
 
-📄 License & Citation
+##📄 License & Citation
 ---------------------
 
 MIT License - See [LICENSE](https://license/) for complete terms.
@@ -1173,7 +1199,7 @@ Full Documentation: ARF Docs
 PyPI Package: agentic-reliability-framework
 
 ---------------------------
-**📞 Contact & Support**
+##**📞 Contact & Support**
 ---------------------------
 
 **Primary Contact:**
