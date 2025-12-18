@@ -30,61 +30,24 @@
     
 ## 📋 Table of Contents
 
-### **Quick Navigation**
 - [🎯 Executive Summary](#-executive-summary)
-- [⚖️ Why Choose ARF Over Alternatives?](#⚖️-why-choose-arf-over-alternatives)
-- [🏗️ Core Architecture](#🏗️-core-architecture)
-- [💰 Business Value & ROI](#💰-business-value--roi)
-- [🏢 Industry Applications](#🏢-industry-applications)
-- [🚀 Quick Start (5 Minutes)](#🚀-quick-start-5-minutes)
-- [🔒 Security & Compliance](#🔒-security--compliance)
-- [⚡ Performance & Scaling](#⚡-performance--scaling)
-- [🗺️ Roadmap](#🗺️-roadmap)
-- [❓ FAQ](#❓-faq)
-- [🤝 Support & Community](#🤝-support--community)
-- [📄 License & Citation](#📄-license--citation)
-- [📞 Contact & Support](#📞-contact--support)
-
-### **Detailed Sections**
-
-#### **Core Framework**
-- [The Problem](#the-problem)
-- [The ARF Solution](#the-arf-solution)
-- [Business Impact](#business-impact)
-- [Comparison Matrix](#comparison-matrix)
-- [Key Differentiators](#key-differentiators)
-- [Migration Paths](#migration-paths)
-- [Three-Layer Architecture](#three-layer-hybrid-intelligence-the-arf-paradigm)
-- [Component Deep Dive](#component-deep-dive)
-
-#### **Business & Industry**
-- [Financial Impact](#financial-impact)
-- [Industry Scenarios](#🏢-nyc-industry-scenarios)
-- [Finance: HFT Latency](#🏦-wall-street-finance-hft-latency-crisis)
-- [Healthcare: ICU Monitoring](#🏥-healthcare-icu-patient-monitoring-failure)
-- [SaaS: AI Platform](#🚀-saas-ai-inference-platform-meltdown)
-- [Media: Ad Server](#📺-media--advertising-real-time-ad-server-crash)
-- [Logistics: Tracking System](#🚚-logistics-port-authority-tracking-system-failure)
-
-#### **Getting Started**
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Safety Guardrails](#safety-guardrails-architecture)
-- [Compliance Features](#compliance-features)
-- [Security Best Practices](#security-best-practices)
-- [Benchmarks](#benchmarks)
-- [Scaling Guidelines](#scaling-guidelines)
-
-#### **Resources**
-- [Getting Help](#getting-help)
-- [Enterprise Support](#enterprise-support)
-- [Contributing](#contributing)
-- [Citing ARF](#citing-arf)
+- [⚖️ Why Choose ARF Over Alternatives?](#-why-choose-arf-over-alternatives)
+- [🏗️ Core Architecture](#-core-architecture)
+- [💰 Business Value & ROI](#-business-value--roi)
+- [🏢 Industry Applications](#-industry-applications)
+- [🚀 Quick Start (5 Minutes)](#-quick-start-5-minutes)
+- [🔒 Security & Compliance](#-security--compliance)
+- [⚡ Performance & Scaling](#-performance--scaling)
+- [🗺️ Roadmap](#-roadmap)
+- [❓ FAQ](#-faq)
+- [🤝 Support & Community](#-support--community)
+- [📄 License & Citation](#-license--citation)
+- [📞 Contact & Support](#-contact--support)
 
 ---
 
 **📌 Quick Jump:**
-[🚀 Get Started Now](#🚀-quick-start-5-minutes) • [💰 See Business Value](#💰-business-value--roi) • [🔒 Review Security](#🔒-security--compliance) • [📞 Contact Us](#📞-contact--support)
+[🚀 Get Started Now](#-quick-start-5-minutes) • [💰 See Business Value](#-business-value--roi) • [🔒 Review Security](#-security--compliance) • [📞 Contact Us](#-contact--support)
 
 ## 🎯 Executive Summary
 ------------------------------------------------
