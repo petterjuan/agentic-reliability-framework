@@ -3,8 +3,7 @@
 </p>
 
 <h2 align="center"><p align="center">
-  <strong>Adaptive anomaly detection + policy-driven self-healing for AI systems</strong>
-  Minimal, fast, and production-focused.
+  Adaptive Anomaly Detection + Policy-Driven Self-Healing with Historical Learning
 </p></h2>
 
 > **Fortune 500-grade AI system for production reliability monitoring**  
@@ -25,7 +24,7 @@
 Agentic Reliability Framework (ARF) v3.0
 ========================================
 
-**Adaptive Anomaly Detection + Policy-Driven Self-Healing with Historical Learning**_Enterprise-grade AI reliability monitoring with RAG-based memory and governed execution_
+**Adaptive Anomaly Detection + Policy-Driven Self-Healing with Historical Learning**_ Enterprise-grade AI reliability monitoring with RAG-based memory and governed execution_
 
 Quick Links
 -----------
