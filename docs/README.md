@@ -92,6 +92,7 @@ ARF provides a **hybrid intelligence system** that combines:
 
 python
 
+```
 {
   "revenue_saved": "$2.1M",              # Quantified across deployments
   "auto_heal_rate": "81.7%",            # vs industry average 12%
@@ -99,7 +100,7 @@ python
   "incident_reduction": "64%",          # Year-over-year with learning
   "engineer_hours_saved": "320h/month"  # Per engineering team
 }
-
+```
 ### **Why Choose ARF Over Alternatives?**
 
 SolutionLearningSafetyDeterminismBusiness ROI**Traditional Monitoring**❌ No✅ High✅ High❌ Reactive only**LLM-Only Agents**⚠️ Limited❌ Low❌ Low⚠️ Unpredictable**Rule-Based Automation**❌ No✅ High✅ High⚠️ Brittle**ARF (Hybrid)**✅ **Yes**✅ **High**✅ **High**✅ **Quantified**
