@@ -101,7 +101,14 @@ ARF provides a **hybrid intelligence system** that combines:
 ```
 ### **Why Choose ARF Over Alternatives?**
 
-SolutionLearningSafetyDeterminismBusiness ROI**Traditional Monitoring**❌ No✅ High✅ High❌ Reactive only**LLM-Only Agents**⚠️ Limited❌ Low❌ Low⚠️ Unpredictable**Rule-Based Automation**❌ No✅ High✅ High⚠️ Brittle**ARF (Hybrid)**✅ **Yes**✅ **High**✅ **High**✅ **Quantified**
+
+**Solution       	         Learning      	Safety	      Determinism	      Business ROI**
+
+Traditional Monitoring	 ❌ No	        ✅ High      ✅ High	         ❌ Reactive only
+LLM-Only Agents       	 ⚠️ Limited	    ❌ Low	      ❌ Low	         ⚠️ Unpredictable
+Rule-Based Automation	   ❌ No	        ✅ High	      ✅ High         ⚠️ Brittle
+ARF (Hybrid)	           ✅ Yes	      ✅ High	    ✅ High	         ✅ Quantified
+
 
 🏗️ Core Architecture
 ---------------------
