@@ -1,4 +1,3 @@
-# Detection factory
 # agentic_reliability_framework/engine/mcp_factory.py
 """
 MCP Server Factory - Detects OSS vs Enterprise and returns appropriate implementation
@@ -7,6 +6,7 @@ Maintains 100% backward compatibility while enabling clean separation
 
 import os
 import logging
+import importlib.util
 from typing import Dict, Any, Optional, Union, Type
 
 from .mcp_server import MCPServer, MCPMode
@@ -42,11 +42,11 @@ def detect_edition() -> str:
     
     # 3. Check if Enterprise module is available
     try:
-        import importlib
-        importlib.import_module("agentic_reliability_framework.enterprise.mcp_server")
-        logger.debug("Edition detected: enterprise (Enterprise module available)")
-        return "enterprise"
-    except ImportError:
+        enterprise_spec = importlib.util.find_spec("agentic_reliability_framework.enterprise.mcp_server")
+        if enterprise_spec is not None:
+            logger.debug("Edition detected: enterprise (Enterprise module available)")
+            return "enterprise"
+    except Exception:
         pass
     
     # 4. Default to OSS
@@ -82,8 +82,11 @@ def get_edition_info() -> Dict[str, Any]:
     
     # Add OSS capabilities if OSS
     if edition == "oss":
-        from ..oss.constants import get_oss_capabilities
-        info["capabilities"] = get_oss_capabilities()
+        try:
+            from ..oss.constants import get_oss_capabilities
+            info["capabilities"] = get_oss_capabilities()
+        except ImportError:
+            info["capabilities"] = {"edition": "oss", "license": "Apache 2.0"}
     
     return info
 
@@ -149,9 +152,12 @@ def create_mcp_server(
         client = create_mcp_client(config)
         
         # Log OSS capabilities
-        from ..oss.constants import get_oss_capabilities
-        capabilities = get_oss_capabilities()
-        logger.info(f"OSS Capabilities: {capabilities['execution']}")
+        try:
+            from ..oss.constants import get_oss_capabilities
+            capabilities = get_oss_capabilities()
+            logger.info(f"OSS Capabilities: {capabilities['execution']}")
+        except ImportError:
+            logger.info("OSS Capabilities: advisory mode only")
         
         return client
     
@@ -160,8 +166,13 @@ def create_mcp_server(
         logger.info("🚀 Using Enterprise MCP Server (all modes available)")
         
         try:
-            # Try to import Enterprise MCPServer
-            from ..enterprise.mcp_server import EnterpriseMCPServer, create_enterprise_mcp_server
+            # Check if Enterprise module exists
+            enterprise_spec = importlib.util.find_spec("agentic_reliability_framework.enterprise.mcp_server")
+            if enterprise_spec is None:
+                raise ImportError("Enterprise module not found")
+            
+            # Import Enterprise MCPServer
+            from ..enterprise.mcp_server import create_enterprise_mcp_server
             
             # Create Enterprise server
             server = create_enterprise_mcp_server(mode=mcp_mode, config=config)
@@ -198,12 +209,16 @@ def get_mcp_server_class() -> Type[Union[MCPServer, OSSMCPClient]]:
     
     if edition == "enterprise":
         try:
-            from ..enterprise.mcp_server import EnterpriseMCPServer
-            return EnterpriseMCPServer
+            enterprise_spec = importlib.util.find_spec("agentic_reliability_framework.enterprise.mcp_server")
+            if enterprise_spec is not None:
+                from ..enterprise.mcp_server import EnterpriseMCPServer
+                return EnterpriseMCPServer
         except ImportError:
-            # Fall back to OSS if Enterprise not available
-            from .mcp_client import OSSMCPClient
-            return OSSMCPClient
+            pass
+        
+        # Fall back to OSS if Enterprise not available
+        from .mcp_client import OSSMCPClient
+        return OSSMCPClient
     else:
         from .mcp_client import OSSMCPClient
         return OSSMCPClient
