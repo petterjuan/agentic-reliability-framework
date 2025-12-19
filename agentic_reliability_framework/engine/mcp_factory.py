@@ -159,7 +159,8 @@ def create_mcp_server(
         except ImportError:
             logger.info("OSS Capabilities: advisory mode only")
         
-        return client
+        # The factory returns OSSMCPClient, but mypy needs assurance
+        return client  # type: ignore[no-any-return]
     
     # Enterprise Edition
     elif edition == "enterprise":
@@ -190,7 +191,8 @@ def create_mcp_server(
             
             # Fall back to OSS
             from .mcp_client import create_mcp_client
-            return create_mcp_client(config)
+            # The factory returns OSSMCPClient, but mypy needs assurance
+            return create_mcp_client(config)  # type: ignore[no-any-return]
     
     else:
         raise ValueError(f"Unknown edition: {edition}")
