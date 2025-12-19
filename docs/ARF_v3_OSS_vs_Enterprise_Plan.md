@@ -2,7 +2,7 @@
 
 **Based on analysis of the existing codebase**  
 **Version:** 3.3.0  
-**Author:** PhD AI Expert  
+**Author:** Juan Petter - AI Engineer  
 **Date:** December 19, 2024  
 
 ---
