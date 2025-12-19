@@ -7,10 +7,10 @@ Maintains 100% backward compatibility while enabling clean separation
 import os
 import logging
 import importlib.util
-from typing import Dict, Any, Optional, Union, Type
+from typing import Dict, Any, Optional, Union, Type, cast
 
 from .mcp_server import MCPServer, MCPMode
-from .mcp_client import OSSMCPClient
+from .mcp_client import OSSMCPClient, create_mcp_client
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +148,7 @@ def create_mcp_server(
             )
         
         # Create OSS client
-        from .mcp_client import create_mcp_client
-        client: OSSMCPClient = create_mcp_client(config)
+        client = create_mcp_client(config)
         
         # Log OSS capabilities
         try:
@@ -159,7 +158,8 @@ def create_mcp_server(
         except ImportError:
             logger.info("OSS Capabilities: advisory mode only")
         
-        return client
+        # FIX: Use cast to ensure mypy understands the return type
+        return cast(Union[MCPServer, OSSMCPClient], client)
     
     # Enterprise Edition
     elif edition == "enterprise":
@@ -188,10 +188,9 @@ def create_mcp_server(
             logger.error(f"Enterprise features not available: {e}")
             logger.warning("Falling back to OSS edition")
             
-            # Fall back to OSS
-            from .mcp_client import create_mcp_client
-            oss_client: OSSMCPClient = create_mcp_client(config)
-            return oss_client
+            # Fall back to OSS with cast
+            oss_client = create_mcp_client(config)
+            return cast(Union[MCPServer, OSSMCPClient], oss_client)
     
     else:
         raise ValueError(f"Unknown edition: {edition}")
@@ -218,10 +217,8 @@ def get_mcp_server_class() -> Type[Union[MCPServer, OSSMCPClient]]:
             pass
         
         # Fall back to OSS if Enterprise not available
-        from .mcp_client import OSSMCPClient
         return OSSMCPClient
     else:
-        from .mcp_client import OSSMCPClient
         return OSSMCPClient
 
 
