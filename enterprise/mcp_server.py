@@ -1,14 +1,15 @@
 # agentic_reliability_framework/enterprise/mcp_server.py
 """
 Enterprise MCP Server - Enhanced with license validation and Enterprise features
+COMPLETE FILE
 """
 
 import os
 import logging
 from typing import Dict, Any, Optional
+import time
 
-from ...engine.mcp_server import MCPServer, MCPMode, MCPRequest, MCPResponse
-from ...engine.mcp_factory import detect_edition
+from ...engine.mcp_server import MCPServer, MCPMode, MCPRequest, MCPResponse, MCPRequestStatus
 from ..license.manager import LicenseManager, LicenseError, FeatureEntitlement
 
 logger = logging.getLogger(__name__)
@@ -186,7 +187,6 @@ class EnterpriseMCPServer(MCPServer):
     
     def _start_audit_trail(self, request: Dict[str, Any]) -> str:
         """Start audit trail entry"""
-        import time
         audit_id = f"audit_{int(time.time())}_{len(self.audit_trail)}"
         
         entry = {
@@ -206,7 +206,6 @@ class EnterpriseMCPServer(MCPServer):
     
     def _log_intent_execution(self, intent, audit_id: str):
         """Log intent execution"""
-        import time
         entry = {
             "audit_id": audit_id,
             "timestamp": time.time(),
@@ -214,3 +213,65 @@ class EnterpriseMCPServer(MCPServer):
             "intent_id": intent.deterministic_id,
             "tool": intent.action,
             "component": intent.component,
+        }
+        
+        self.audit_trail.append(entry)
+    
+    def _complete_audit_trail(self, audit_id: str, response: MCPResponse):
+        """Complete audit trail entry"""
+        entry = {
+            "audit_id": audit_id,
+            "timestamp": time.time(),
+            "action": "complete_execution",
+            "response_status": response.status.value,
+            "executed": response.executed,
+            "success": response.status == MCPRequestStatus.COMPLETED,
+        }
+        
+        self.audit_trail.append(entry)
+    
+    def _fail_audit_trail(self, audit_id: str, error: str):
+        """Log execution failure"""
+        entry = {
+            "audit_id": audit_id,
+            "timestamp": time.time(),
+            "action": "fail_execution",
+            "error": error,
+        }
+        
+        self.audit_trail.append(entry)
+    
+    def get_server_stats(self) -> Dict[str, Any]:
+        """Enhanced stats with Enterprise and license info"""
+        base_stats = super().get_server_stats()
+        
+        return {
+            **base_stats,
+            "enterprise": {
+                "license": self.license_info,
+                "entitlements": self.entitlements.to_dict(),
+                "audit_trail_entries": len(self.audit_trail),
+                "modes_available": self._get_allowed_modes(self.entitlements),
+                "tier": self.entitlements.tier.value,
+            }
+        }
+
+
+# Factory function for Enterprise
+def create_enterprise_mcp_server(
+    mode: Optional[MCPMode] = None,
+    license_key: Optional[str] = None,
+    config: Optional[Dict[str, Any]] = None
+) -> EnterpriseMCPServer:
+    """
+    Factory function for Enterprise MCPServer
+    
+    Args:
+        mode: MCP mode (advisory, approval, autonomous)
+        license_key: Enterprise license key
+        config: Configuration dictionary
+    
+    Returns:
+        Configured EnterpriseMCPServer instance
+    """
+    return EnterpriseMCPServer(mode=mode, license_key=license_key, config=config)
