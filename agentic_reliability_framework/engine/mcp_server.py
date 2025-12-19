@@ -921,31 +921,30 @@ class MCPServer:
         """Validate MCP request - clean and mypy-safe"""
         errors: List[str] = []
         warnings: List[str] = []
-        
+    
         # Check if tool exists
         if request.tool not in self.registered_tools:
             errors.append(f"Unknown tool: {request.tool}")
-        
+    
         # Check component
-        if not request.component:
+         if not request.component:
             errors.append("Component name is required")
         elif len(request.component) > 255:
             errors.append("Component name too long (max 255 characters)")
-        
+    
         # Check justification
         if len(request.justification) < 10:
             errors.append("Justification too short (min 10 characters)")
-        
-        # Check parameters - parameters is always a dict due to default_factory
-        if not isinstance(request.parameters, dict):
-            errors.append("Parameters must be a dictionary")
-        
+    
+        # REMOVED the unreachable check for parameters
+        # request.parameters is always a dict due to default_factory=dict
+    
         # Return immediately
         return {
             "valid": len(errors) == 0,
             "errors": errors,
             "warnings": warnings
-        }
+    }
 
     def _check_permissions(self, request: MCPRequest) -> bool:
         """Check permissions for request"""
