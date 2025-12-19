@@ -7,7 +7,7 @@ Maintains 100% backward compatibility while enabling clean separation
 import os
 import logging
 import importlib.util
-from typing import Dict, Any, Optional, Union, Type, cast
+from typing import Dict, Any, Optional, Union, Type
 
 from .mcp_server import MCPServer, MCPMode
 from .mcp_client import OSSMCPClient
@@ -149,7 +149,7 @@ def create_mcp_server(
         
         # Create OSS client
         from .mcp_client import create_mcp_client
-        client = create_mcp_client(config)
+        client: OSSMCPClient = create_mcp_client(config)
         
         # Log OSS capabilities
         try:
@@ -159,8 +159,7 @@ def create_mcp_server(
         except ImportError:
             logger.info("OSS Capabilities: advisory mode only")
         
-        # Explicitly cast to help mypy understand the return type
-        return cast(Union[MCPServer, OSSMCPClient], client)
+        return client
     
     # Enterprise Edition
     elif edition == "enterprise":
@@ -189,9 +188,10 @@ def create_mcp_server(
             logger.error(f"Enterprise features not available: {e}")
             logger.warning("Falling back to OSS edition")
             
-            # Fall back to OSS with explicit casting
+            # Fall back to OSS
             from .mcp_client import create_mcp_client
-            return cast(Union[MCPServer, OSSMCPClient], create_mcp_client(config))
+            oss_client: OSSMCPClient = create_mcp_client(config)
+            return oss_client
     
     else:
         raise ValueError(f"Unknown edition: {edition}")
