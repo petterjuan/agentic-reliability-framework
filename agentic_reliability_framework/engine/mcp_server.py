@@ -1,19 +1,21 @@
 """
 Enhanced MCP Server for ARF v3
 Pythonic implementation with proper typing, error handling, and safety features
+WITH OSS/ENTERPRISE DETECTION
 """
 
 import asyncio
 import logging
 import time
 import uuid
+import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import (
     Dict, Any, List, Optional, TypedDict, Protocol,
-    AsyncGenerator, runtime_checkable
+    AsyncGenerator, runtime_checkable, Union
 )
 from collections import defaultdict, deque
 
@@ -21,6 +23,59 @@ from ..config import config
 from ..lazy import get_engine
 
 logger = logging.getLogger(__name__)
+
+
+# ========== OSS DETECTION FUNCTIONS ==========
+
+def _detect_oss_mode() -> bool:
+    """
+    Detect if we should run in OSS-restricted mode
+    
+    Returns:
+        True if OSS mode should be enforced
+    """
+    # Check environment
+    tier = os.getenv("ARF_TIER", "").lower()
+    if tier == "oss":
+        return True
+    
+    # Check license - if no enterprise/trial license, assume OSS
+    license_key = os.getenv("ARF_LICENSE_KEY", "")
+    if not license_key.startswith(("ARF-ENT-", "ARF-TRIAL-")):
+        return True
+    
+    return False
+
+
+def create_mcp_server_based_on_edition(
+    mode: Optional["MCPMode"] = None,
+    config_dict: Optional[dict] = None
+) -> Union["MCPServer", "OSSMCPClient"]:
+    """
+    Backward compatibility factory - detects OSS vs Enterprise
+    
+    This function provides backward compatibility for existing code
+    while enabling the new OSS/Enterprise separation.
+    
+    Args:
+        mode: MCP execution mode
+        config_dict: Configuration dictionary
+        
+    Returns:
+        MCPServer instance (possibly with OSS restrictions)
+        or OSSMCPClient for pure OSS mode
+    """
+    try:
+        # Try to use the new factory
+        from .mcp_factory import create_mcp_server as factory_create
+        return factory_create(mode=mode, config=config_dict)
+    except ImportError:
+        # Fall back to direct instantiation if factory not available
+        logger.warning(
+            "MCP factory not available, using direct MCPServer instantiation. "
+            "Consider installing arf-core for OSS/Enterprise detection."
+        )
+        return MCPServer(mode=mode)
 
 
 # ========== TYPE DEFINITIONS ==========
@@ -646,6 +701,7 @@ def create_alert_tool() -> MCPTool:
 class MCPServer:
     """
     Enhanced MCP Server with Pythonic features
+    WITH OSS/ENTERPRISE DETECTION
 
     Features:
     - Thread-safe operations
@@ -653,16 +709,52 @@ class MCPServer:
     - Detailed metrics and monitoring
     - Extensible tool system
     - Graceful degradation
+    - OSS/Enterprise auto-detection
     """
 
     def __init__(self, mode: Optional[MCPMode] = None):
         """
-        Initialize MCP Server
-
+        Initialize MCP Server with OSS/Enterprise detection
+        
         Args:
-            mode: Execution mode (defaults to config.mcp_mode)
+            mode: Execution mode (defaults to config.mcp_mode or edition default)
         """
-        self.mode = mode or MCPMode(config.mcp_mode)
+        # === OSS DETECTION & RESTRICTIONS ===
+        self._is_oss_mode = _detect_oss_mode()
+        self._oss_restricted = False
+        
+        if self._is_oss_mode:
+            logger.warning(
+                "⚠️  OSS mode detected. MCPServer running with restrictions:\n"
+                "   • Only advisory mode available\n"
+                "   • Execution disabled\n"
+                "   • Limited to 1000 incidents\n"
+                "   Upgrade to Enterprise for full features: https://arf.dev/enterprise"
+            )
+            
+            # Force advisory mode in OSS
+            self.mode = MCPMode.ADVISORY
+            self._oss_restricted = True
+            
+            # OSS capabilities message
+            try:
+                from ..oss.constants import get_oss_capabilities
+                caps = get_oss_capabilities()
+                logger.info(f"📦 OSS Edition: {caps['edition']} ({caps['license']})")
+                logger.info(f"📊 OSS Limits: {caps['limits']}")
+            except ImportError:
+                # OSS module not available, log basic info
+                logger.info("📦 OSS Edition: Apache 2.0")
+                logger.info("📊 OSS Limits: 1000 incidents, advisory mode only")
+                
+        else:
+            # Enterprise mode - use provided mode or config
+            self.mode = mode or MCPMode(config.mcp_mode)
+            self._oss_restricted = False
+            
+            logger.info(f"🚀 Enterprise MCP Server initialized in {self.mode.value} mode")
+        
+        # === EXISTING INITIALIZATION CODE ===
         self.registered_tools = self._register_tools()
         self.safety_guardrails = config.safety_guardrails
 
@@ -714,13 +806,52 @@ class MCPServer:
     async def execute_tool(self, request_dict: Dict[str, Any]) -> MCPResponse:
         """
         Execute a tool with comprehensive safety checks
-
-        Args:
-            request_dict: MCP request as dictionary
-
-        Returns:
-            MCPResponse with execution result
+        
+        Enhanced with OSS/Enterprise detection
         """
+        # === OSS RESTRICTION ENFORCEMENT ===
+        if self._oss_restricted:
+            # Check if this is an OSS HealingIntent
+            metadata = request_dict.get("metadata", {})
+            is_oss_intent = metadata.get("requires_enterprise", False)
+            
+            if is_oss_intent:
+                # OSS generated intent - can't execute in OSS mode
+                return MCPResponse(
+                    request_id=request_dict.get("request_id", "unknown"),
+                    status=MCPRequestStatus.REJECTED,
+                    message=(
+                        "OSS edition cannot execute HealingIntent. "
+                        "This intent was generated by OSS analysis but requires "
+                        "Enterprise edition for execution. "
+                        "Upgrade at: https://arf.dev/enterprise"
+                    ),
+                    executed=False,
+                    result={
+                        "requires_enterprise": True,
+                        "intent_id": metadata.get("intent_id", "unknown"),
+                        "upgrade_url": "https://arf.dev/enterprise",
+                        "enterprise_features": [
+                            "autonomous_execution",
+                            "approval_workflows", 
+                            "persistent_storage",
+                            "learning_engine",
+                            "audit_trails",
+                            "compliance_reports"
+                        ]
+                    }
+                )
+            
+            # Force advisory mode for all requests in OSS
+            request_dict["mode"] = "advisory"
+            
+            # Log OSS advisory execution
+            logger.info(
+                f"OSS Advisory: {request_dict.get('tool', 'unknown')} "
+                f"on {request_dict.get('component', 'unknown')}"
+            )
+        
+        # === EXISTING EXECUTE_TOOL CODE ===
         # 1. Create and validate request
         request = self._create_request(request_dict)
         validation = self._validate_request(request)
@@ -1136,6 +1267,48 @@ class MCPServer:
         # Execute in autonomous mode
         return await self._handle_autonomous_mode(new_request)
 
+    def get_edition_info(self) -> Dict[str, Any]:
+        """
+        Get edition information for this MCPServer instance
+        
+        Returns:
+            Dictionary with edition details
+        """
+        if self._oss_restricted:
+            try:
+                from ..oss.constants import get_oss_capabilities
+                caps = get_oss_capabilities()
+                return {
+                    "edition": "oss",
+                    "oss_restricted": True,
+                    "capabilities": caps,
+                    "upgrade_available": True,
+                    "upgrade_url": "https://arf.dev/enterprise",
+                }
+            except ImportError:
+                return {
+                    "edition": "oss",
+                    "oss_restricted": True,
+                    "upgrade_available": True,
+                    "upgrade_url": "https://arf.dev/enterprise",
+                    "limits": {
+                        "max_incidents": 1000,
+                        "mode": "advisory",
+                        "execution": False,
+                    }
+                }
+        else:
+            return {
+                "edition": "enterprise",
+                "oss_restricted": False,
+                "enterprise_features": {
+                    "all_modes_available": True,
+                    "execution_enabled": True,
+                    "learning_enabled": getattr(config, 'learning_enabled', False),
+                    "audit_trails": True,
+                }
+            }
+
     def get_server_stats(self) -> Dict[str, Any]:
         """Get comprehensive MCP server statistics"""
         engine = get_engine()
@@ -1155,7 +1328,10 @@ class MCPServer:
                 "mcp_mode": config.mcp_mode,
                 "mcp_enabled": config.mcp_enabled,
                 "mpc_cooldown_seconds": config.mpc_cooldown_seconds,
-            }
+            },
+            # ADD EDITION INFO:
+            "edition": "oss" if self._oss_restricted else "enterprise",
+            "oss_restricted": self._oss_restricted,
         }
 
     def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
@@ -1182,3 +1358,28 @@ class MCPServer:
         self._cooldowns.clear()
         self._approval_requests.clear()
         logger.info("MCP server statistics reset")
+
+
+# Backward compatibility exports
+__all__ = [
+    "MCPServer",
+    "MCPMode",
+    "MCPRequest",
+    "MCPResponse",
+    "MCPRequestStatus",
+    "ToolContext",
+    "ToolResult",
+    "ValidationResult",
+    "MCPTool",
+    "BaseMCPTool",
+    "RollbackTool",
+    "RestartContainerTool",
+    "ScaleOutTool",
+    "create_circuit_breaker_tool",
+    "create_traffic_shift_tool",
+    "create_alert_tool",
+    "create_mcp_server_based_on_edition",  # NEW: Backward compatibility factory
+]
+
+# For backward compatibility, also export create_mcp_server as alias
+create_mcp_server = create_mcp_server_based_on_edition
