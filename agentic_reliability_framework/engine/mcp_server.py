@@ -50,31 +50,25 @@ def _detect_oss_mode() -> bool:
 def create_mcp_server_based_on_edition(
     mode: Optional["MCPMode"] = None,
     config_dict: Optional[dict] = None
-) -> Union["MCPServer", "OSSMCPClient"]:
+) -> Union["MCPServer", Any]:  # Use Any to avoid import issues
     """
     Backward compatibility factory - detects OSS vs Enterprise
-    
-    This function provides backward compatibility for existing code
-    while enabling the new OSS/Enterprise separation.
-    
-    Args:
-        mode: MCP execution mode
-        config_dict: Configuration dictionary
-        
-    Returns:
-        MCPServer instance (possibly with OSS restrictions)
-        or OSSMCPClient for pure OSS mode
     """
     try:
-        # Try to use the new factory
         from .mcp_factory import create_mcp_server as factory_create
         return factory_create(mode=mode, config=config_dict)
     except ImportError:
-        # Fall back to direct instantiation if factory not available
-        logger.warning(
-            "MCP factory not available, using direct MCPServer instantiation. "
-            "Consider installing arf-core for OSS/Enterprise detection."
-        )
+        logger.warning("MCP factory not available, using fallback")
+        
+        # Try to detect OSS mode and use OSS client if available
+        try:
+            from .mcp_factory import detect_edition
+            if detect_edition() == "oss":
+                from .mcp_client import OSSMCPClient
+                return OSSMCPClient(config=config_dict)
+        except ImportError:
+            pass  # Continue to MCPServer
+        
         return MCPServer(mode=mode)
 
 
