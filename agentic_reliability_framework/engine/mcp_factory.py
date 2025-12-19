@@ -8,6 +8,12 @@ import logging
 import importlib.util
 from typing import Dict, Any, Optional, Union, Type, cast, overload, TYPE_CHECKING
 
+# Handle Literal for different Python versions
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 from .mcp_server import MCPServer, MCPMode
 from .mcp_client import OSSMCPClient, create_mcp_client
 
@@ -256,7 +262,7 @@ def get_mcp_server_class() -> Union[Type["MCPServer"], Type["OSSMCPClient"]]:
         return OSSMCPClient
 
 
-def create_healing_intent_from_request(request_dict: Dict[str, Any]) -> "HealingIntent":
+def create_healing_intent_from_request(request_dict: Dict[str, Any]) -> Any:
     """
     Create HealingIntent from request (OSS only feature)
     
