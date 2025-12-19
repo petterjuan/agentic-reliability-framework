@@ -1,4 +1,3 @@
-# OSS-only implementation
 # agentic_reliability_framework/engine/mcp_client.py
 """
 OSS MCP Client - Advisory mode only
@@ -10,34 +9,38 @@ import logging
 import time
 import uuid
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
 
 from ..oss.constants import (
-    MCP_MODES_ALLOWED, 
+    MCP_MODES_ALLOWED,
     EXECUTION_ALLOWED,
     validate_oss_config,
     get_oss_capabilities,
     OSSBoundaryError,
     check_oss_compliance,
 )
-from ..oss.healing_intent import HealingIntent, HealingIntentSerializer
+from ..oss.healing_intent import HealingIntent
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class OSSMCPResponse:
     """OSS MCP response format (compatible with Enterprise MCPResponse)"""
-    request_id: str
-    status: str  # "completed", "rejected", "error"
-    message: str
-    executed: bool = False
-    result: Optional[Dict[str, Any]] = None
-    timestamp: float = None
     
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = time.time()
+    def __init__(
+        self,
+        request_id: str,
+        status: str,
+        message: str,
+        executed: bool = False,
+        result: Optional[Dict[str, Any]] = None,
+        timestamp: Optional[float] = None
+    ):
+        self.request_id = request_id
+        self.status = status
+        self.message = message
+        self.executed = executed
+        self.result = result
+        self.timestamp = timestamp if timestamp is not None else time.time()
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format"""
@@ -115,7 +118,7 @@ class OSSMCPClient:
         }
         
         # Cache for similar incidents
-        self.similarity_cache = {}
+        self.similarity_cache: Dict[str, Dict[str, Any]] = {}
         
         logger.info(f"Initialized OSSMCPClient in {self.mode} mode")
         logger.info(f"OSS Edition: {get_oss_capabilities()['edition']}")
@@ -208,12 +211,14 @@ class OSSMCPClient:
             response = OSSMCPResponse.from_healing_intent(intent)
             
             # Add OSS analysis context
-            response.result["oss_analysis"] = {
-                "analysis_time_ms": (time.time() - start_time) * 1000,
-                "similar_incidents_found": len(analysis.get("similar_incidents", [])),
-                "rag_used": analysis.get("rag_used", False),
-                "cache_hit": analysis.get("cache_hit", False),
-            }
+            if response.result:
+                similar_incidents = analysis.get("similar_incidents", [])
+                response.result["oss_analysis"] = {
+                    "analysis_time_ms": (time.time() - start_time) * 1000,
+                    "similar_incidents_found": len(similar_incidents),
+                    "rag_used": analysis.get("rag_used", False),
+                    "cache_hit": analysis.get("cache_hit", False),
+                }
             
             # Update metrics
             analysis_time = (time.time() - start_time) * 1000
@@ -463,7 +468,23 @@ class OSSMCPClient:
     
     def create_healing_intent(self, request_dict: Dict[str, Any]) -> HealingIntent:
         """Create HealingIntent directly from request"""
-        analysis = asyncio.run(self._analyze_request(request_dict))
+        # Use a synchronous wrapper to avoid nested event loops
+        async def _async_create():
+            return await self._analyze_request(request_dict)
+        
+        # Run the async function in a new event loop if needed
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're in an async context, use asyncio.create_task
+                analysis_task = asyncio.create_task(_async_create())
+                analysis = asyncio.run(asyncio.wait_for(analysis_task, timeout=10.0))
+            else:
+                # We're in a sync context, run the event loop
+                analysis = asyncio.run(_async_create())
+        except RuntimeError:
+            # No event loop, create a new one
+            analysis = asyncio.run(_async_create())
         
         return HealingIntent.from_analysis(
             action=request_dict["tool"],
