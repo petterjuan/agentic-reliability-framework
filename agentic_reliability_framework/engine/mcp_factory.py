@@ -159,8 +159,8 @@ def create_mcp_server(
         except ImportError:
             logger.info("OSS Capabilities: advisory mode only")
         
-        # The factory returns OSSMCPClient, but mypy needs assurance
-        return client  # type: ignore[no-any-return]
+        # Remove the unreachable return statement that was on line 137
+        return client
     
     # Enterprise Edition
     elif edition == "enterprise":
@@ -191,7 +191,6 @@ def create_mcp_server(
             
             # Fall back to OSS
             from .mcp_client import create_mcp_client
-            # The factory returns OSSMCPClient, but mypy needs assurance
             return create_mcp_client(config)  # type: ignore[no-any-return]
     
     else:
