@@ -171,7 +171,10 @@ def create_mcp_server(
                 raise ValueError(f"Invalid MCP mode: {mode}. Must be one of: {[m.value for m in MCPMode]}")
         elif isinstance(mode, MCPMode):
             mcp_mode = mode
-        # No else clause needed - type hints ensure mode can only be str, MCPMode, or None
+        else:
+            # Add an explicit else clause with an assertion to satisfy mypy
+            # This tells mypy: "I know this can't happen, but here's what to do if it does"
+            raise AssertionError(f"Unreachable code: mode has unexpected type {type(mode)}")
     
     # OSS Edition - always returns OSSMCPClient
     if edition == "oss":
@@ -195,7 +198,6 @@ def create_mcp_server(
         except ImportError:
             logger.info("OSS Capabilities: advisory mode only")
         
-        # No cast needed - create_mcp_client returns OSSMCPClient
         return client
     
     # Enterprise Edition - returns MCPServer (or EnterpriseMCPServer)
