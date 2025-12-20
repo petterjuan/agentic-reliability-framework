@@ -23,45 +23,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Clear Python cache
-      run: |
-        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-        find . -type f -name "*.pyc" -delete 2>/dev/null || true
-        find . -type f -name "*.pyo" -delete 2>/dev/null || true
-        rm -rf .mypy_cache .pytest_cache .ruff_cache 2>/dev/null || true
-    
     - name: Install OSS package
       run: |
         python -m pip install --upgrade pip
         pip install "."
         pip install pytest pytest-asyncio pytest-cov ruff mypy
-    
-    - name: Simple OSS verification
-      run: |
-        echo "🔧 Simple OSS verification..."
-        
-        # Just test basic imports - no complex checks
-        python -c "
-        print('Testing imports...')
-        
-        # Test 1: Config
-        from agentic_reliability_framework.config import config
-        print('✅ Config imported')
-        
-        # Test 2: OSS module
-        from agentic_reliability_framework.oss import get_oss_capabilities
-        print('✅ OSS module imported')
-        
-        # Test 3: HealingIntent
-        from agentic_reliability_framework.oss.healing_intent import HealingIntent
-        print('✅ HealingIntent imported')
-        
-        # Test 4: Engine factory
-        from agentic_reliability_framework.engine.engine_factory import get_oss_engine_capabilities
-        print('✅ Engine factory imported')
-        
-        print('🎉 All imports successful!')
-        "
     
     - name: Run OSS boundary enforcement
       run: |
