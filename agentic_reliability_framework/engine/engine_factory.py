@@ -19,7 +19,7 @@ limitations under the License.
 """
 
 import logging
-from typing import Dict, Any, Optional, Union, Type, cast, overload
+from typing import Dict, Any, Optional, Union, Type, cast, overload, TYPE_CHECKING
 
 # Handle Literal for different Python versions
 try:
@@ -34,11 +34,18 @@ logger = logging.getLogger(__name__)
 # Type aliases
 EngineConfig = Dict[str, Any]
 
+if TYPE_CHECKING:
+    from .reliability import V3ReliabilityEngine as BaseV3ReliabilityEngine
+    from .v3_reliability import V3ReliabilityEngine as EnhancedV3ReliabilityEngine
+else:
+    BaseV3ReliabilityEngine = Any
+    EnhancedV3ReliabilityEngine = Any
+
 
 class OSSV3ReliabilityEngine:
     """OSS wrapper for V3ReliabilityEngine with OSS metadata"""
     
-    def __init__(self, base_engine):
+    def __init__(self, base_engine: BaseV3ReliabilityEngine) -> None:
         self._engine = base_engine
         self._oss_edition = True
         self._requires_enterprise = False
@@ -48,11 +55,11 @@ class OSSV3ReliabilityEngine:
             "upgrade_url": "https://arf.dev/enterprise",
         }
     
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the base engine"""
         return getattr(self._engine, name)
     
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Include both engine attributes and OSS attributes"""
         engine_dir = dir(self._engine)
         return sorted(set(engine_dir + list(self.__dict__.keys())))
@@ -61,7 +68,7 @@ class OSSV3ReliabilityEngine:
 class OSSEnhancedV3ReliabilityEngine:
     """OSS wrapper for Enhanced V3ReliabilityEngine with OSS metadata"""
     
-    def __init__(self, base_engine, enable_rag: bool = False, rag_nodes_limit: int = 1000):
+    def __init__(self, base_engine: EnhancedV3ReliabilityEngine, enable_rag: bool = False, rag_nodes_limit: int = 1000) -> None:
         self._engine = base_engine
         self._oss_edition = True
         self._requires_enterprise = False
@@ -74,11 +81,11 @@ class OSSEnhancedV3ReliabilityEngine:
             "upgrade_url": "https://arf.dev/enterprise",
         }
     
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the base engine"""
         return getattr(self._engine, name)
     
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         """Include both engine attributes and OSS attributes"""
         engine_dir = dir(self._engine)
         return sorted(set(engine_dir + list(self.__dict__.keys())))
@@ -87,11 +94,11 @@ class OSSEnhancedV3ReliabilityEngine:
 class EngineFactory:
     """Factory for creating reliability engines - OSS Edition"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._engines_created = 0
         logger.info("Initialized EngineFactory (OSS Edition)")
     
-    def create_engine(self, engine_config: Optional[EngineConfig] = None) -> Any:
+    def create_engine(self, engine_config: Optional[EngineConfig] = None) -> Union[OSSV3ReliabilityEngine, OSSEnhancedV3ReliabilityEngine]:
         """
         Create a reliability engine instance
         
@@ -101,11 +108,12 @@ class EngineFactory:
             engine_config: Engine configuration dictionary
             
         Returns:
-            Configured reliability engine instance
+            Configured reliability engine instance (wrapped in OSS wrapper)
         """
         try:
-            from .reliability import V3ReliabilityEngine
-            from .v3_reliability import V3ReliabilityEngine as EnhancedV3ReliabilityEngine
+            # Import here to avoid circular imports
+            from .reliability import V3ReliabilityEngine as BaseV3Engine
+            from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
             
             # Determine which engine to create based on config
             use_enhanced = False
@@ -138,25 +146,25 @@ class EngineFactory:
                     logger.warning("MCP server not available")
                 
                 # Create enhanced engine
-                base_engine = EnhancedV3ReliabilityEngine(
+                base_engine: EnhancedV3Engine = EnhancedV3Engine(
                     rag_graph=rag_graph,
                     mcp_server=mcp_server
                 )
                 
                 # Wrap in OSS wrapper
-                engine = OSSEnhancedV3ReliabilityEngine(base_engine)
+                engine: OSSEnhancedV3ReliabilityEngine = OSSEnhancedV3ReliabilityEngine(base_engine)
                 
             else:
                 logger.info("Creating V3ReliabilityEngine (OSS Edition)")
-                base_engine = V3ReliabilityEngine()
+                base_engine: BaseV3Engine = BaseV3Engine()
                 
                 # Wrap in OSS wrapper
-                engine = OSSV3ReliabilityEngine(base_engine)
+                engine: OSSV3ReliabilityEngine = OSSV3ReliabilityEngine(base_engine)
             
             self._engines_created += 1
             
             # Log OSS capabilities
-            logger.info(f"OSS Engine Created: {engine.__class__.__name__}")
+            logger.info(f"OSS Engine Created: {type(engine).__name__}")
             logger.info(f"OSS Limits: 1000 incident nodes max, advisory mode only")
             
             if hasattr(engine, '_requires_enterprise') and engine._requires_enterprise:
@@ -170,8 +178,8 @@ class EngineFactory:
         except Exception as e:
             logger.error(f"Failed to create engine: {e}")
             # Fallback to basic engine
-            from .reliability import V3ReliabilityEngine
-            base_engine = V3ReliabilityEngine()
+            from .reliability import V3ReliabilityEngine as BaseV3Engine
+            base_engine = BaseV3Engine()
             engine = OSSV3ReliabilityEngine(base_engine)
             return engine
     
@@ -179,7 +187,7 @@ class EngineFactory:
         self, 
         enable_rag: bool = False,
         rag_nodes_limit: int = 1000
-    ) -> Any:
+    ) -> OSSEnhancedV3ReliabilityEngine:
         """
         Create enhanced V3 engine with specific features
         
@@ -190,7 +198,7 @@ class EngineFactory:
             rag_nodes_limit: Maximum RAG nodes (capped at 1000 in OSS)
             
         Returns:
-            Enhanced V3 reliability engine
+            Enhanced V3 reliability engine (wrapped in OSS wrapper)
         """
         # OSS: Cap RAG nodes
         if rag_nodes_limit > 1000:
@@ -217,15 +225,15 @@ class EngineFactory:
         except ImportError:
             logger.warning("MCP server not available")
         
-        from .v3_reliability import V3ReliabilityEngine as EnhancedV3ReliabilityEngine
+        from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
         
-        base_engine = EnhancedV3ReliabilityEngine(
+        base_engine: EnhancedV3Engine = EnhancedV3Engine(
             rag_graph=rag_graph,
             mcp_server=mcp_server
         )
         
         # Wrap in OSS wrapper with capabilities
-        engine = OSSEnhancedV3ReliabilityEngine(
+        engine: OSSEnhancedV3ReliabilityEngine = OSSEnhancedV3ReliabilityEngine(
             base_engine,
             enable_rag=enable_rag,
             rag_nodes_limit=rag_nodes_limit
@@ -288,7 +296,7 @@ class EngineFactory:
         Returns:
             Validation results
         """
-        violations = []
+        violations: list[str] = []
         warnings: list[str] = []  # FIXED: Added type annotation
         
         # Check RAG limits
@@ -339,7 +347,7 @@ class EngineFactory:
 
 
 # Factory function for backward compatibility
-def create_engine(engine_config: Optional[EngineConfig] = None) -> Any:
+def create_engine(engine_config: Optional[EngineConfig] = None) -> Union[OSSV3ReliabilityEngine, OSSEnhancedV3ReliabilityEngine]:
     """
     Create engine - backward compatibility function
     
@@ -349,7 +357,7 @@ def create_engine(engine_config: Optional[EngineConfig] = None) -> Any:
     return factory.create_engine(engine_config)
 
 
-def get_engine(engine_config: Optional[EngineConfig] = None) -> Any:
+def get_engine(engine_config: Optional[EngineConfig] = None) -> Union[OSSV3ReliabilityEngine, OSSEnhancedV3ReliabilityEngine]:
     """Alias for create_engine - backward compatibility"""
     return create_engine(engine_config)
 
