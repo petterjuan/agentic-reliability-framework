@@ -9,7 +9,7 @@ from .predictive import SimplePredictiveEngine
 from .anomaly import AdvancedAnomalyDetector
 from .business import BusinessImpactCalculator, BusinessMetricsTracker
 from .mcp_server import MCPServer, MCPMode, MCPRequest, MCPResponse
-from .engine_factory import EngineFactory, create_engine, get_engine
+from .engine_factory import EngineFactory, create_engine, get_engine, OSSV3ReliabilityEngine, OSSEnhancedV3ReliabilityEngine
 
 __all__ = [
     # v2 components
@@ -29,4 +29,8 @@ __all__ = [
     'EngineFactory',
     'create_engine',
     'get_engine',
+    
+    # OSS wrapper classes
+    'OSSV3ReliabilityEngine',
+    'OSSEnhancedV3ReliabilityEngine',
 ]
