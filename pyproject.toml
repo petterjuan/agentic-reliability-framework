@@ -7,21 +7,223 @@ name = "agentic-reliability-framework"
 version = "3.3.0"
 description = "Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing - OSS Edition"
 readme = "README.md"
-requires-python = ">=3.10"  # 🔄 FIXED: Back to 3.10
-license = {text = "Apache 2.0"}
+requires-python = ">=3.10"
+license = {file = "LICENSE"}  # ✅ FIXED: Use file reference
 authors = [
     {name = "Juan Petter", email = "petter2025us@outlook.com"}
 ]
+keywords = [
+    "ai-agents",
+    "reliability-engineering",
+    "mlops",
+    "observability",
+    "self-healing",
+    "anomaly-detection",
+    "predictive-analytics",
+    "open-source",
+    "monitoring",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+]
 
-# ... rest of file ...
+dependencies = [
+    # UI Framework
+    "gradio>=5.0.0,<6.0.0",
+    
+    # Core Data & ML
+    "numpy>=1.24.0,<2.0.0",
+    "pandas>=2.0.0,<3.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "sentence-transformers>=2.2.0",
+    "faiss-cpu>=1.7.4",
+    
+    # Networking & Utilities
+    "requests>=2.32.5",
+    "circuitbreaker>=1.4.0",
+    "atomicwrites>=1.4.1",
+    "python-dotenv>=1.0.0",
+    "click>=8.0.0",
+    
+    # Async support for v3 features
+    "asyncio>=3.4.3",
+    "aiohttp>=3.9.0",
+    "anyio>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    
+    # Formatting & Linting
+    "black>=23.7.0",
+    "ruff>=0.0.285",
+    "mypy>=1.5.0",
+    "pre-commit>=3.6.0",
+    
+    # Type stubs
+    "types-requests>=2.32.0",
+    "types-python-dotenv>=1.0.0",
+]
+
+v3-features = [
+    "httpx>=0.25.0",
+    "uvicorn>=0.24.0",
+    "fastapi>=0.104.0",
+    "websockets>=12.0",
+]
+
+enterprise-bridge = [
+    "pyjwt>=2.8.0",
+    "cryptography>=42.0.0",
+]
+
+[project.urls]
+Homepage = "https://arf.dev"
+Documentation = "https://docs.arf.dev"
+Repository = "https://github.com/petterjuan/agentic-reliability-framework"
+Issues = "https://github.com/petterjuan/agentic-reliability-framework/issues"
+"Open Source" = "https://github.com/petterjuan/agentic-reliability-framework"
+"Enterprise Edition" = "https://github.com/petterjuan/agentic-reliability-enterprise"
+"Live Demo" = "https://huggingface.co/spaces/petter2025/agentic-reliability-framework"
+
+[project.scripts]
+arf = "agentic_reliability_framework.cli:main"
+arf-oss = "agentic_reliability_framework.cli:main"
+
+# ✅ FIXED: Package discovery configuration
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentic_reliability_framework*", "oss*"]
+exclude = [
+    "Test*", 
+    "archive*", 
+    "backup_builds*", 
+    "docs*", 
+    ".github*", 
+    "scripts*", 
+    "examples*",
+    "*.egg-info",
+    "build",
+    "dist",
+    "__pycache__",
+]
+
+[tool.setuptools.package-data]
+"agentic_reliability_framework" = [
+    "data/*.json", 
+    "data/*.index",
+    "py.typed"
+]
+"oss" = ["*.py"]
+"*" = ["README.md", "LICENSE", "CONTRIBUTING.md", "pyproject.toml"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310']  # 🔄 FIXED: Back to py310
+target-version = ['py310']
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"  # 🔄 FIXED: Back to py310
+target-version = "py310"
+select = [
+    "E", "W", "F", "I", "B", "C4", "UP", "ASYNC",
+]
+ignore = [
+    "E501",
+    "W503",
+    "F401",
+    "B008",
+]
+extend-exclude = [
+    "__pycache__",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+    "build",
+    "dist",
+    "*.egg-info",
+    "Test",
+    "archive",
+    "backup_builds",
+    "docs",
+    "scripts",
+    "examples",
+]
+
+[tool.ruff.isort]
+known-first-party = ["agentic_reliability_framework", "oss"]
+combine-as-imports = true
+force-sort-within-sections = true
+lines-after-imports = 2
+classes = ["constants", "models", "engine", "memory", "oss"]
+
+[tool.ruff.per-file-ignores]
+"**/docs/*.md" = ["E501"]
+"**/README.md" = ["E501"]
+"**/__init__.py" = ["F401"]
 
 [tool.mypy]
-python_version = "3.10"  # 🔄 FIXED: Back to 3.10
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+disable_error_code = [
+    "import-untyped",
+    "attr-defined",
+    "empty-body",
+    "assignment",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "agentic_reliability_framework.engine.business",
+    "agentic_reliability_framework.app"
+]
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "agentic_reliability_framework.engine.mcp_server",
+    "agentic_reliability_framework.engine.mcp_client"
+]
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "agentic_reliability_framework.oss.*"
+]
+disallow_untyped_defs = true
+check_untyped_defs = true
