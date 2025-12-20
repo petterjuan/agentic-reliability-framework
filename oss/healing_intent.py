@@ -1,26 +1,75 @@
-# agentic_reliability_framework/oss/healing_intent.py
 """
 Healing Intent - OSS creates, Enterprise executes
-Core boundary pattern between OSS intelligence and Enterprise execution
+Apache 2.0 Licensed
+
+Copyright 2025 Juan Petter
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
-from dataclasses import dataclass, asdict, field
-from typing import Dict, Any, Optional, List, ClassVar
+from dataclasses import dataclass, field, asdict
+from typing import Dict, Any, Optional, List, ClassVar, Union
 from datetime import datetime
 import hashlib
 import json
-import uuid
 import time
+import uuid
+from enum import Enum
 
 
-@dataclass(frozen=True)
+class HealingIntentError(Exception):
+    """Base exception for HealingIntent errors"""
+    pass
+
+
+class SerializationError(HealingIntentError):
+    """Error during serialization/deserialization"""
+    pass
+
+
+class ValidationError(HealingIntentError):
+    """Error during intent validation"""
+    pass
+
+
+class IntentSource(str, Enum):
+    """Source of the healing intent"""
+    OSS_ANALYSIS = "oss_analysis"
+    HUMAN_OVERRIDE = "human_override"
+    AUTOMATED_LEARNING = "automated_learning"  # Enterprise only
+    SCHEDULED_ACTION = "scheduled_action"  # Enterprise only
+
+
+class IntentStatus(str, Enum):
+    """Status of the healing intent"""
+    CREATED = "created"  # OSS created, not yet sent to Enterprise
+    PENDING_EXECUTION = "pending_execution"  # Sent to Enterprise, waiting
+    EXECUTING = "executing"  # Enterprise is executing
+    COMPLETED = "completed"  # Enterprise executed successfully
+    FAILED = "failed"  # Enterprise execution failed
+    REJECTED = "rejected"  # Enterprise rejected the intent
+    CANCELLED = "cancelled"  # Intent was cancelled
+
+
+@dataclass(frozen=True, slots=True)
 class HealingIntent:
     """
-    OSS-generated healing recommendation
+    OSS-generated healing recommendation for Enterprise execution
     
     This is the clean boundary between OSS intelligence and Enterprise execution:
     - OSS creates HealingIntent through analysis
     - Enterprise executes HealingIntent through MCP server
+    - Immutable (frozen) to ensure consistency across OSS→Enterprise handoff
     """
     
     # === CORE ACTION FIELDS (Sent to Enterprise) ===
@@ -37,42 +86,92 @@ class HealingIntent:
     # === OSS ANALYSIS CONTEXT (Stays in OSS) ===
     reasoning_chain: Optional[List[Dict[str, Any]]] = None
     similar_incidents: Optional[List[Dict[str, Any]]] = None
-    policy_applied: Optional[str] = None
     rag_similarity_score: Optional[float] = None
+    source: IntentSource = IntentSource.OSS_ANALYSIS
     
-    # === IMMUTABLE IDENTIFIER ===
+    # === IMMUTABLE IDENTIFIERS ===
     intent_id: str = field(default_factory=lambda: f"intent_{uuid.uuid4().hex[:16]}")
+    created_at: float = field(default_factory=time.time)
+    
+    # === EXECUTION METADATA (Set by Enterprise) ===
+    status: IntentStatus = IntentStatus.CREATED
+    execution_id: Optional[str] = None
+    executed_at: Optional[float] = None
+    execution_result: Optional[Dict[str, Any]] = None
+    enterprise_metadata: Dict[str, Any] = field(default_factory=dict)
     
     # Class constants for validation
     MIN_CONFIDENCE: ClassVar[float] = 0.0
     MAX_CONFIDENCE: ClassVar[float] = 1.0
     MAX_JUSTIFICATION_LENGTH: ClassVar[int] = 1000
+    MAX_PARAMETERS_SIZE: ClassVar[int] = 100  # Maximum number of parameters
+    VERSION: ClassVar[str] = "1.0.0"
     
     def __post_init__(self):
         """Validate HealingIntent after initialization"""
+        self._validate()
+    
+    def _validate(self) -> None:
+        """Validate all fields of the HealingIntent"""
+        errors = []
+        
         # Validate confidence range
         if not (self.MIN_CONFIDENCE <= self.confidence <= self.MAX_CONFIDENCE):
-            raise ValueError(
+            errors.append(
                 f"Confidence must be between {self.MIN_CONFIDENCE} and "
                 f"{self.MAX_CONFIDENCE}, got {self.confidence}"
             )
         
         # Validate justification length
         if len(self.justification) > self.MAX_JUSTIFICATION_LENGTH:
-            raise ValueError(
+            errors.append(
                 f"Justification exceeds max length {self.MAX_JUSTIFICATION_LENGTH}"
             )
         
-        # Ensure parameters is serializable
+        # Validate action and component
+        if not self.action.strip():
+            errors.append("Action cannot be empty")
+        
+        if not self.component.strip():
+            errors.append("Component cannot be empty")
+        
+        # Validate parameters size
+        if len(self.parameters) > self.MAX_PARAMETERS_SIZE:
+            errors.append(
+                f"Too many parameters: {len(self.parameters)} > {self.MAX_PARAMETERS_SIZE}"
+            )
+        
+        # Validate parameters are JSON serializable
         try:
             json.dumps(self.parameters)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"Parameters must be JSON serializable: {e}")
+            errors.append(f"Parameters must be JSON serializable: {e}")
+        
+        # Validate similar incidents structure if present
+        if self.similar_incidents:
+            for i, incident in enumerate(self.similar_incidents):
+                if not isinstance(incident, dict):
+                    errors.append(f"Similar incident {i} must be a dictionary")
+                elif "similarity" in incident:
+                    similarity = incident["similarity"]
+                    if not isinstance(similarity, (int, float)) or not (0.0 <= similarity <= 1.0):
+                        errors.append(
+                            f"Similar incident {i} similarity must be between 0.0 and 1.0, got {similarity}"
+                        )
+        
+        if errors:
+            raise ValidationError(
+                f"HealingIntent validation failed:\n" +
+                "\n".join(f"  • {error}" for error in errors)
+            )
     
     @property
     def deterministic_id(self) -> str:
         """
         Deterministic ID for idempotency based on action + component + parameters
+        
+        This ensures the same action on the same component with the same parameters
+        generates the same intent ID, preventing duplicate executions.
         """
         data = {
             "action": self.action,
@@ -82,13 +181,39 @@ class HealingIntent:
             "detected_at": int(self.detected_at),
         }
         
+        # Sort keys for deterministic JSON
         json_str = json.dumps(data, sort_keys=True, default=str)
+        
+        # Create hash-based ID
         hash_digest = hashlib.sha256(json_str.encode()).hexdigest()
         return f"intent_{hash_digest[:16]}"
+    
+    @property
+    def age_seconds(self) -> float:
+        """Get age of intent in seconds"""
+        return time.time() - self.created_at
+    
+    @property
+    def is_executable(self) -> bool:
+        """Check if intent is ready for execution"""
+        return self.status in [IntentStatus.CREATED, IntentStatus.PENDING_EXECUTION]
+    
+    @property
+    def is_completed(self) -> bool:
+        """Check if intent execution is completed"""
+        return self.status == IntentStatus.COMPLETED
+    
+    @property
+    def is_failed(self) -> bool:
+        """Check if intent execution failed"""
+        return self.status in [IntentStatus.FAILED, IntentStatus.REJECTED, IntentStatus.CANCELLED]
     
     def to_enterprise_request(self) -> Dict[str, Any]:
         """
         Convert to Enterprise API request format
+        
+        Returns only the data needed for Enterprise execution.
+        OSS analysis context stays in OSS.
         """
         return {
             # Core execution fields
@@ -102,48 +227,190 @@ class HealingIntent:
             "confidence": self.confidence,
             "incident_id": self.incident_id,
             "detected_at": self.detected_at,
+            "created_at": self.created_at,
+            "source": self.source.value,
             
             # Enterprise flag
             "requires_enterprise": True,
+            "oss_edition": True,
+            "version": self.VERSION,
             
-            # Minimal OSS context
+            # Minimal OSS context (for debugging only)
             "oss_metadata": {
                 "similar_incidents_count": len(self.similar_incidents) if self.similar_incidents else 0,
                 "rag_similarity_score": self.rag_similarity_score,
                 "has_reasoning_chain": self.reasoning_chain is not None,
-            }
+                "source": self.source.value,
+            },
+            
+            # Upgrade information
+            "upgrade_url": "https://arf.dev/enterprise",
+            "enterprise_features": [
+                "autonomous_execution",
+                "approval_workflows",
+                "persistent_storage",
+                "learning_engine",
+                "audit_trails",
+                "compliance_reports",
+                "multi_tenant_support",
+                "sso_integration",
+                "24_7_support"
+            ]
         }
     
-    def to_mcp_request(self, mode: str = "advisory") -> Dict[str, Any]:
+    def to_mcp_request(self) -> Dict[str, Any]:
         """
         Convert to existing MCP request format for backward compatibility
+        
+        Returns:
+            Dictionary compatible with existing MCPServer.execute_tool()
         """
         return {
-            "request_id": self.intent_id,
+            "request_id": self.deterministic_id,
             "tool": self.action,
             "component": self.component,
             "parameters": self.parameters,
             "justification": self.justification,
-            "mode": mode,
+            "mode": "advisory",  # Will be overridden by Enterprise
             "timestamp": self.detected_at,
             "metadata": {
                 "intent_id": self.deterministic_id,
                 "oss_confidence": self.confidence,
                 "requires_enterprise": True,
                 "oss_generated": True,
+                "version": self.VERSION,
+                "source": self.source.value,
             }
         }
     
+    def to_dict(self, include_oss_context: bool = False) -> Dict[str, Any]:
+        """
+        Convert to dictionary for serialization
+        
+        Args:
+            include_oss_context: Whether to include OSS analysis context
+                (should be False when sending to Enterprise)
+        
+        Returns:
+            Dictionary representation of the intent
+        """
+        data = asdict(self)
+        
+        # Convert enums to strings
+        data["source"] = self.source.value
+        data["status"] = self.status.value
+        
+        # Remove OSS context if not needed
+        if not include_oss_context:
+            data.pop("reasoning_chain", None)
+            data.pop("similar_incidents", None)
+            data.pop("rag_similarity_score", None)
+        
+        # Add computed properties
+        data["deterministic_id"] = self.deterministic_id
+        data["age_seconds"] = self.age_seconds
+        data["is_executable"] = self.is_executable
+        data["is_completed"] = self.is_completed
+        data["is_failed"] = self.is_failed
+        data["version"] = self.VERSION
+        
+        return data
+    
+    def with_execution_result(
+        self,
+        execution_id: str,
+        executed_at: float,
+        result: Dict[str, Any],
+        status: IntentStatus = IntentStatus.COMPLETED,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> "HealingIntent":
+        """
+        Create a new HealingIntent with execution results (used by Enterprise)
+        
+        This is how Enterprise updates the intent after execution.
+        Returns a new immutable intent with execution results.
+        """
+        # Create a new dataclass with updated fields
+        return HealingIntent(
+            # Core fields (copied)
+            action=self.action,
+            component=self.component,
+            parameters=self.parameters,
+            justification=self.justification,
+            confidence=self.confidence,
+            incident_id=self.incident_id,
+            detected_at=self.detected_at,
+            
+            # OSS context (copied)
+            reasoning_chain=self.reasoning_chain,
+            similar_incidents=self.similar_incidents,
+            rag_similarity_score=self.rag_similarity_score,
+            source=self.source,
+            
+            # Identifiers (copied)
+            intent_id=self.intent_id,
+            created_at=self.created_at,
+            
+            # Updated execution fields
+            status=status,
+            execution_id=execution_id,
+            executed_at=executed_at,
+            execution_result=result,
+            enterprise_metadata={**(self.enterprise_metadata or {}), **(metadata or {})}
+        )
+    
+    def mark_as_sent_to_enterprise(self) -> "HealingIntent":
+        """
+        Mark intent as sent to Enterprise (used by OSS)
+        
+        Returns a new intent with status updated to PENDING_EXECUTION
+        """
+        return HealingIntent(
+            # Core fields (copied)
+            action=self.action,
+            component=self.component,
+            parameters=self.parameters,
+            justification=self.justification,
+            confidence=self.confidence,
+            incident_id=self.incident_id,
+            detected_at=self.detected_at,
+            
+            # OSS context (copied)
+            reasoning_chain=self.reasoning_chain,
+            similar_incidents=self.similar_incidents,
+            rag_similarity_score=self.rag_similarity_score,
+            source=self.source,
+            
+            # Identifiers (copied)
+            intent_id=self.intent_id,
+            created_at=self.created_at,
+            
+            # Updated status
+            status=IntentStatus.PENDING_EXECUTION,
+            execution_id=self.execution_id,
+            executed_at=self.executed_at,
+            execution_result=self.execution_result,
+            enterprise_metadata=self.enterprise_metadata
+        )
+    
     @classmethod
     def from_mcp_request(cls, request: Dict[str, Any]) -> "HealingIntent":
-        """Create HealingIntent from existing MCP request"""
+        """
+        Create HealingIntent from existing MCP request
+        
+        Provides backward compatibility with existing code
+        """
+        metadata = request.get("metadata", {})
+        
         return cls(
             action=request.get("tool", ""),
             component=request.get("component", ""),
             parameters=request.get("parameters", {}),
             justification=request.get("justification", ""),
-            incident_id=request.get("metadata", {}).get("incident_id", ""),
+            incident_id=metadata.get("incident_id", ""),
             detected_at=request.get("timestamp", time.time()),
+            intent_id=metadata.get("intent_id", f"intent_{uuid.uuid4().hex[:16]}"),
+            source=IntentSource(metadata.get("source", IntentSource.OSS_ANALYSIS.value))
         )
     
     @classmethod
@@ -157,16 +424,31 @@ class HealingIntent:
         similar_incidents: Optional[List[Dict[str, Any]]] = None,
         reasoning_chain: Optional[List[Dict[str, Any]]] = None,
         incident_id: str = "",
+        source: IntentSource = IntentSource.OSS_ANALYSIS,
     ) -> "HealingIntent":
-        """Factory method for creating HealingIntent from OSS analysis"""
+        """
+        Factory method for creating HealingIntent from OSS analysis
+        
+        This is the primary way OSS creates intents.
+        """
+        # Calculate enhanced confidence based on similar incidents
         enhanced_confidence = confidence
         if similar_incidents:
-            enhanced_confidence = min(confidence * 1.1, cls.MAX_CONFIDENCE)
+            # Boost confidence if we have historical context
+            similarity_scores = [
+                inc.get("similarity", 0.0)
+                for inc in similar_incidents
+                if "similarity" in inc
+            ]
+            if similarity_scores:
+                avg_similarity = sum(similarity_scores) / len(similarity_scores)
+                enhanced_confidence = min(confidence * (0.9 + avg_similarity * 0.2), cls.MAX_CONFIDENCE)
         
+        # Calculate RAG similarity if available
         rag_score = None
         if similar_incidents and len(similar_incidents) > 0:
             rag_score = sum(
-                inc.get("similarity", 0.0) 
+                inc.get("similarity", 0.0)
                 for inc in similar_incidents[:3]
             ) / min(3, len(similar_incidents))
         
@@ -180,73 +462,295 @@ class HealingIntent:
             similar_incidents=similar_incidents,
             reasoning_chain=reasoning_chain,
             rag_similarity_score=rag_score,
+            source=source,
         )
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization"""
-        return asdict(self)
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "HealingIntent":
-        """Create from dictionary"""
+        """
+        Create from dictionary (deserialize)
+        
+        Handles versioning and field conversion
+        """
+        # Handle versioning
+        version = data.get("version", "1.0.0")
+        
+        # Convert string enums back to Enum instances
+        if "source" in data and isinstance(data["source"], str):
+            data["source"] = IntentSource(data["source"])
+        
+        if "status" in data and isinstance(data["status"], str):
+            data["status"] = IntentStatus(data["status"])
+        
+        # Remove computed fields that shouldn't be in constructor
+        data.pop("deterministic_id", None)
+        data.pop("age_seconds", None)
+        data.pop("is_executable", None)
+        data.pop("is_completed", None)
+        data.pop("is_failed", None)
+        data.pop("version", None)
+        
         return cls(**data)
     
     def _normalize_parameters(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize parameters for deterministic hashing"""
+        """
+        Normalize parameters for deterministic hashing
+        
+        Ensures that parameter order and minor format differences
+        don't affect the deterministic ID.
+        """
         normalized = {}
         
         for key, value in sorted(params.items()):
             if isinstance(value, (int, float, str, bool, type(None))):
                 normalized[key] = value
             elif isinstance(value, (list, tuple)):
-                normalized[key] = tuple(self._normalize_parameters(v) if isinstance(v, dict) else v 
-                                      for v in value)
+                # Recursively normalize list items
+                normalized[key] = tuple(
+                    self._normalize_parameters(v) if isinstance(v, dict) else v
+                    for v in value
+                )
             elif isinstance(value, dict):
                 normalized[key] = self._normalize_parameters(value)
             else:
+                # Convert to string representation for other types
                 normalized[key] = str(value)
         
         return normalized
     
     def get_oss_context(self) -> Dict[str, Any]:
-        """Get OSS analysis context (stays in OSS)"""
+        """
+        Get OSS analysis context (stays in OSS)
+        
+        This data never leaves the OSS environment for privacy and IP protection.
+        """
         return {
             "reasoning_chain": self.reasoning_chain,
             "similar_incidents": self.similar_incidents,
-            "policy_applied": self.policy_applied,
             "rag_similarity_score": self.rag_similarity_score,
             "analysis_timestamp": datetime.fromtimestamp(self.detected_at).isoformat(),
+            "source": self.source.value,
+            "created_at": datetime.fromtimestamp(self.created_at).isoformat(),
         }
-
-
-# Serializer for versioned serialization
-class HealingIntentSerializer:
-    """Versioned serialization for backward compatibility"""
     
-    @staticmethod
-    def serialize(intent: HealingIntent, version: int = 1) -> Dict[str, Any]:
-        """Serialize HealingIntent with versioning"""
-        if version == 1:
-            return {
-                "version": 1,
-                "data": intent.to_dict(),
-                "schema": "healing_intent_v1",
-            }
-        else:
-            raise ValueError(f"Unsupported version: {version}")
-    
-    @staticmethod
-    def deserialize(data: Dict[str, Any]) -> HealingIntent:
-        """Deserialize HealingIntent with version detection"""
-        version = data.get("version", 1)
+    def get_execution_summary(self) -> Dict[str, Any]:
+        """
+        Get execution summary (public information)
         
-        if version == 1:
-            return HealingIntent.from_dict(data["data"])
-        else:
-            raise ValueError(f"Unsupported version: {version}")
+        Safe to share externally
+        """
+        summary = {
+            "intent_id": self.deterministic_id,
+            "action": self.action,
+            "component": self.component,
+            "confidence": self.confidence,
+            "status": self.status.value,
+            "created_at": datetime.fromtimestamp(self.created_at).isoformat(),
+            "age_seconds": self.age_seconds,
+        }
+        
+        if self.executed_at:
+            summary["executed_at"] = datetime.fromtimestamp(self.executed_at).isoformat()
+            summary["execution_duration_seconds"] = self.executed_at - self.created_at
+        
+        if self.execution_result:
+            summary["execution_success"] = self.execution_result.get("success", False)
+            summary["execution_message"] = self.execution_result.get("message", "")
+        
+        return summary
 
 
+class HealingIntentSerializer:
+    """
+    Versioned serialization for HealingIntent
+    
+    Supports:
+    - JSON serialization/deserialization
+    - Version compatibility
+    - Schema validation
+    """
+    
+    SCHEMA_VERSION = "1.0.0"
+    
+    @classmethod
+    def serialize(cls, intent: HealingIntent, version: str = "1.0.0") -> Dict[str, Any]:
+        """
+        Serialize HealingIntent with versioning
+        
+        Args:
+            intent: HealingIntent to serialize
+            version: Schema version to use
+        
+        Returns:
+            Versioned serialization dictionary
+        
+        Raises:
+            SerializationError: If serialization fails
+        """
+        try:
+            if version == "1.0.0":
+                return {
+                    "version": version,
+                    "schema_version": cls.SCHEMA_VERSION,
+                    "data": intent.to_dict(include_oss_context=True),
+                    "metadata": {
+                        "serialized_at": time.time(),
+                        "deterministic_id": intent.deterministic_id,
+                        "is_executable": intent.is_executable,
+                    }
+                }
+            else:
+                raise SerializationError(f"Unsupported version: {version}")
+        
+        except Exception as e:
+            raise SerializationError(f"Failed to serialize HealingIntent: {e}") from e
+    
+    @classmethod
+    def deserialize(cls, data: Dict[str, Any]) -> HealingIntent:
+        """
+        Deserialize HealingIntent with version detection
+        
+        Args:
+            data: Serialized data
+        
+        Returns:
+            Deserialized HealingIntent
+        
+        Raises:
+            SerializationError: If deserialization fails
+        """
+        try:
+            version = data.get("version", "1.0.0")
+            
+            if version == "1.0.0":
+                intent_data = data["data"]
+                return HealingIntent.from_dict(intent_data)
+            else:
+                raise SerializationError(f"Unsupported version: {version}")
+        
+        except KeyError as e:
+            raise SerializationError(f"Missing required field in serialized data: {e}") from e
+        except Exception as e:
+            raise SerializationError(f"Failed to deserialize HealingIntent: {e}") from e
+    
+    @classmethod
+    def to_json(cls, intent: HealingIntent, pretty: bool = False) -> str:
+        """Convert HealingIntent to JSON string"""
+        try:
+            serialized = cls.serialize(intent)
+            if pretty:
+                return json.dumps(serialized, indent=2, default=str)
+            else:
+                return json.dumps(serialized, default=str)
+        except Exception as e:
+            raise SerializationError(f"Failed to convert to JSON: {e}") from e
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> HealingIntent:
+        """Create HealingIntent from JSON string"""
+        try:
+            data = json.loads(json_str)
+            return cls.deserialize(data)
+        except json.JSONDecodeError as e:
+            raise SerializationError(f"Invalid JSON: {e}") from e
+        except Exception as e:
+            raise SerializationError(f"Failed to parse JSON: {e}") from e
+    
+    @classmethod
+    def to_enterprise_json(cls, intent: HealingIntent) -> str:
+        """
+        Convert to Enterprise-ready JSON (excludes OSS context)
+        
+        This is what should be sent to the Enterprise API
+        """
+        try:
+            enterprise_request = intent.to_enterprise_request()
+            return json.dumps(enterprise_request, default=str)
+        except Exception as e:
+            raise SerializationError(f"Failed to create Enterprise JSON: {e}") from e
+
+
+# Factory functions for common use cases
+def create_rollback_intent(
+    component: str,
+    revision: str = "previous",
+    justification: str = "",
+    incident_id: str = "",
+    similar_incidents: Optional[List[Dict[str, Any]]] = None
+) -> HealingIntent:
+    """Create a rollback healing intent"""
+    return HealingIntent.from_analysis(
+        action="rollback",
+        component=component,
+        parameters={"revision": revision},
+        justification=justification or f"Rollback {component} to {revision} revision",
+        confidence=0.9,
+        similar_incidents=similar_incidents,
+        incident_id=incident_id,
+    )
+
+
+def create_restart_intent(
+    component: str,
+    container_id: Optional[str] = None,
+    justification: str = "",
+    incident_id: str = "",
+    similar_incidents: Optional[List[Dict[str, Any]]] = None
+) -> HealingIntent:
+    """Create a container restart healing intent"""
+    parameters = {}
+    if container_id:
+        parameters["container_id"] = container_id
+    
+    return HealingIntent.from_analysis(
+        action="restart_container",
+        component=component,
+        parameters=parameters,
+        justification=justification or f"Restart container for {component}",
+        confidence=0.85,
+        similar_incidents=similar_incidents,
+        incident_id=incident_id,
+    )
+
+
+def create_scale_out_intent(
+    component: str,
+    scale_factor: int = 2,
+    justification: str = "",
+    incident_id: str = "",
+    similar_incidents: Optional[List[Dict[str, Any]]] = None
+) -> HealingIntent:
+    """Create a scale-out healing intent"""
+    return HealingIntent.from_analysis(
+        action="scale_out",
+        component=component,
+        parameters={"scale_factor": scale_factor},
+        justification=justification or f"Scale out {component} by factor {scale_factor}",
+        confidence=0.8,
+        similar_incidents=similar_incidents,
+        incident_id=incident_id,
+    )
+
+
+# Export
 __all__ = [
+    # Main class
     "HealingIntent",
+    
+    # Enums
+    "IntentSource",
+    "IntentStatus",
+    
+    # Serializer
     "HealingIntentSerializer",
+    
+    # Exceptions
+    "HealingIntentError",
+    "SerializationError",
+    "ValidationError",
+    
+    # Factory functions
+    "create_rollback_intent",
+    "create_restart_intent",
+    "create_scale_out_intent",
 ]
