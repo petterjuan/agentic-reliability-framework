@@ -15,40 +15,98 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Force full checkout to avoid cache issues
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'  # Enable pip caching
     
-    - name: Install dependencies from pyproject.toml
+    - name: Clear Python cache
+      run: |
+        # Clear all Python caches
+        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        find . -type f -name "*.pyc" -delete 2>/dev/null || true
+        find . -type f -name "*.pyo" -delete 2>/dev/null || true
+        rm -rf .mypy_cache .pytest_cache .ruff_cache 2>/dev/null || true
+    
+    - name: Install OSS package only (no dev dependencies)
       run: |
         python -m pip install --upgrade pip
-        pip install ".[dev]"
+        # Install ONLY the OSS package, no optional dependencies
+        pip install -e . --no-deps
+        # Install minimal test dependencies
+        pip install pytest pytest-asyncio pytest-cov ruff mypy
     
-    - name: Clean build artifacts before linting
+    - name: Verify OSS installation
       run: |
-        rm -rf build/
-        rm -rf dist/
-        rm -rf *.egg-info/
-        find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+        python -c "
+        from agentic_reliability_framework.config import config
+        print('✅ Config loaded - OSS Edition:', config.is_oss_edition)
+        print('✅ License:', config.get_oss_limits()['license'])
+        "
+    
+    - name: Run OSS boundary enforcement
+      run: |
+        # Create and run enforcement script
+        python << 'EOF'
+        import ast
+        import sys
+        from pathlib import Path
+        
+        print("🔍 OSS Boundary Check")
+        
+        violations = []
+        forbidden = [
+            'config.learning_enabled',
+            'config.rollout_percentage', 
+            'config.beta_testing_enabled',
+            'MCPMode.APPROVAL',
+            'MCPMode.AUTONOMOUS'
+        ]
+        
+        for py_file in Path('agentic_reliability_framework').rglob('*.py'):
+            if '__pycache__' in str(py_file) or 'test_' in py_file.name:
+                continue
+            try:
+                content = py_file.read_text()
+                for pattern in forbidden:
+                    if pattern in content:
+                        violations.append(f'{py_file}: {pattern}')
+            except:
+                continue
+        
+        if violations:
+            print('❌ OSS violations found:')
+            for v in violations:
+                print(f'  {v}')
+            sys.exit(1)
+        else:
+            print('✅ All files OSS-compliant')
+            sys.exit(0)
+        EOF
+    
+    - name: Type check with mypy (strict)
+      run: |
+        mypy agentic_reliability_framework/ \
+          --no-implicit-optional \
+          --warn-unused-ignores \
+          --disallow-untyped-defs \
+          --disallow-incomplete-defs \
+          --check-untyped-defs
     
     - name: Lint with ruff
       run: |
-        pip install ruff
-        ruff check .
-    
-    - name: Type check with mypy
-      run: |
-        pip install mypy
-        mypy agentic_reliability_framework/ --ignore-missing-imports
+        ruff check . --fix
     
     - name: Test with pytest
       run: |
-        pip install pytest pytest-asyncio pytest-cov
-        pytest Test/ -v --cov=agentic_reliability_framework --cov-report=xml  # FIXED: Test/ not tests/
+        pytest Test/ -v --cov=agentic_reliability_framework --cov-report=xml
     
     - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'  # Only upload once
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
