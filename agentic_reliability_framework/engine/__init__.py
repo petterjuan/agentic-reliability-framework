@@ -9,7 +9,7 @@ from .predictive import SimplePredictiveEngine
 from .anomaly import AdvancedAnomalyDetector
 from .business import BusinessImpactCalculator, BusinessMetricsTracker
 from .mcp_server import MCPServer, MCPMode, MCPRequest, MCPResponse
-from .engine_factory import EngineFactory
+from .engine_factory import EngineFactory, create_engine, get_engine
 
 __all__ = [
     # v2 components
@@ -27,4 +27,6 @@ __all__ = [
     'MCPRequest',
     'MCPResponse',
     'EngineFactory',
+    'create_engine',
+    'get_engine',
 ]
