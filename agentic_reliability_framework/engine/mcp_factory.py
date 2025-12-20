@@ -169,12 +169,10 @@ def create_mcp_server(
                 mcp_mode = MCPMode(mode)
             except ValueError:
                 raise ValueError(f"Invalid MCP mode: {mode}. Must be one of: {[m.value for m in MCPMode]}")
-        elif isinstance(mode, MCPMode):
-            mcp_mode = mode
         else:
-            # Add an explicit else clause with an assertion to satisfy mypy
-            # This tells mypy: "I know this can't happen, but here's what to do if it does"
-            raise AssertionError(f"Unreachable code: mode has unexpected type {type(mode)}")
+            # At this point, mode must be MCPMode due to type hints
+            assert isinstance(mode, MCPMode), f"Expected MCPMode, got {type(mode)}"
+            mcp_mode = mode
     
     # OSS Edition - always returns OSSMCPClient
     if edition == "oss":
