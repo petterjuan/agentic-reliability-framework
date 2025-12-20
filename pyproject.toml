@@ -5,29 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentic-reliability-framework"
 version = "3.3.0"
-description = "Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing - OSS Edition"
+description = "Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
     {name = "Juan Petter", email = "petter2025us@outlook.com"}
 ]
-keywords = [
-    "ai-agents",
-    "reliability-engineering",
-    "mlops",
-    "observability",
-    "self-healing",
-    "anomaly-detection",
-    "predictive-analytics",
-    "open-source",
-    "monitoring",
-]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "Intended Audience :: Information Technology",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -35,14 +23,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: System :: Monitoring",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: System :: Systems Administration",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Operating System :: OS Independent",
 ]
 
-# MINIMAL DEPENDENCIES - Guaranteed to work
+# ABSOLUTELY MINIMAL DEPENDENCIES - No optional deps
 dependencies = [
-    "gradio>=5.0.0,<6.0.0",
+    "gradio>=5.0.0",
     "numpy>=1.24.0",
     "pandas>=2.0.0",
     "pydantic>=2.0.0",
@@ -53,61 +38,32 @@ dependencies = [
     "click>=8.0.0",
 ]
 
-# SIMPLE optional dependencies
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "black>=23.7.0",
-    "ruff>=0.0.285",
-]
-
-v3 = [
-    "aiohttp>=3.9.0",
-    "anyio>=4.0.0",
-]
+# REMOVE optional-dependencies entirely for now
+# [project.optional-dependencies]
 
 [project.urls]
 Homepage = "https://github.com/petterjuan/agentic-reliability-framework"
 Repository = "https://github.com/petterjuan/agentic-reliability-framework"
 Issues = "https://github.com/petterjuan/agentic-reliability-framework/issues"
-"Open Source" = "https://github.com/petterjuan/agentic-reliability-framework"
-"Enterprise Edition" = "https://github.com/petterjuan/agentic-reliability-enterprise"
 
 [project.scripts]
 arf = "agentic_reliability_framework.cli:main"
-arf-oss = "agentic_reliability_framework.cli:main"
 
-# SIMPLIFIED Package discovery
+# SIMPLE package discovery - NO optional extras
 [tool.setuptools]
 package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agentic_reliability_framework*", "oss*"]
-exclude = [
-    "Test*", 
-    "archive*", 
-    "backup_builds*", 
-    "docs*", 
-    ".github*", 
-    "scripts*", 
-    "examples*",
-    "*.egg-info",
-    "build",
-    "dist",
-    "__pycache__",
-]
+include = ["agentic_reliability_framework*"]
 
 [tool.setuptools.package-data]
 "agentic_reliability_framework" = [
     "data/*.json", 
     "data/*.index",
-    "py.typed"
 ]
-"oss" = ["*.py"]
 
-# Basic formatting/linting config
+# Basic formatting
 [tool.black]
 line-length = 100
 target-version = ['py310']
@@ -117,19 +73,3 @@ line-length = 100
 target-version = "py310"
 select = ["E", "W", "F", "I"]
 ignore = ["E501", "W503", "F401"]
-extend-exclude = [
-    "__pycache__",
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "Test",
-    "archive",
-    "backup_builds",
-    "docs",
-    "scripts",
-    "examples",
-]
-
-[tool.ruff.isort]
-known-first-party = ["agentic_reliability_framework", "oss"]
