@@ -1,14 +1,13 @@
 """
-Enhanced MCP Server for ARF v3
+Enhanced MCP Server for ARF v3 - OSS Edition
 Pythonic implementation with proper typing, error handling, and safety features
-WITH OSS/ENTERPRISE DETECTION
+OSS EDITION: Advisory mode only, no execution capability
 """
 
 import asyncio
 import logging
 import time
 import uuid
-import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,53 +22,6 @@ from ..config import config
 from ..lazy import get_engine
 
 logger = logging.getLogger(__name__)
-
-
-# ========== OSS DETECTION FUNCTIONS ==========
-
-def _detect_oss_mode() -> bool:
-    """
-    Detect if we should run in OSS-restricted mode
-    
-    Returns:
-        True if OSS mode should be enforced
-    """
-    # Check environment
-    tier = os.getenv("ARF_TIER", "").lower()
-    if tier == "oss":
-        return True
-    
-    # Check license - if no enterprise/trial license, assume OSS
-    license_key = os.getenv("ARF_LICENSE_KEY", "")
-    if not license_key.startswith(("ARF-ENT-", "ARF-TRIAL-")):
-        return True
-    
-    return False
-
-
-def create_mcp_server_based_on_edition(
-    mode: Optional["MCPMode"] = None,
-    config_dict: Optional[Dict[str, Any]] = None
-) -> Union["MCPServer", Any]:  # Use Any to avoid import issues
-    """
-    Backward compatibility factory - detects OSS vs Enterprise
-    """
-    try:
-        from .mcp_factory import create_mcp_server as factory_create
-        return factory_create(mode=mode, config=config_dict)
-    except ImportError:
-        logger.warning("MCP factory not available, using fallback")
-        
-        # Try to detect OSS mode and use OSS client if available
-        try:
-            from .mcp_factory import detect_edition
-            if detect_edition() == "oss":
-                from .mcp_client import OSSMCPClient
-                return OSSMCPClient(config=config_dict) if config_dict else OSSMCPClient()
-        except ImportError:
-            pass  # Continue to MCPServer
-        
-        return MCPServer(mode=mode)
 
 
 # ========== TYPE DEFINITIONS ==========
@@ -105,10 +57,8 @@ class ToolMetadata(TypedDict, total=False):
 # ========== ENUMS ==========
 
 class MCPMode(str, Enum):
-    """MCP execution modes"""
+    """MCP execution modes - OSS ONLY supports advisory"""
     ADVISORY = "advisory"  # OSS default - no execution
-    APPROVAL = "approval"  # Human-in-loop
-    AUTONOMOUS = "autonomous"  # Enterprise - with guardrails
 
 
 class MCPRequestStatus(str, Enum):
@@ -690,63 +640,37 @@ def create_alert_tool() -> MCPTool:
     return AlertTool()
 
 
-# ========== MCP SERVER ==========
+# ========== MCP SERVER (OSS EDITION) ==========
 
 class MCPServer:
     """
-    Enhanced MCP Server with Pythonic features
-    WITH OSS/ENTERPRISE DETECTION
-
+    Enhanced MCP Server - OSS Edition
+    Advisory mode only, no execution capability
+    
     Features:
     - Thread-safe operations
     - Comprehensive error handling
     - Detailed metrics and monitoring
     - Extensible tool system
-    - Graceful degradation
-    - OSS/Enterprise auto-detection
+    - OSS Edition: Advisory mode only
     """
 
     def __init__(self, mode: Optional[MCPMode] = None):
         """
-        Initialize MCP Server with OSS/Enterprise detection
+        Initialize OSS MCP Server
         
         Args:
-            mode: Execution mode (defaults to config.mcp_mode or edition default)
+            mode: Ignored in OSS edition - always advisory mode
         """
-        # === OSS DETECTION & RESTRICTIONS ===
-        self._is_oss_mode = _detect_oss_mode()
-        self._oss_restricted = False
+        # OSS EDITION: Always advisory mode
+        self.mode = MCPMode.ADVISORY
         
-        if self._is_oss_mode:
-            logger.warning(
-                "⚠️  OSS mode detected. MCPServer running with restrictions:\n"
-                "   • Only advisory mode available\n"
-                "   • Execution disabled\n"
-                "   • Limited to 1000 incidents\n"
-                "   Upgrade to Enterprise for full features: https://arf.dev/enterprise"
-            )
-            
-            # Force advisory mode in OSS
-            self.mode = MCPMode.ADVISORY
-            self._oss_restricted = True
-            
-            # OSS capabilities message
-            try:
-                from ..oss.constants import get_oss_capabilities
-                caps = get_oss_capabilities()
-                logger.info(f"📦 OSS Edition: {caps['edition']} ({caps['license']})")
-                logger.info(f"📊 OSS Limits: {caps['limits']}")
-            except ImportError:
-                # OSS module not available, log basic info
-                logger.info("📦 OSS Edition: Apache 2.0")
-                logger.info("📊 OSS Limits: 1000 incidents, advisory mode only")
-                
-        else:
-            # Enterprise mode - use provided mode or config
-            self.mode = mode or MCPMode(config.mcp_mode)
-            self._oss_restricted = False
-            
-            logger.info(f"🚀 Enterprise MCP Server initialized in {self.mode.value} mode")
+        logger.warning(
+            "⚠️  OSS Edition - Advisory mode only\n"
+            "• No execution capability\n"
+            "• Analysis and recommendations only\n"
+            "• Upgrade to Enterprise for execution: https://arf.dev/enterprise"
+        )
         
         # === EXISTING INITIALIZATION CODE ===
         self.registered_tools: Dict[str, MCPTool] = self._register_tools()
@@ -764,7 +688,7 @@ class MCPServer:
                      "average_duration_seconds": 0.0, "last_execution": None}
         )
 
-        logger.info(f"Initialized MCPServer in {self.mode.value} mode")
+        logger.info(f"Initialized OSS MCPServer in advisory mode")
 
     def _register_tools(self) -> Dict[str, MCPTool]:
         """Register all available tools"""
@@ -801,49 +725,10 @@ class MCPServer:
         """
         Execute a tool with comprehensive safety checks
         
-        Enhanced with OSS/Enterprise detection
+        OSS Edition: Advisory only, no execution
         """
-        # === OSS RESTRICTION ENFORCEMENT ===
-        if self._oss_restricted:
-            # Check if this is an OSS HealingIntent
-            metadata = request_dict.get("metadata", {})
-            is_oss_intent = metadata.get("requires_enterprise", False)
-            
-            if is_oss_intent:
-                # OSS generated intent - can't execute in OSS mode
-                return MCPResponse(
-                    request_id=request_dict.get("request_id", "unknown"),
-                    status=MCPRequestStatus.REJECTED,
-                    message=(
-                        "OSS edition cannot execute HealingIntent. "
-                        "This intent was generated by OSS analysis but requires "
-                        "Enterprise edition for execution. "
-                        "Upgrade at: https://arf.dev/enterprise"
-                    ),
-                    executed=False,
-                    result={
-                        "requires_enterprise": True,
-                        "intent_id": metadata.get("intent_id", "unknown"),
-                        "upgrade_url": "https://arf.dev/enterprise",
-                        "enterprise_features": [
-                            "autonomous_execution",
-                            "approval_workflows", 
-                            "persistent_storage",
-                            "learning_engine",
-                            "audit_trails",
-                            "compliance_reports"
-                        ]
-                    }
-                )
-            
-            # Force advisory mode for all requests in OSS
-            request_dict["mode"] = "advisory"
-            
-            # Log OSS advisory execution
-            logger.info(
-                f"OSS Advisory: {request_dict.get('tool', 'unknown')} "
-                f"on {request_dict.get('component', 'unknown')}"
-            )
+        # OSS EDITION: Force advisory mode
+        request_dict["mode"] = "advisory"
         
         # === EXISTING EXECUTE_TOOL CODE ===
         # 1. Create and validate request
@@ -874,23 +759,9 @@ class MCPServer:
                 f"In cooldown period: {cooldown_check['remaining']:.0f}s remaining"
             )
 
-        # 4. Mode-specific handling
-        handlers = {
-            MCPMode.ADVISORY: self._handle_advisory_mode,
-            MCPMode.APPROVAL: self._handle_approval_mode,
-            MCPMode.AUTONOMOUS: self._handle_autonomous_mode,
-        }
-
-        handler = handlers.get(self.mode)
-        if not handler:
-            return self._create_error_response(
-                request,
-                MCPRequestStatus.REJECTED,
-                f"Unknown mode: {self.mode}"
-            )
-
+        # OSS EDITION: Only handle advisory mode
         try:
-            return await handler(request)
+            return await self._handle_advisory_mode(request)
         except Exception as e:
             logger.exception(f"Error handling request {request.request_id}: {e}")
             return self._create_error_response(
@@ -901,11 +772,8 @@ class MCPServer:
 
     def _create_request(self, request_dict: Dict[str, Any]) -> MCPRequest:
         """Create MCPRequest from dictionary with validation"""
-        try:
-            mode_str = request_dict.get("mode", config.mcp_mode)
-            mode = MCPMode(mode_str)
-        except ValueError:
-            mode = MCPMode.ADVISORY
+        # OSS EDITION: Always advisory mode
+        mode = MCPMode.ADVISORY
 
         return MCPRequest(
             request_id=request_dict.get("request_id", str(uuid.uuid4())),
@@ -936,9 +804,6 @@ class MCPServer:
         if len(request.justification) < 10:
             errors.append("Justification too short (min 10 characters)")
         
-        # REMOVED the unreachable check for parameters
-        # request.parameters is always a dict due to default_factory=dict
-        
         # Return immediately
         return {
             "valid": len(errors) == 0,
@@ -953,13 +818,6 @@ class MCPServer:
         if isinstance(action_blacklist, list):
             if request.tool.upper() in action_blacklist:
                 logger.warning(f"Tool {request.tool} is in safety blacklist")
-                return False
-
-        # Check component restrictions in autonomous mode
-        if self.mode == MCPMode.AUTONOMOUS:
-            restricted_components = ["database", "auth-service", "payment-service"]
-            if request.component in restricted_components:
-                logger.warning(f"Component {request.component} requires approval")
                 return False
 
         return True
@@ -1020,186 +878,19 @@ class MCPServer:
                 "mode": "advisory",
                 "would_execute": True,
                 "justification": request.justification,
-                "validation": "All checks passed"
+                "validation": "All checks passed",
+                "requires_enterprise": True,
+                "upgrade_url": "https://arf.dev/enterprise",
+                "enterprise_features": [
+                    "autonomous_execution",
+                    "approval_workflows", 
+                    "persistent_storage",
+                    "learning_engine",
+                    "audit_trails",
+                    "compliance_reports"
+                ]
             }
         )
-
-    async def _handle_approval_mode(self, request: MCPRequest) -> MCPResponse:
-        """Handle approval mode (human-in-loop)"""
-        approval_id = str(uuid.uuid4())
-
-        # Store approval request
-        self._approval_requests[approval_id] = request
-
-        # Log approval request
-        logger.info(
-            f"Approval required for {request.tool} on {request.component}: "
-            f"approval_id={approval_id}, justification={request.justification[:50]}..."
-        )
-
-        return MCPResponse(
-            request_id=request.request_id,
-            status=MCPRequestStatus.PENDING,
-            message=f"Pending approval for {request.tool}",
-            executed=False,
-            approval_id=approval_id
-        )
-
-    async def _handle_autonomous_mode(self, request: MCPRequest) -> MCPResponse:
-        """Handle autonomous mode with safety guardrails"""
-        tool = self.registered_tools.get(request.tool)
-        if not tool:
-            return self._create_error_response(
-                request,
-                MCPRequestStatus.REJECTED,
-                f"Tool not found: {request.tool}"
-            )
-
-        # Create tool context
-        context = ToolContext(
-            component=request.component,
-            parameters=request.parameters,
-            environment=request.metadata.get("environment", "production"),
-            metadata=request.metadata,
-            safety_guardrails=self.safety_guardrails
-        )
-
-        # Validate tool execution
-        validation_result = tool.validate(context)
-        if not validation_result.valid:
-            return MCPResponse(
-                request_id=request.request_id,
-                status=MCPRequestStatus.REJECTED,
-                message=f"Validation failed: {', '.join(validation_result.errors)}",
-                executed=False,
-                result={"validation_result": validation_result}
-            )
-
-        # Check safety guardrails
-        safety_check = self._check_safety_guardrails(request, validation_result)
-        if not safety_check["safe"]:
-            return MCPResponse(
-                request_id=request.request_id,
-                status=MCPRequestStatus.REJECTED,
-                message=f"Safety check failed: {safety_check['reason']}",
-                executed=False,
-                result={"safety_check": safety_check}
-            )
-
-        # Execute tool with timeout
-        async with self._execution_context(request):
-            try:
-                result = await asyncio.wait_for(
-                    tool.execute(context),
-                    timeout=tool.metadata["timeout_seconds"]
-                )
-
-                # Update cooldown
-                self._update_cooldown(request.tool, request.component)
-
-                # Record execution
-                self._record_execution(request, result, validation_result, safety_check)
-
-                # Update stats
-                stats = self._tool_stats[request.tool]
-                if result.success:
-                    stats["successful"] += 1
-                else:
-                    stats["failed"] += 1
-
-                return MCPResponse(
-                    request_id=request.request_id,
-                    status=MCPRequestStatus.COMPLETED,
-                    message=result.message,
-                    executed=True,
-                    result={
-                        "tool_result": result,
-                        "validation_result": validation_result,
-                        "safety_checks": safety_check,
-                        "execution_time": result.execution_time_seconds
-                    }
-                )
-
-            except asyncio.TimeoutError:
-                logger.error(f"Tool {request.tool} timeout")
-                return self._create_error_response(
-                    request,
-                    MCPRequestStatus.TIMEOUT,
-                    f"Tool execution timeout after {tool.metadata['timeout_seconds']}s"
-                )
-            except Exception as e:
-                logger.exception(f"Tool execution error: {e}")
-                return self._create_error_response(
-                    request,
-                    MCPRequestStatus.FAILED,
-                    f"Tool execution failed: {str(e)}"
-                )
-
-    def _check_safety_guardrails(
-        self,
-        request: MCPRequest,
-        validation_result: ValidationResult
-    ) -> Dict[str, Any]:
-        """Check safety guardrails for autonomous execution"""
-        checks: Dict[str, bool] = {}
-
-        # Check blacklist (already checked in permissions)
-        checks["not_blacklisted"] = True
-
-        # Check blast radius
-        affected_services = request.metadata.get("affected_services", [request.component])
-        max_blast_radius = self.safety_guardrails.get("max_blast_radius", 3)
-        checks["blast_radius"] = len(affected_services) <= max_blast_radius
-
-        # Check time of day (avoid production changes during business hours)
-        now = datetime.now()
-        if 9 <= now.hour <= 17 and now.weekday() < 5:  # Business hours, weekdays
-            checks["safe_time"] = False
-            checks["business_hours"] = True
-        else:
-            checks["safe_time"] = True
-            checks["business_hours"] = False
-
-        # Add validation safety checks
-        for name, safety_check in validation_result.safety_checks.items():
-            checks[name] = safety_check["passed"]
-
-        # Overall safety
-        safe = all(checks.values())
-
-        return {
-            "safe": safe,
-            "reason": "All safety checks passed" if safe else "Safety checks failed",
-            "checks": checks
-        }
-
-    def _update_cooldown(self, tool: str, component: str) -> None:
-        """Update cooldown for tool"""
-        key = f"{component}:{tool}"
-        self._cooldowns[key] = time.time() + config.mpc_cooldown_seconds
-
-    def _record_execution(
-        self,
-        request: MCPRequest,
-        result: ToolResult,
-        validation_result: ValidationResult,
-        safety_check: Dict[str, Any]
-    ) -> None:
-        """Record execution in history"""
-        execution_record = {
-            "request_id": request.request_id,
-            "timestamp": time.time(),
-            "tool": request.tool,
-            "component": request.component,
-            "mode": request.mode.value,
-            "success": result.success,
-            "execution_time_seconds": result.execution_time_seconds,
-            "validation_passed": validation_result.valid,
-            "safety_checks": safety_check["checks"],
-            "metadata": request.metadata
-        }
-
-        self._execution_history.append(execution_record)
 
     async def approve_request(
         self,
@@ -1209,97 +900,20 @@ class MCPServer:
     ) -> MCPResponse:
         """
         Approve or reject a pending request
-
-        Args:
-            approval_id: Approval request ID
-            approved: Whether to approve
-            comment: Approval/rejection comment
-
-        Returns:
-            MCPResponse with result
+        
+        OSS EDITION: Always returns advisory response
         """
-        # Direct dictionary check without intermediate variable
-        if approval_id not in self._approval_requests:
-            # Create a dummy request for error response
-            dummy_request = MCPRequest(
-                request_id=approval_id,
-                tool="unknown",
-                component="unknown",
-                justification=""
-            )
-            return self._create_error_response(
-                dummy_request,
-                MCPRequestStatus.REJECTED,
-                f"Approval request not found: {approval_id}"
-            )
-        
-        # Retrieve and remove the request
-        request = self._approval_requests.pop(approval_id)
-        
-        # Handle rejection case
-        if not approved:
-            return MCPResponse(
-                request_id=request.request_id,
-                status=MCPRequestStatus.REJECTED,
-                message=f"Request rejected: {comment}",
-                executed=False
-            )
-        
-        # Handle approval - create new request with autonomous mode
-        new_request = MCPRequest(
-            request_id=request.request_id,
-            tool=request.tool,
-            component=request.component,
-            parameters=request.parameters,
-            justification=request.justification,
-            mode=MCPMode.AUTONOMOUS,
-            metadata=request.metadata
-        )
-        
-        # Execute in autonomous mode
-        return await self._handle_autonomous_mode(new_request)
-
-    def get_edition_info(self) -> Dict[str, Any]:
-        """
-        Get edition information for this MCPServer instance
-        
-        Returns:
-            Dictionary with edition details
-        """
-        if self._oss_restricted:
-            try:
-                from ..oss.constants import get_oss_capabilities
-                caps = get_oss_capabilities()
-                return {
-                    "edition": "oss",
-                    "oss_restricted": True,
-                    "capabilities": caps,
-                    "upgrade_available": True,
-                    "upgrade_url": "https://arf.dev/enterprise",
-                }
-            except ImportError:
-                return {
-                    "edition": "oss",
-                    "oss_restricted": True,
-                    "upgrade_available": True,
-                    "upgrade_url": "https://arf.dev/enterprise",
-                    "limits": {
-                        "max_incidents": 1000,
-                        "mode": "advisory",
-                        "execution": False,
-                    }
-                }
-        else:
-            return {
-                "edition": "enterprise",
-                "oss_restricted": False,
-                "enterprise_features": {
-                    "all_modes_available": True,
-                    "execution_enabled": True,
-                    "learning_enabled": getattr(config, 'learning_enabled', False),
-                    "audit_trails": True,
-                }
+        # OSS EDITION: No approval workflow
+        return MCPResponse(
+            request_id=approval_id,
+            status=MCPRequestStatus.REJECTED,
+            message="Approval workflow requires Enterprise edition",
+            executed=False,
+            result={
+                "requires_enterprise": True,
+                "upgrade_url": "https://arf.dev/enterprise"
             }
+        )
 
     def get_server_stats(self) -> Dict[str, Any]:
         """Get comprehensive MCP server statistics"""
@@ -1307,6 +921,8 @@ class MCPServer:
 
         return {
             "mode": self.mode.value,
+            "edition": "oss",
+            "oss_restricted": True,
             "registered_tools": len(self.registered_tools),
             "active_cooldowns": len(self._cooldowns),
             "pending_approvals": len(self._approval_requests),
@@ -1321,9 +937,11 @@ class MCPServer:
                 "mcp_enabled": config.mcp_enabled,
                 "mpc_cooldown_seconds": config.mpc_cooldown_seconds,
             },
-            # ADD EDITION INFO:
-            "edition": "oss" if self._oss_restricted else "enterprise",
-            "oss_restricted": self._oss_restricted,
+            "oss_limits": {
+                "max_incidents": 1000,
+                "execution_allowed": False,
+                "mode": "advisory"
+            }
         }
 
     def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
@@ -1331,11 +949,21 @@ class MCPServer:
         if tool_name:
             tool = self.registered_tools.get(tool_name)
             if tool:
-                return tool.get_tool_info()
+                info = tool.get_tool_info()
+                # Add OSS edition info
+                info["oss_edition"] = True
+                info["can_execute"] = False
+                info["requires_enterprise"] = True
+                return info
             return {}
 
         return {
-            name: tool.get_tool_info()
+            name: {
+                **tool.get_tool_info(),
+                "oss_edition": True,
+                "can_execute": False,
+                "requires_enterprise": True,
+            }
             for name, tool in self.registered_tools.items()
         }
 
@@ -1349,7 +977,7 @@ class MCPServer:
         self._execution_history.clear()
         self._cooldowns.clear()
         self._approval_requests.clear()
-        logger.info("MCP server statistics reset")
+        logger.info("OSS MCP server statistics reset")
 
 
 # Backward compatibility exports
@@ -1370,8 +998,7 @@ __all__ = [
     "create_circuit_breaker_tool",
     "create_traffic_shift_tool",
     "create_alert_tool",
-    "create_mcp_server_based_on_edition",  # NEW: Backward compatibility factory
 ]
 
-# For backward compatibility, also export create_mcp_server as alias
-create_mcp_server = create_mcp_server_based_on_edition
+# For backward compatibility
+create_mcp_server = MCPServer
