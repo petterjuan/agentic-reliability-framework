@@ -1,6 +1,7 @@
-# 1. EMERGENCY CLEANUP SCRIPT
-# File: scripts/emergency_cleanse_enterprise.py
+# scripts/emergency_cleanse_enterprise.py
+# CORRECTED VERSION - Add this file through GitHub UI
 import os
+import sys
 import shutil
 from pathlib import Path
 
@@ -26,7 +27,9 @@ def remove_enterprise_from_oss():
         "import enterprise.",
         "license_key",
         "LicenseManager",
-        "EnterpriseMCPServer"
+        "EnterpriseMCPServer",
+        "audit_trail",
+        "learning_engine"
     ]
     
     violations = []
