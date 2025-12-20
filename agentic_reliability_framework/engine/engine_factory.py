@@ -35,6 +35,55 @@ logger = logging.getLogger(__name__)
 EngineConfig = Dict[str, Any]
 
 
+class OSSV3ReliabilityEngine:
+    """OSS wrapper for V3ReliabilityEngine with OSS metadata"""
+    
+    def __init__(self, base_engine):
+        self._engine = base_engine
+        self._oss_edition = True
+        self._requires_enterprise = False
+        self._oss_capabilities = {
+            "edition": "oss",
+            "license": "Apache 2.0",
+            "upgrade_url": "https://arf.dev/enterprise",
+        }
+    
+    def __getattr__(self, name):
+        """Delegate all other attributes to the base engine"""
+        return getattr(self._engine, name)
+    
+    def __dir__(self):
+        """Include both engine attributes and OSS attributes"""
+        engine_dir = dir(self._engine)
+        return sorted(set(engine_dir + list(self.__dict__.keys())))
+
+
+class OSSEnhancedV3ReliabilityEngine:
+    """OSS wrapper for Enhanced V3ReliabilityEngine with OSS metadata"""
+    
+    def __init__(self, base_engine, enable_rag: bool = False, rag_nodes_limit: int = 1000):
+        self._engine = base_engine
+        self._oss_edition = True
+        self._requires_enterprise = False
+        self._oss_capabilities = {
+            "rag_enabled": enable_rag,
+            "rag_nodes_limit": rag_nodes_limit,
+            "learning_enabled": False,
+            "execution_enabled": False,
+            "upgrade_available": rag_nodes_limit >= 1000,
+            "upgrade_url": "https://arf.dev/enterprise",
+        }
+    
+    def __getattr__(self, name):
+        """Delegate all other attributes to the base engine"""
+        return getattr(self._engine, name)
+    
+    def __dir__(self):
+        """Include both engine attributes and OSS attributes"""
+        engine_dir = dir(self._engine)
+        return sorted(set(engine_dir + list(self.__dict__.keys())))
+
+
 class EngineFactory:
     """Factory for creating reliability engines - OSS Edition"""
     
@@ -89,22 +138,20 @@ class EngineFactory:
                     logger.warning("MCP server not available")
                 
                 # Create enhanced engine
-                engine = EnhancedV3ReliabilityEngine(
+                base_engine = EnhancedV3ReliabilityEngine(
                     rag_graph=rag_graph,
                     mcp_server=mcp_server
                 )
                 
-                # Add OSS metadata to engine instance
-                engine._oss_edition = True
-                engine._requires_enterprise = False  # OSS doesn't require enterprise
+                # Wrap in OSS wrapper
+                engine = OSSEnhancedV3ReliabilityEngine(base_engine)
                 
             else:
                 logger.info("Creating V3ReliabilityEngine (OSS Edition)")
-                engine = V3ReliabilityEngine()
+                base_engine = V3ReliabilityEngine()
                 
-                # Add OSS metadata to engine instance
-                engine._oss_edition = True
-                engine._requires_enterprise = False  # OSS doesn't require enterprise
+                # Wrap in OSS wrapper
+                engine = OSSV3ReliabilityEngine(base_engine)
             
             self._engines_created += 1
             
@@ -124,8 +171,8 @@ class EngineFactory:
             logger.error(f"Failed to create engine: {e}")
             # Fallback to basic engine
             from .reliability import V3ReliabilityEngine
-            engine = V3ReliabilityEngine()
-            engine._oss_edition = True
+            base_engine = V3ReliabilityEngine()
+            engine = OSSV3ReliabilityEngine(base_engine)
             return engine
     
     def create_enhanced_engine(
@@ -172,23 +219,17 @@ class EngineFactory:
         
         from .v3_reliability import V3ReliabilityEngine as EnhancedV3ReliabilityEngine
         
-        engine = EnhancedV3ReliabilityEngine(
+        base_engine = EnhancedV3ReliabilityEngine(
             rag_graph=rag_graph,
             mcp_server=mcp_server
         )
         
-        # Add OSS capabilities info as instance attributes
-        engine._oss_capabilities = {
-            "rag_enabled": enable_rag,
-            "rag_nodes_limit": rag_nodes_limit,
-            "learning_enabled": False,
-            "execution_enabled": False,
-            "upgrade_available": rag_nodes_limit >= 1000,
-            "upgrade_url": "https://arf.dev/enterprise",
-        }
-        
-        engine._oss_edition = True
-        engine._requires_enterprise = False
+        # Wrap in OSS wrapper with capabilities
+        engine = OSSEnhancedV3ReliabilityEngine(
+            base_engine,
+            enable_rag=enable_rag,
+            rag_nodes_limit=rag_nodes_limit
+        )
         
         return engine
     
@@ -248,7 +289,7 @@ class EngineFactory:
             Validation results
         """
         violations = []
-        warnings = []
+        warnings: list[str] = []  # FIXED: Added type annotation
         
         # Check RAG limits
         rag_nodes = engine_config.get("rag_max_incident_nodes", 0)
@@ -320,4 +361,6 @@ __all__ = [
     "get_engine",
     "get_oss_engine_capabilities",
     "validate_oss_compatibility",
+    "OSSV3ReliabilityEngine",
+    "OSSEnhancedV3ReliabilityEngine",
 ]
