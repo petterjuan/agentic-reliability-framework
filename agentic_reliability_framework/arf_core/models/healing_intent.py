@@ -169,7 +169,7 @@ class HealingIntent:
         except (TypeError, ValueError) as e:
             errors.append(f"Parameters must be JSON serializable: {e}")
         
-        # SIMPLEST FIX: Validate similar incidents structure and size (OSS limit)
+        # Validate similar incidents structure and size (OSS limit)
         if self.similar_incidents:
             if len(self.similar_incidents) > self.MAX_SIMILAR_INCIDENTS:
                 errors.append(
@@ -178,11 +178,11 @@ class HealingIntent:
                 )
             
             for i, incident_item in enumerate(self.similar_incidents):
-                # SIMPLEST FIX: Remove the 'continue' statement that confuses MyPy
+                # Check if it's a dict
                 if not isinstance(incident_item, dict):
                     errors.append(f"Similar incident {i} must be a dictionary")
-                # Check similarity only if item is a dict AND has similarity key
-                elif isinstance(incident_item, dict) and "similarity" in incident_item:
+                # If it is a dict, check for similarity
+                elif "similarity" in incident_item:
                     similarity = incident_item["similarity"]
                     # Check if similarity is numeric
                     if isinstance(similarity, (int, float)):
