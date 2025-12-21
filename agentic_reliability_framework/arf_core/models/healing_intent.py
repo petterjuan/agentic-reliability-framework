@@ -598,9 +598,10 @@ class HealingIntent:
             raise ValidationError("RAG recommendation requires similar incidents")
         
         # Calculate success rate if not provided
-        if success_rate is None and similar_incidents:
+        if success_rate is None:
             successful = sum(1 for inc in similar_incidents if inc.get("success", False))
-            success_rate = successful / len(similar_incidents) if similar_incidents else 0.0
+            # similar_incidents is guaranteed to be truthy here, so no need for ternary
+            success_rate = successful / len(similar_incidents)
         
         # Generate justification
         justification = justification_template.format(
@@ -749,7 +750,7 @@ class HealingIntentSerializer:
     - OSS/Enterprise edition detection
     """
     
-    SCHEMA_VERSION = "1.1.0"
+    SCHEMA_VERSION: ClassVar[str] = "1.1.0"
     
     @classmethod
     def serialize(cls, intent: HealingIntent, version: str = "1.1.0") -> Dict[str, Any]:
