@@ -186,9 +186,16 @@ class HealingIntent:
                     errors.append(f"Similar incident {i} must be a dictionary")
                 elif "similarity" in incident:
                     similarity = incident["similarity"]
-                    if not isinstance(similarity, (int, float)) or not (0.0 <= similarity <= 1.0):
-                        errors.append( # type: ignore[unreachable]
-                            f"Similar incident {i} similarity must be between 0.0 and 1.0, got {similarity}"
+                    # FIXED: Split condition to avoid mypy unreachable code error
+                    if not isinstance(similarity, (int, float)):
+                        errors.append(
+                            f"Similar incident {i} similarity must be a number, "
+                            f"got {type(similarity).__name__}"
+                        )
+                    elif not (0.0 <= float(similarity) <= 1.0):
+                        errors.append(
+                            f"Similar incident {i} similarity must be between 0.0 and 1.0, "
+                            f"got {similarity}"
                         )
         
         # Validate OSS edition restrictions
