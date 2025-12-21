@@ -19,7 +19,7 @@ limitations under the License.
 """
 
 from dataclasses import dataclass, field, asdict
-from typing import Dict, Any, Optional, List, ClassVar, Union, Tuple
+from typing import Dict, Any, Optional, List, ClassVar
 from datetime import datetime
 import hashlib
 import json
@@ -31,10 +31,7 @@ from ..constants import (
     OSS_EDITION,
     OSS_LICENSE,
     ENTERPRISE_UPGRADE_URL,
-    MAX_INCIDENT_NODES,
-    MAX_OUTCOME_NODES,
-    EXECUTION_ALLOWED,
-    OSSBoundaryError
+    EXECUTION_ALLOWED
 )
 
 
@@ -172,7 +169,7 @@ class HealingIntent:
         except (TypeError, ValueError) as e:
             errors.append(f"Parameters must be JSON serializable: {e}")
         
-        # FIXED: Validate similar incidents structure and size (OSS limit)
+        # SIMPLEST FIX: Validate similar incidents structure and size (OSS limit)
         if self.similar_incidents:
             if len(self.similar_incidents) > self.MAX_SIMILAR_INCIDENTS:
                 errors.append(
@@ -181,28 +178,25 @@ class HealingIntent:
                 )
             
             for i, incident_item in enumerate(self.similar_incidents):
-                # First check if it's a dict
+                # SIMPLEST FIX: Remove the 'continue' statement that confuses MyPy
                 if not isinstance(incident_item, dict):
                     errors.append(f"Similar incident {i} must be a dictionary")
-                    continue  # Skip to next item
-                
-                # Now check for similarity if it exists
-                if "similarity" in incident_item:
+                # Check similarity only if item is a dict AND has similarity key
+                elif isinstance(incident_item, dict) and "similarity" in incident_item:
                     similarity = incident_item["similarity"]
                     # Check if similarity is numeric
-                    if not isinstance(similarity, (int, float)):
-                        errors.append(
-                            f"Similar incident {i} similarity must be a number, "
-                            f"got {type(similarity).__name__}"
-                        )
-                    else:
-                        # similarity is guaranteed to be int or float here
+                    if isinstance(similarity, (int, float)):
                         similarity_float = float(similarity)
                         if not (0.0 <= similarity_float <= 1.0):
                             errors.append(
                                 f"Similar incident {i} similarity must be between 0.0 and 1.0, "
                                 f"got {similarity}"
                             )
+                    else:
+                        errors.append(
+                            f"Similar incident {i} similarity must be a number, "
+                            f"got {type(similarity).__name__}"
+                        )
         
         # Validate OSS edition restrictions
         if self.execution_allowed and self.oss_edition == OSS_EDITION:
@@ -612,25 +606,23 @@ class HealingIntent:
             raise ValidationError("RAG recommendation requires similar incidents")
         
         # Calculate success rate if not provided
-        calculated_success_rate: float
-        if success_rate is not None:
-            calculated_success_rate = success_rate
-        else:
+        if success_rate is None:
             successful = sum(1 for inc in similar_incidents if inc.get("success", False))
-            calculated_success_rate = successful / len(similar_incidents)
+            # similar_incidents is guaranteed to be truthy here (otherwise exception raised above)
+            success_rate = successful / len(similar_incidents)
         
         # Generate justification
         justification = justification_template.format(
             count=len(similar_incidents),
-            success_rate=calculated_success_rate,
+            success_rate=success_rate or 0.0,
             action=action,
             component=component,
         )
         
         # Calculate confidence based on RAG similarity
         base_confidence = rag_similarity_score * 0.8  # Scale similarity to confidence
-        if calculated_success_rate > 0:
-            base_confidence = base_confidence * (0.7 + calculated_success_rate * 0.3)
+        if success_rate:
+            base_confidence = base_confidence * (0.7 + success_rate * 0.3)
         
         return cls.from_analysis(
             action=action,
@@ -706,7 +698,7 @@ class HealingIntent:
         
         This data never leaves the OSS environment for privacy and IP protection.
         """
-        context: Dict[str, Any] = {
+        return {
             "reasoning_chain": self.reasoning_chain,
             "similar_incidents": self.similar_incidents,
             "rag_similarity_score": self.rag_similarity_score,
@@ -716,7 +708,6 @@ class HealingIntent:
             "oss_edition": self.oss_edition,
             "is_oss_advisory": self.is_oss_advisory,
         }
-        return context
     
     def get_execution_summary(self) -> Dict[str, Any]:
         """
