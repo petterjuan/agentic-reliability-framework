@@ -172,7 +172,7 @@ class HealingIntent:
         except (TypeError, ValueError) as e:
             errors.append(f"Parameters must be JSON serializable: {e}")
         
-        # Validate similar incidents structure and size (OSS limit)
+        # FIXED: Validate similar incidents structure and size (OSS limit)
         if self.similar_incidents:
             if len(self.similar_incidents) > self.MAX_SIMILAR_INCIDENTS:
                 errors.append(
@@ -181,19 +181,22 @@ class HealingIntent:
                 )
             
             for i, incident_item in enumerate(self.similar_incidents):
-                incident = incident_item
-                if not isinstance(incident, dict):
+                # First check if it's a dict
+                if not isinstance(incident_item, dict):
                     errors.append(f"Similar incident {i} must be a dictionary")
-                elif "similarity" in incident:
-                    similarity = incident["similarity"]
-                    # FIXED: Use else instead of elif to avoid mypy unreachable error
+                    continue  # Skip to next item
+                
+                # Now check for similarity if it exists
+                if "similarity" in incident_item:
+                    similarity = incident_item["similarity"]
+                    # Check if similarity is numeric
                     if not isinstance(similarity, (int, float)):
                         errors.append(
                             f"Similar incident {i} similarity must be a number, "
                             f"got {type(similarity).__name__}"
                         )
                     else:
-                        # Now similarity is guaranteed to be int or float
+                        # similarity is guaranteed to be int or float here
                         similarity_float = float(similarity)
                         if not (0.0 <= similarity_float <= 1.0):
                             errors.append(
@@ -609,23 +612,25 @@ class HealingIntent:
             raise ValidationError("RAG recommendation requires similar incidents")
         
         # Calculate success rate if not provided
-        if success_rate is None:
+        calculated_success_rate: float
+        if success_rate is not None:
+            calculated_success_rate = success_rate
+        else:
             successful = sum(1 for inc in similar_incidents if inc.get("success", False))
-            # similar_incidents is guaranteed to be truthy here (otherwise exception raised above)
-            success_rate = successful / len(similar_incidents)
+            calculated_success_rate = successful / len(similar_incidents)
         
         # Generate justification
         justification = justification_template.format(
             count=len(similar_incidents),
-            success_rate=success_rate or 0.0,
+            success_rate=calculated_success_rate,
             action=action,
             component=component,
         )
         
         # Calculate confidence based on RAG similarity
         base_confidence = rag_similarity_score * 0.8  # Scale similarity to confidence
-        if success_rate:
-            base_confidence = base_confidence * (0.7 + success_rate * 0.3)
+        if calculated_success_rate > 0:
+            base_confidence = base_confidence * (0.7 + calculated_success_rate * 0.3)
         
         return cls.from_analysis(
             action=action,
@@ -701,7 +706,7 @@ class HealingIntent:
         
         This data never leaves the OSS environment for privacy and IP protection.
         """
-        return {
+        context: Dict[str, Any] = {
             "reasoning_chain": self.reasoning_chain,
             "similar_incidents": self.similar_incidents,
             "rag_similarity_score": self.rag_similarity_score,
@@ -711,6 +716,7 @@ class HealingIntent:
             "oss_edition": self.oss_edition,
             "is_oss_advisory": self.is_oss_advisory,
         }
+        return context
     
     def get_execution_summary(self) -> Dict[str, Any]:
         """
