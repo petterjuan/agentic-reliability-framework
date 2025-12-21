@@ -181,22 +181,25 @@ class HealingIntent:
                 )
             
             for i, incident_item in enumerate(self.similar_incidents):
-                incident = incident_item  # Local variable for type inference
+                incident = incident_item
                 if not isinstance(incident, dict):
                     errors.append(f"Similar incident {i} must be a dictionary")
                 elif "similarity" in incident:
                     similarity = incident["similarity"]
-                    # FIXED: Split condition to avoid mypy unreachable code error
+                    # FIXED: Use else instead of elif to avoid mypy unreachable error
                     if not isinstance(similarity, (int, float)):
                         errors.append(
                             f"Similar incident {i} similarity must be a number, "
                             f"got {type(similarity).__name__}"
                         )
-                    elif not (0.0 <= float(similarity) <= 1.0):
-                        errors.append(
-                            f"Similar incident {i} similarity must be between 0.0 and 1.0, "
-                            f"got {similarity}"
-                        )
+                    else:
+                        # Now similarity is guaranteed to be int or float
+                        similarity_float = float(similarity)
+                        if not (0.0 <= similarity_float <= 1.0):
+                            errors.append(
+                                f"Similar incident {i} similarity must be between 0.0 and 1.0, "
+                                f"got {similarity}"
+                            )
         
         # Validate OSS edition restrictions
         if self.execution_allowed and self.oss_edition == OSS_EDITION:
