@@ -187,7 +187,7 @@ class HealingIntent:
                 elif "similarity" in incident:
                     similarity = incident["similarity"]
                     if not isinstance(similarity, (int, float)) or not (0.0 <= similarity <= 1.0):
-                        errors.append(
+                        errors.append( # type: ignore[unreachable]
                             f"Similar incident {i} similarity must be between 0.0 and 1.0, got {similarity}"
                         )
         
