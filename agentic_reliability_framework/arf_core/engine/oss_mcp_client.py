@@ -550,10 +550,11 @@ class OSSMCPClient:
             
             # Create mock event for similarity search
             from agentic_reliability_framework.models import ReliabilityEvent
+            from agentic_reliability_framework.engine.interfaces import EventSeverity
             
             event = ReliabilityEvent(
                 component=component,
-                severity="medium",
+                severity=EventSeverity.MEDIUM,  # FIXED: Use enum instead of string
                 latency_p99=context.get("latency_p99", 100) if context else 100,
                 error_rate=context.get("error_rate", 0.05) if context else 0.05,
                 throughput=context.get("throughput", 1000) if context else 1000,
@@ -827,13 +828,14 @@ class OSSMCPClient:
         )
         
         # Add OSS analysis metadata
-        response.result["oss_analysis"] = {
-            "analysis_time_ms": analysis_result.analysis_time_ms,
-            "similar_incidents_found": analysis_result.similar_incidents_count,
-            "rag_used": analysis_result.rag_similarity_score is not None,
-            "confidence": analysis_result.confidence,
-            "warnings": analysis_result.warnings,
-        }
+        if response.result is not None:  # FIXED: Check for None before accessing
+            response.result["oss_analysis"] = {
+                "analysis_time_ms": analysis_result.analysis_time_ms,
+                "similar_incidents_found": analysis_result.similar_incidents_count,
+                "rag_used": analysis_result.rag_similarity_score is not None,
+                "confidence": analysis_result.confidence,
+                "warnings": analysis_result.warnings,
+            }
         
         return response.to_dict()
     
