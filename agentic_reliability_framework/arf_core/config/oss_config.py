@@ -9,7 +9,7 @@ that enforces OSS edition boundaries at runtime.
 
 import os
 import warnings
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union, cast
 from dataclasses import dataclass, field
 
 from ..constants import (
@@ -56,7 +56,7 @@ class OSSConfig:
     # OSS boundary violations detected
     _violations: List[str] = field(default_factory=list, init=False, repr=False)
     
-    # Cache for performance
+    # Cache for performance - FIXED: Added explicit type annotation
     _config_cache: Dict[str, Any] = field(default_factory=dict, init=False, repr=False)
     
     def __post_init__(self):
@@ -112,11 +112,11 @@ class OSSConfig:
         
         # Try to convert using model_dump (Pydantic v2)
         if hasattr(self._original_config, 'model_dump'):
-            return self._original_config.model_dump()
+            return cast(Dict[str, Any], self._original_config.model_dump())
         
         # Try to convert using dict method
         elif hasattr(self._original_config, 'dict'):
-            return self._original_config.dict()
+            return cast(Dict[str, Any], self._original_config.dict())
         
         # Try to access as dict
         elif isinstance(self._original_config, dict):
@@ -124,7 +124,7 @@ class OSSConfig:
         
         # Fallback: access attributes directly
         else:
-            config_dict = {}
+            config_dict: Dict[str, Any] = {}
             for attr_name in dir(self._original_config):
                 if not attr_name.startswith('_'):
                     try:
@@ -302,7 +302,7 @@ class OSSConfig:
             return value
         
         # Map keys to OSS limits
-        oss_limits = {
+        oss_limits: Dict[str, Any] = {
             "mcp_mode": lambda v: "advisory",
             "mcp_enabled": lambda v: False,
             "execution_allowed": lambda v: False,
@@ -349,7 +349,7 @@ class OSSConfig:
         # Check for any non-OSS values in cache
         enterprise_indicators = [
             self._config_cache.get("mcp_mode") != "advisory",
-            self._config_cache.get("mcp_enabled") and self._config_cache.get("mcp_mode") != "advisory",
+            self._config_cache.get("mcp_enabled", False) and self._config_cache.get("mcp_mode") != "advisory",
             self._config_cache.get("learning_enabled", False),
             self._config_cache.get("beta_testing_enabled", False),
             self._config_cache.get("rollout_percentage", 0) > 0,
