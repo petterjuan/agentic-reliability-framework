@@ -552,13 +552,25 @@ class OSSMCPClient:
             # Create mock event for similarity search
             from agentic_reliability_framework.models import ReliabilityEvent
             
-            # Handle EventSeverity with fallback if not available
+            # Handle EventSeverity - check multiple possible locations
+            severity = "MEDIUM"  # Default fallback
             try:
+                # Try primary location
                 from agentic_reliability_framework.engine.interfaces import EventSeverity
                 severity = EventSeverity.MEDIUM
             except (ImportError, AttributeError):
-                # Fallback to string if enum not available
-                severity = "MEDIUM"
+                try:
+                    # Try models module
+                    from agentic_reliability_framework.models import EventSeverity as ModelsEventSeverity
+                    severity = ModelsEventSeverity.MEDIUM
+                except (ImportError, AttributeError):
+                    # Try looking for Severity enum instead
+                    try:
+                        from agentic_reliability_framework.models import Severity
+                        severity = Severity.MEDIUM
+                    except (ImportError, AttributeError):
+                        # Final fallback to string
+                        severity = "MEDIUM"
             
             event = ReliabilityEvent(
                 component=component,
@@ -785,7 +797,12 @@ class OSSMCPClient:
             )
         
         elif context and "justification" in context:
-            return context["justification"]
+            justification = context["justification"]
+            if isinstance(justification, str):
+                return justification
+            else:
+                # Convert to string if it's not already
+                return str(justification)
         
         else:
             return (
