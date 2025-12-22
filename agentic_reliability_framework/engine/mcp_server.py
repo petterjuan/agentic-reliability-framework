@@ -640,6 +640,16 @@ def create_alert_tool() -> MCPTool:
     return AlertTool()
 
 
+# ========== OSS INTEGRATION IMPORT ==========
+# Import OSSMCPClient for advisory mode delegation
+try:
+    from arf_core.engine.oss_mcp_client import create_oss_mcp_client
+    OSS_CLIENT_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"OSSMCPClient not available: {e}. Using fallback advisory mode.")
+    OSS_CLIENT_AVAILABLE = False
+
+
 # ========== MCP SERVER (OSS EDITION) ==========
 
 class MCPServer:
@@ -652,7 +662,7 @@ class MCPServer:
     - Comprehensive error handling
     - Detailed metrics and monitoring
     - Extensible tool system
-    - OSS Edition: Advisory mode only
+    - OSS Edition: Advisory mode only with HealingIntent integration
     """
 
     def __init__(self, mode: Optional[MCPMode] = None):
@@ -671,6 +681,15 @@ class MCPServer:
             "• Analysis and recommendations only\n"
             "• Upgrade to Enterprise for execution: https://arf.dev/enterprise"
         )
+        
+        # === OSS INTEGRATION ===
+        self.oss_client = None
+        if OSS_CLIENT_AVAILABLE:
+            try:
+                self.oss_client = create_oss_mcp_client()
+                logger.info("Integrated with OSSMCPClient for HealingIntent creation")
+            except Exception as e:
+                logger.warning(f"Failed to initialize OSSMCPClient: {e}")
         
         # === EXISTING INITIALIZATION CODE ===
         self.registered_tools: Dict[str, MCPTool] = self._register_tools()
@@ -868,7 +887,43 @@ class MCPServer:
         )
 
     async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
-        """Handle advisory mode (OSS default - no execution)"""
+        """
+        Handle advisory mode by delegating to OSSMCPClient
+        
+        OSS Edition: Uses OSSMCPClient for proper HealingIntent creation
+        and RAG integration. Maintains backward compatibility while
+        ensuring OSS purity.
+        """
+        # Try to use OSSMCPClient if available
+        if self.oss_client is not None:
+            try:
+                # Delegate to OSSMCPClient for proper OSS analysis
+                request_dict = {
+                    "tool": request.tool,
+                    "component": request.component,
+                    "parameters": request.parameters,
+                    "justification": request.justification,
+                    "metadata": request.metadata,
+                    "request_id": request.request_id,
+                }
+                
+                # Get OSS analysis result
+                oss_response = await self.oss_client.execute_tool(request_dict)
+                
+                # Convert OSSMCPResponse to MCPResponse for backward compatibility
+                return MCPResponse(
+                    request_id=oss_response.get("request_id", request.request_id),
+                    status=MCPRequestStatus.COMPLETED,
+                    message=oss_response.get("message", f"OSS Analysis: Recommend {request.tool} for {request.component}"),
+                    executed=False,
+                    result=oss_response.get("result", {})
+                )
+                
+            except Exception as e:
+                logger.warning(f"OSSMCPClient failed, using fallback: {e}")
+                # Continue to fallback implementation
+        
+        # Fallback to basic advisory response if OSSMCPClient is not available
         return MCPResponse(
             request_id=request.request_id,
             status=MCPRequestStatus.COMPLETED,
@@ -878,7 +933,7 @@ class MCPServer:
                 "mode": "advisory",
                 "would_execute": True,
                 "justification": request.justification,
-                "validation": "All checks passed",
+                "validation": "Basic checks passed",
                 "requires_enterprise": True,
                 "upgrade_url": "https://arf.dev/enterprise",
                 "enterprise_features": [
@@ -888,7 +943,9 @@ class MCPServer:
                     "learning_engine",
                     "audit_trails",
                     "compliance_reports"
-                ]
+                ],
+                "oss_fallback": True,  # Indicate this is a fallback response
+                "healing_intent_available": False,  # No HealingIntent in fallback
             }
         )
 
@@ -918,8 +975,16 @@ class MCPServer:
     def get_server_stats(self) -> Dict[str, Any]:
         """Get comprehensive MCP server statistics"""
         engine = get_engine()
+        
+        # Get OSS client info if available
+        oss_client_info = None
+        if self.oss_client is not None:
+            try:
+                oss_client_info = self.oss_client.get_client_info()
+            except Exception:
+                pass
 
-        return {
+        stats = {
             "mode": self.mode.value,
             "edition": "oss",
             "oss_restricted": True,
@@ -941,11 +1006,32 @@ class MCPServer:
                 "max_incidents": 1000,
                 "execution_allowed": False,
                 "mode": "advisory"
+            },
+            "oss_integration": {
+                "using_oss_client": self.oss_client is not None,
+                "healing_intent_support": self.oss_client is not None,
+                "rag_integration": oss_client_info.get("metrics", {}).get("rag_queries_performed", 0) > 0 if oss_client_info else False,
+                "oss_client_available": OSS_CLIENT_AVAILABLE,
             }
         }
+        
+        # Add OSS client metrics if available
+        if oss_client_info:
+            stats["oss_client_metrics"] = oss_client_info.get("metrics", {})
+            stats["oss_client_cache_size"] = oss_client_info.get("cache_size", 0)
+
+        return stats
 
     def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """Get information about tools"""
+        # Try to use OSSMCPClient for tool info if available
+        if self.oss_client is not None:
+            try:
+                return self.oss_client.get_tool_info(tool_name)
+            except Exception:
+                pass  # Fall back to existing implementation
+        
+        # Fallback to existing implementation
         if tool_name:
             tool = self.registered_tools.get(tool_name)
             if tool:
