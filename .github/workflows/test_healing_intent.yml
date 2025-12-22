@@ -1,0 +1,37 @@
+name: Test HealingIntent Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'agentic_reliability_framework/arf_core/**'
+      - 'agentic_reliability_framework/tests/test_healing_intent_integration.py'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-healing-intent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          
+      - name: Run HealingIntent Integration Test
+        run: |
+          cd agentic_reliability_framework
+          python -m pytest tests/test_healing_intent_integration.py -v
+          
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: healing-intent-test-outputs
+          path: agentic_reliability_framework/tests/test_outputs/
