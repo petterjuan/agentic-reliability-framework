@@ -388,7 +388,8 @@ class Config(BaseModel):
                 "https://arf.dev/enterprise\n\n"
                 "Or fix configuration to comply with OSS limits."
             )
-            raise ValueError(error_msg)
+            from arf_core.constants import OSSBoundaryError
+            raise OSSBoundaryError(error_msg)
     
     def get_oss_limits(self) -> Dict[str, Any]:
         """Get OSS edition limits for documentation"""
