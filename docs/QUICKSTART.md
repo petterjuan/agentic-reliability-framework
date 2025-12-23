@@ -1,94 +1,147 @@
-# ARF Quick Start Guide (v3.3.0)
+# Agentic Reliability Framework (ARF) — Quick Start
 
-**Audience:** OSS users, engineers, pilot adopters  
-**Purpose:** Run ARF locally in advisory mode with in-memory RAG graph in ~5 minutes.
+Welcome to ARF v3.3.0 — a hybrid intelligence framework for autonomous system reliability, self-healing, and context-aware incident management.
+
+This guide shows you how to get started quickly with **event processing, safety, and self-healing**.
 
 ---
 
 ## 1. Installation
 
-Install the latest OSS release:
+### OSS Edition (Advisory Only)
 
 ```bash
 pip install agentic-reliability-framework
 ```
-Verify installation:
-```
-arf --version
-# Should output: Agentic Reliability Framework v3.3.0
+*   Runs advisory-only MCP mode
+    
+*   In-memory RAG graph + FAISS for incident similarity
+    
+*   No actions executed (safe for testing)
+    
 
-arf doctor
-# ✅ All dependencies OK!
+### Enterprise Edition (Full Execution)
+```
+pip install arf-enterprise
+docker-compose up -d neo4j redis
+arf-enterprise --license-key YOUR_KEY
 ```
 
-2\. Launch Local Demo
+*   Full MCP modes: Advisory → Approval → Autonomous
+    
+*   Persistent graph memory
+    
+*   Outcome tracking and audit trails
+    
+*   2\. Basic Event Processing
+    
+
+Use the engine.process\_event\_enhanced(...) interface:
+```
+from arf import Engine
+
+engine = Engine()
+
+result = await engine.process_event_enhanced(
+    component="api-service",
+    latency_p99=320.0,      # ms
+    error_rate=0.18,        # 18% errors
+    throughput=1250.0,      # req/sec
+    cpu_util=0.87,          # 0–1
+    memory_util=0.92        # 0–1
+)
+print(result)
+```
+
+*   Key Notes:
+    
+*   result contains advisory recommendations or executed outcomes depending on MCP mode.
+    
+*   Exceptions are raised for invalid inputs or policy violations.
+    
+*   Logs are emitted for each step, ensuring **traceability**.
+
+*   3\. Safety & Self-Healing
+    
+*   ARF enforces a **five-layer safety system**:
+
+  ```
+safety_system = {
+    "layer_1": "Action Blacklisting",
+    "layer_2": "Blast Radius Limiting",
+    "layer_3": "Human Approval Workflows",
+    "layer_4": "Business Hour Restrictions",
+    "layer_5": "Circuit Breakers & Cooldowns"
+}
+```
+*   Prevents dangerous or unsafe automated actions
+    
+*   Applies human-in-the-loop approvals where required
+    
+*   Limits the scope and timing of self-healing actions
+    
+*   Ensures audit-ready execution for compliance
+    
+
+### Self-Healing Flow
+
+1.  **Event Ingestion** – Telemetry validated via Pydantic models
+    
+2.  **Multi-Agent Analysis** – Detection, recall, and decision agents run in parallel
+    
+3.  **RAG Context Retrieval** – Historical incidents and outcomes retrieved
+    
+4.  **Policy Evaluation** – Deterministic and AI-informed guardrails applied
+    
+5.  **Action Execution** – Healing intents executed (Enterprise only)
+    
+6.  **Outcome Recording** – Updates RAG memory for continuous learning
+    
+
+For details, see [self-healing patterns](self-healing.md) and [architecture](architecture.md).
+
+4\. Error Handling
+------------------
+
+*   **Advisory Mode:** All events processed safely; errors are logged but no actions executed
+    
+*   **Enterprise Mode:** Failed actions trigger rollback policies; blast radius and circuit breakers prevent cascading failures
+    
+*   **API Exceptions:** Each function documents possible exceptions in [API reference](api.md)
+    
+
+5\. Recommended Usage
 ---------------------
 
-Run ARF’s Gradio UI for interactive testing:
-```
-arf serve
-```
-Open your browser at http://localhost:7860
+*   Start **OSS** in advisory mode to test your telemetry safely
+    
+*   Gradually enable Enterprise approval/autonomous modes once confident
+    
+*   Monitor logs and audit trails continuously
+    
+*   Use the **CLI** or programmatic API to simulate and test events
+    
 
-3\. First Test Run
-------------------
-
-Simulate an incident:
-```
-arf simulate --event test_latency_spike
-```
-Expected output:
-```
-[INFO] Incident detected: latency spike in payment-service
-[INFO] Recommended action: advisory-only
-```
-4\. CLI Essentials
-------------------
-
-*   **List available tools:**
-```
-arf tools list
-```
-
-Create an advisory HealingIntent:
-
-```
-arf intent create --tool RATE_LIMIT --incident incident_001
-```
-Export metrics (future Tier 2 API):
-```
-arf metrics export --format json
-```
-5\. OSS Features Summary
+6\. Additional Resources
 ------------------------
 
-| Feature           | Implementation             | Limits                     |
-|------------------|---------------------------|----------------------------|
-| MCP Mode          | Advisory only             | No execution               |
-| RAG Memory        | In-memory graph + FAISS   | 1,000 incidents (LRU)     |
-| Similarity Search | FAISS cosine similarity   | Top-K only                 |
-| Learning          | Pattern stats only        | No persistence             |
-| Healing           | HealingIntent creation    | Advisory only              |
-| Policies          | Deterministic guardrails  | Warnings + blocks          |
-| Storage           | RAM only                  | Process-lifetime           |
-| Support           | GitHub Issues             | No SLA                     |
-
-
-6\. Next Steps
---------------
-
-1.  Explore /docs for detailed guides: architecture.md, api.md, configuration.md.
+*   [API Documentation](api.md)
     
-2.  Test advisory vs Enterprise MCP if available.
+*   [Architecture Overview](architecture.md)
     
-3.  Integrate with sample telemetry or monitoring tools (Prometheus, Datadog).
+*   [Self-Healing Patterns](self-healing.md)
+    
+*   [Business Impact Metrics](business-metrics.md)
     
 
-7\. Support & Resources
------------------------
+7\. Contact & Support
+---------------------
 
-*   GitHub: [https://github.com/petterjuan/agentic-reliability-framework](https://github.com/petterjuan/agentic-reliability-framework)
+*   **Email:** petter2025us@outlook.com
     
-*   Issues: [https://github.com/petterjuan/agentic-reliability-framework/issues](https://github.com/petterjuan/agentic-reliability-framework/issues)
+*   **LinkedIn:** [Juan Petter](https://linkedin.com/in/petterjuan)
     
-*   Live Demo: [https://huggingface.co/spaces/petter2025/agentic-reliability-framework](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)
+*   **GitHub Issues:** [Submit bugs or questions](https://github.com/petterjuan/agentic-reliability-framework/issues)
+    
+
+**Tip:** Always start in advisory mode to validate your system before enabling any execution capabilities.
