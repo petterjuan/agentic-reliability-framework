@@ -1,4 +1,3 @@
-# File: arf_core/models/healing_intent.py
 """
 Healing Intent - OSS creates, Enterprise executes
 Enhanced with OSS limits and RAG integration
@@ -129,7 +128,7 @@ class HealingIntent:
     MAX_SIMILAR_INCIDENTS: ClassVar[int] = 10  # Limit RAG context size
     VERSION: ClassVar[str] = "1.1.0"  # Bumped for OSS integration
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:  # FIXED: Added return type annotation
         """Validate HealingIntent after initialization with OSS boundaries"""
         self._validate_oss_boundaries()
     
