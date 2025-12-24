@@ -41,7 +41,8 @@ class IncidentNode:
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     # Computed fields
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Initialize IncidentNode with default values"""
         self.node_type = NodeType.INCIDENT
         self.created_at = datetime.now().isoformat()
     
@@ -89,7 +90,8 @@ class OutcomeNode:
     lessons_learned: List[str]
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Initialize OutcomeNode with default values"""
         self.node_type = NodeType.OUTCOME
         self.created_at = datetime.now().isoformat()
     
@@ -132,7 +134,8 @@ class GraphEdge:
     weight: float = 1.0
     metadata: Dict[str, Any] = field(default_factory=dict)
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Initialize GraphEdge with default values"""
         self.created_at = datetime.now().isoformat()
     
     def to_dict(self) -> Dict[str, Any]:
