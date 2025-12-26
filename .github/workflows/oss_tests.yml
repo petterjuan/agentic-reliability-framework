@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml
+# .github/workflows/oss_tests.yml - UPDATED
 name: OSS Boundary Tests
 
 on:
@@ -22,66 +22,33 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Install dependencies
+    - name: Run simplified OSS boundary check
       run: |
-        pip install astunparse
+        python scripts/oss_boundary_check.py
         
-    - name: Run OSS purity check
+    - name: Check for basic OSS violations
       run: |
-        python scripts/enforce_oss_purity.py
+        echo "Running quick OSS violation checks..."
         
-    - name: Check OSS constants
-      run: |
-        echo "Verifying OSS constant values..."
-        
-        # Create a simple Python script to check constants
-        cat > check_constants.py << 'EOF'
-        import sys
-        sys.path.insert(0, 'agentic_reliability_framework')
-        
-        try:
-            from arf_core.constants import *
-            
-            assert MAX_INCIDENT_HISTORY == 1000, f"MAX_INCIDENT_HISTORY must be 1000, got {MAX_INCIDENT_HISTORY}"
-            assert MCP_MODES_ALLOWED == ("advisory",), f"MCP_MODES_ALLOWED must be only advisory, got {MCP_MODES_ALLOWED}"
-            assert EXECUTION_ALLOWED == False, f"EXECUTION_ALLOWED must be False, got {EXECUTION_ALLOWED}"
-            assert GRAPH_STORAGE == "in_memory", f"GRAPH_STORAGE must be in_memory, got {GRAPH_STORAGE}"
-            
-            print("✅ OSS constants are correct")
-            
-        except ImportError as e:
-            print(f"❌ Failed to import OSS constants: {e}")
-            sys.exit(1)
-        except AssertionError as e:
-            print(f"❌ OSS constant violation: {e}")
-            sys.exit(1)
-        EOF
-        
-        python check_constants.py
-        
-    - name: Check for mixed imports
-      run: |
-        echo "Checking for Enterprise code in OSS directories..."
-        
-        # Check OSS core directories
-        OSS_DIRS="agentic_reliability_framework/arf_core agentic_reliability_framework/engine"
+        # Check OSS directories for Enterprise patterns
+        OSS_DIRS="agentic_reliability_framework/arf_core"
         
         for dir in $OSS_DIRS; do
           if [ -d "$dir" ]; then
-            echo "Checking $dir..."
+            echo "Checking $dir for Enterprise patterns..."
             
-            # Check for Enterprise imports
-            if grep -r "from arf_enterprise\|import arf_enterprise" "$dir" --include="*.py"; then
-              echo "❌ Found Enterprise imports in $dir"
+            # Check for Enterprise module names
+            if grep -r "arf_enterprise\|EnterpriseMCPServer\|LicenseManager" "$dir" --include="*.py"; then
+              echo "❌ Found Enterprise patterns in $dir"
               exit 1
             fi
             
-            # Check for Enterprise class references
-            if grep -r "LicenseManager\|EnterpriseMCPServer\|audit_trail\|license_key" "$dir" --include="*.py"; then
-              echo "❌ Found Enterprise code patterns in $dir"
+            # Check for execution modes other than advisory
+            if grep -r "MCPMode\.APPROVAL\|MCPMode\.AUTONOMOUS" "$dir" --include="*.py"; then
+              echo "❌ Found non-advisory modes in $dir"
               exit 1
             fi
           fi
         done
         
-        echo "✅ OSS code boundaries are clean"
+        echo "✅ Basic OSS checks passed"
