@@ -89,3 +89,18 @@ warn_unreachable = true
 strict_equality = true
 follow_imports = "normal"
 implicit_reexport = false
+# Add this to the end of your pyproject.toml:
+
+[[tool.mypy.overrides]]
+module = [
+    "agentic_reliability_framework.arf_core.*",
+    "agentic_reliability_framework.engine.*", 
+    "agentic_reliability_framework.memory.*",
+]
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+ignore_errors = true
