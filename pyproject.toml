@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentic-reliability-framework"
 version = "3.3.0"
-description = "Agentic Reliability Framework - OSS Edition"
+description = "Agentic Reliability Framework - OSS Edition: Production-grade multi-agent AI for reliability monitoring"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 authors = [
@@ -20,6 +20,21 @@ dependencies = [
     "faiss-cpu>=1.7.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+]
+
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["agentic_reliability_framework*"]
-exclude = ["tests*", "examples*", "scripts*"]
+exclude = ["tests*", "examples*", "scripts*", "archive*", "backup_builds*"]
+
+[tool.setuptools.package-data]
+"agentic_reliability_framework" = ["py.typed"]
+"agentic_reliability_framework.data" = ["*.json", "*.index"]
