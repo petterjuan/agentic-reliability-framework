@@ -1,13 +1,19 @@
+import os
 from setuptools import setup, find_packages
+
+# Read README if it exists
+long_description = ""
+if os.path.exists("README.md"):
+    with open("README.md", "r", encoding="utf-8") as f:
+        long_description = f.read()
 
 setup(
     name="agentic-reliability-framework",
     version="3.3.0",
-    packages=find_packages(include=['agentic_reliability_framework', 'agentic_reliability_framework.*']),
+    packages=find_packages(),
     install_requires=[
         "gradio>=4.19.0",
         "pydantic>=2.0.0",
-        "asyncio",
         "numpy>=1.24.0",
         "faiss-cpu>=1.7.0",
         "requests>=2.31.0",
@@ -21,11 +27,13 @@ setup(
             "pytest-cov>=4.0.0",
             "mypy>=1.0.0",
             "black>=23.0.0",
+            "types-requests",
+            "types-PyYAML",
         ]
     },
     python_requires=">=3.10",
     description="Agentic Reliability Framework - OSS Edition: AI-powered infrastructure reliability monitoring",
-    long_description=open("README.md").read() if os.path.exists("README.md") else "",
+    long_description=long_description,
     long_description_content_type="text/markdown",
     author="Juan Petter",
     author_email="your-email@example.com",
