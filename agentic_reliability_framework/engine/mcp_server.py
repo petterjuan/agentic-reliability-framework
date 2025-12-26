@@ -494,25 +494,29 @@ def create_alert_tool() -> MCPTool:
 
 
 # ========== OSS INTEGRATION IMPORT ==========
-# CORRECT: Use relative imports within the same package
+# CORRECT: Import from arf_core package
 try:
-    # Import from arf_core submodule in the same package
-    from ..arf_core.engine.oss_mcp_client import OSSMCPClient, create_oss_mcp_client
-    from ..arf_core.models.healing_intent import HealingIntent
+    # Import using absolute import from the arf_core module
+    from agentic_reliability_framework.arf_core import (
+        HealingIntent,
+        OSSMCPClient,
+        create_mcp_client as create_oss_mcp_client
+    )
     
     OSS_CLIENT_AVAILABLE = True
     HEALING_INTENT_AVAILABLE = True
     logger.info("✅ Successfully imported OSS components from arf_core")
     
 except ImportError as e:
-    logger.warning(f"Failed to import from arf_core: {e}")
+    logger.warning(f"Failed to import from arf_core: {e}. Creating fallbacks...")
     
-    # Define minimal fallbacks
+    # Define minimal HealingIntent
     from dataclasses import dataclass
     from typing import Dict, Any
     
     @dataclass
     class HealingIntent:
+        """Fallback HealingIntent for when arf_core is not available"""
         action: str
         component: str
         parameters: Dict[str, Any]
@@ -529,8 +533,24 @@ except ImportError as e:
                 "confidence": self.confidence,
                 "incident_id": self.incident_id,
                 "requires_enterprise": True,
+                "oss_metadata": {"fallback": True}
             }
+        
+        def mark_as_oss_advisory(self):
+            return self
+        
+        @classmethod
+        def from_analysis(cls, action, component, parameters, justification, confidence, incident_id=""):
+            return cls(
+                action=action,
+                component=component,
+                parameters=parameters,
+                justification=justification,
+                confidence=confidence,
+                incident_id=incident_id
+            )
     
+    # Define minimal OSSMCPClient
     class OSSMCPClient:
         def __init__(self):
             self.mode = "advisory"
@@ -540,8 +560,9 @@ except ImportError as e:
                 action=tool_name,
                 component=component,
                 parameters=parameters,
-                justification=f"Analysis for {tool_name} on {component}",
-                confidence=0.85,
+                justification=f"Fallback analysis for {tool_name} on {component}",
+                confidence=0.75,
+                incident_id=context.get("incident_id", "") if context else ""
             )
     
     def create_oss_mcp_client():
@@ -549,7 +570,7 @@ except ImportError as e:
     
     OSS_CLIENT_AVAILABLE = True
     HEALING_INTENT_AVAILABLE = True
-    logger.info("✅ Using fallback OSS implementations")
+    logger.info("✅ Created fallback OSS implementations")
 
 
 # ========== MCP SERVER (OSS EDITION) ==========
