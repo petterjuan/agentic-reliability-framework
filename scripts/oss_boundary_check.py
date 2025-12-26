@@ -35,25 +35,46 @@ def check_oss_constants():
             ("MCP_MODES_ALLOWED", "advisory"),
             ("EXECUTION_ALLOWED", "False"),
             ("GRAPH_STORAGE", "in_memory"),
+            ("MAX_INCIDENT_NODES", "1000"),
+            ("MAX_OUTCOME_NODES", "5000"),
+            ("FAISS_INDEX_TYPE", "IndexFlatL2"),
         ]
         
+        all_passed = True
         for const_name, expected_value in checks:
             if const_name not in content:
                 print(f"❌ Constant {const_name} not found")
-                return False
+                all_passed = False
+                continue
             
             # Check if it's set to the right value
             lines = content.split('\n')
+            found = False
             for line in lines:
                 if const_name in line and "=" in line:
-                    if expected_value not in line:
-                        print(f"❌ {const_name} has wrong value: {line.strip()}")
-                        return False
-                    else:
+                    if expected_value in line:
                         print(f"✅ {const_name} = {expected_value}")
+                        found = True
+                        break
+                    else:
+                        # Extract actual value
+                        import re
+                        match = re.search(r'=\s*(.+)', line)
+                        actual = match.group(1).strip() if match else "unknown"
+                        print(f"❌ {const_name} has wrong value: {actual} (expected: {expected_value})")
+                        all_passed = False
+                        found = True
+                        break
+            
+            if not found:
+                print(f"⚠️  {const_name} found but couldn't verify value")
         
-        print("✅ All OSS constants are correct")
-        return True
+        if all_passed:
+            print("✅ All OSS constants are correct")
+            return True
+        else:
+            print("❌ Some OSS constants are incorrect")
+            return False
         
     except Exception as e:
         print(f"❌ Error checking constants: {e}")
@@ -94,8 +115,20 @@ def check_no_enterprise_imports():
                 
                 for pattern in forbidden_patterns:
                     if pattern in content:
-                        violations.append(f"{py_file.relative_to(Path('.'))}: Contains '{pattern}'")
-                        
+                        # Check if it's in a comment or string
+                        lines = content.split('\n')
+                        for i, line in enumerate(lines):
+                            if pattern in line:
+                                # Skip if it's in a comment or docstring
+                                stripped = line.strip()
+                                if not (stripped.startswith('#') or 
+                                       stripped.startswith('"""') or 
+                                       stripped.startswith("'''")):
+                                    violations.append(
+                                        f"{py_file.relative_to(Path('.'))}:{i+1}: Contains '{pattern}'"
+                                    )
+                                    break
+                                
             except Exception as e:
                 print(f"⚠️  Error reading {py_file}: {e}")
     
@@ -134,6 +167,49 @@ def check_oss_file_structure():
         print("✅ All required OSS files exist")
         return True
 
+def check_oss_vs_enterprise_separation():
+    """Check that OSS and Enterprise code is properly separated"""
+    print("\n🔍 Checking OSS/Enterprise separation...")
+    
+    # Check that arf_core doesn't have execution code
+    arf_core_path = Path("agentic_reliability_framework/arf_core")
+    
+    execution_patterns = [
+        "await.*execute",
+        "async def execute",
+        ".execute()",
+        "autonomous",
+        "approval.*execute",
+    ]
+    
+    violations = []
+    
+    if arf_core_path.exists():
+        for py_file in arf_core_path.rglob("*.py"):
+            try:
+                with open(py_file, 'r') as f:
+                    content = f.read()
+                
+                for pattern in execution_patterns:
+                    if pattern in content.lower():
+                        violations.append(
+                            f"{py_file.relative_to(Path('.'))}: Contains execution pattern '{pattern}'"
+                        )
+                        break
+                        
+            except Exception as e:
+                print(f"⚠️  Error reading {py_file}: {e}")
+    
+    if violations:
+        print("❌ Execution patterns found in OSS code:")
+        for violation in violations:
+            print(f"  - {violation}")
+        print("\n💡 OSS code should only create HealingIntent, not execute actions")
+        return False
+    else:
+        print("✅ OSS code is properly separated (analysis only)")
+        return True
+
 def main():
     """Main boundary check"""
     print("🔐 OSS BOUNDARY CHECK")
@@ -145,6 +221,7 @@ def main():
     results.append(("File Structure", check_oss_file_structure()))
     results.append(("Constants", check_oss_constants()))
     results.append(("Enterprise Imports", check_no_enterprise_imports()))
+    results.append(("OSS/Enterprise Separation", check_oss_vs_enterprise_separation()))
     
     print("\n" + "=" * 50)
     print("📊 RESULTS:")
