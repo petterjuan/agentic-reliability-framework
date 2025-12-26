@@ -32,24 +32,24 @@ __all__ = [
 # Lazy loading configuration
 _LAZY_IMPORTS = {
     # Models
-    "HealingIntent": (".models.healing_intent", "HealingIntent"),
-    "HealingIntentSerializer": (".models.healing_intent", "HealingIntentSerializer"),
+    "HealingIntent": ("agentic_reliability_framework.arf_core.models.healing_intent", "HealingIntent"),
+    "HealingIntentSerializer": ("agentic_reliability_framework.arf_core.models.healing_intent", "HealingIntentSerializer"),
     
-    # Engine
-    "OSSMCPClient": (".engine.mcp_client", "OSSMCPClient"),
-    "create_mcp_client": (".engine.mcp_client", "create_mcp_client"),
+    # Engine - FIXED PATH: points to correct location
+    "OSSMCPClient": ("agentic_reliability_framework.engine.oss_mcp_client", "OSSMCPClient"),
+    "create_mcp_client": ("agentic_reliability_framework.engine.oss_mcp_client", "create_mcp_client"),
     
     # Constants
-    "MAX_INCIDENT_HISTORY": (".constants", "MAX_INCIDENT_HISTORY"),
-    "MCP_MODES_ALLOWED": (".constants", "MCP_MODES_ALLOWED"),
-    "EXECUTION_ALLOWED": (".constants", "EXECUTION_ALLOWED"),
-    "GRAPH_STORAGE": (".constants", "GRAPH_STORAGE"),
-    "validate_oss_constants": (".constants", "validate_oss_constants"),
-    "get_oss_capabilities": (".constants", "get_oss_capabilities"),
+    "MAX_INCIDENT_HISTORY": ("agentic_reliability_framework.arf_core.constants", "MAX_INCIDENT_HISTORY"),
+    "MCP_MODES_ALLOWED": ("agentic_reliability_framework.arf_core.constants", "MCP_MODES_ALLOWED"),
+    "EXECUTION_ALLOWED": ("agentic_reliability_framework.arf_core.constants", "EXECUTION_ALLOWED"),
+    "GRAPH_STORAGE": ("agentic_reliability_framework.arf_core.constants", "GRAPH_STORAGE"),
+    "validate_oss_constants": ("agentic_reliability_framework.arf_core.constants", "validate_oss_constants"),
+    "get_oss_capabilities": ("agentic_reliability_framework.arf_core.constants", "get_oss_capabilities"),
     
     # Config
-    "OSSConfig": (".config.oss_config", "OSSConfig"),
-    "load_oss_config_from_env": (".config.oss_config", "load_oss_config_from_env"),
+    "OSSConfig": ("agentic_reliability_framework.arf_core.config.oss_config", "OSSConfig"),
+    "load_oss_config_from_env": ("agentic_reliability_framework.arf_core.config.oss_config", "load_oss_config_from_env"),
 }
 
 
@@ -65,7 +65,7 @@ def __getattr__(name: str) -> Any:
         module_path, attr_name = _LAZY_IMPORTS[name]
         
         try:
-            module = importlib.import_module(module_path, __package__)
+            module = importlib.import_module(module_path)
             return getattr(module, attr_name)
         except ImportError as e:
             raise AttributeError(
