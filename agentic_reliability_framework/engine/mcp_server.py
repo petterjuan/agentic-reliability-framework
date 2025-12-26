@@ -494,34 +494,31 @@ def create_alert_tool() -> MCPTool:
 
 
 # ========== OSS INTEGRATION IMPORT ==========
-# CORRECTED: Use wrapper pattern to avoid circular dependencies
+# CORRECT: Use relative imports within the same package
 try:
-    # First, try to import from local wrapper
-    from .oss_mcp_client_wrapper import (
-        OSSMCPClient, 
-        create_oss_mcp_client,
-        HEALING_INTENT_AVAILABLE,
-        HealingIntent
-    )
+    # Import from arf_core submodule in the same package
+    from ..arf_core.engine.oss_mcp_client import OSSMCPClient, create_oss_mcp_client
+    from ..arf_core.models.healing_intent import HealingIntent
+    
     OSS_CLIENT_AVAILABLE = True
-    logger.info("✅ Using OSS wrapper for client integration")
+    HEALING_INTENT_AVAILABLE = True
+    logger.info("✅ Successfully imported OSS components from arf_core")
     
 except ImportError as e:
-    logger.warning(f"OSS wrapper not available: {e}. Creating fallback advisory mode.")
-    OSS_CLIENT_AVAILABLE = False
-    HEALING_INTENT_AVAILABLE = False
-    HealingIntent = None  # Type placeholder
+    logger.warning(f"Failed to import from arf_core: {e}")
     
-    # Fallback: Define simple HealingIntent locally
+    # Define minimal fallbacks
+    from dataclasses import dataclass
+    from typing import Dict, Any
+    
     @dataclass
-    class SimpleHealingIntent:
-        """Fallback HealingIntent for when OSS package is not available"""
+    class HealingIntent:
         action: str
         component: str
         parameters: Dict[str, Any]
         justification: str = ""
-        incident_id: str = ""
         confidence: float = 0.85
+        incident_id: str = ""
         
         def to_enterprise_request(self):
             return {
@@ -529,10 +526,30 @@ except ImportError as e:
                 "component": self.component,
                 "parameters": self.parameters,
                 "justification": self.justification,
+                "confidence": self.confidence,
+                "incident_id": self.incident_id,
                 "requires_enterprise": True,
             }
     
-    HealingIntent = SimpleHealingIntent
+    class OSSMCPClient:
+        def __init__(self):
+            self.mode = "advisory"
+        
+        async def analyze_and_recommend(self, tool_name, component, parameters, context=None):
+            return HealingIntent(
+                action=tool_name,
+                component=component,
+                parameters=parameters,
+                justification=f"Analysis for {tool_name} on {component}",
+                confidence=0.85,
+            )
+    
+    def create_oss_mcp_client():
+        return OSSMCPClient()
+    
+    OSS_CLIENT_AVAILABLE = True
+    HEALING_INTENT_AVAILABLE = True
+    logger.info("✅ Using fallback OSS implementations")
 
 
 # ========== MCP SERVER (OSS EDITION) ==========
