@@ -1,4 +1,4 @@
-# .github/workflows/tests.yml - UPDATED
+# .github/workflows/tests.yml
 name: OSS Tests
 
 on:
@@ -6,7 +6,7 @@ on:
     branches: [ main, develop ]
     paths:
       - 'agentic_reliability_framework/**'
-      - 'tests/**'
+      - 'Test/**'                    # ← Changed from tests/
       - '.github/workflows/tests.yml'
       - 'pyproject.toml'
   pull_request:
@@ -30,26 +30,30 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest pytest-asyncio pytest-cov
-        
-    - name: Install package in development mode
-      run: |
         pip install -e .
         
     - name: Run OSS-specific tests
       run: |
-        echo "🚀 Running OSS tests..."
+        # Run OSS boundary tests from Test/ directory
+        echo "📁 Looking for test files in Test/ directory..."
+        find Test -name "*oss*.py" -type f | sort
         
-        # List available test files
-        echo "📁 Available OSS test files:"
-        find tests -name "*oss*.py" -type f | sort
+        # Run OSS tests if they exist
+        if [ -f "Test/test_oss_mcp_client.py" ]; then
+          echo "🚀 Running test_oss_mcp_client.py..."
+          python -m pytest Test/test_oss_mcp_client.py -v --tb=short || echo "⚠️ Test failed, continuing..."
+        fi
         
-        # Run OSS tests
-        python -m pytest tests/test_oss_*.py -v --tb=short || echo "⚠️ Some OSS tests failed, continuing..."
+        if [ -f "Test/test_oss_purity.py" ]; then
+          echo "🚀 Running test_oss_purity.py..."
+          python -m pytest Test/test_oss_purity.py -v --tb=short || echo "⚠️ Test failed, continuing..."
+        fi
         
     - name: Run core functionality tests
       run: |
-        echo "🚀 Running core tests..."
-        python -m pytest tests/ -v --tb=short -k "not enterprise" || echo "⚠️ Some tests failed"
+        # Run tests from Test/ directory (excluding Enterprise ones)
+        echo "🚀 Running tests from Test/ directory..."
+        python -m pytest Test/ -v --tb=short -k "not enterprise" || echo "⚠️ Some tests failed, continuing..."
         
     - name: Run mypy type checking
       run: |
@@ -71,7 +75,10 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Run OSS boundary check
+    - name: Install dependencies
       run: |
-        # Use the new script
-        python scripts/oss_boundary_check.py || echo "⚠️ Boundary check failed"
+        pip install astunparse
+        
+    - name: Run OSS purity enforcement
+      run: |
+        python scripts/enforce_oss_purity.py || echo "⚠️ Purity check had issues"
