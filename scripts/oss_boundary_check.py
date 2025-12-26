@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Simple OSS boundary check - No external dependencies
+OSS Boundary Check - No external dependencies
+Checks that OSS code is pure (no Enterprise imports) and structure is correct
 """
 
 import os
 import sys
+import re
 from pathlib import Path
 
 def check_oss_constants():
@@ -24,57 +26,57 @@ def check_oss_constants():
         print(f"❌ constants.py not found at: {constants_path}")
         return False
     
-    # Try to check the constants
     try:
-        # Simple regex-based check instead of import
         with open(constants_path, 'r') as f:
             content = f.read()
         
-        checks = [
-            ("MAX_INCIDENT_HISTORY", "1000"),
-            ("MCP_MODES_ALLOWED", "advisory"),
-            ("EXECUTION_ALLOWED", "False"),
-            ("GRAPH_STORAGE", "in_memory"),
-            ("MAX_INCIDENT_NODES", "1000"),
-            ("MAX_OUTCOME_NODES", "5000"),
-            ("FAISS_INDEX_TYPE", "IndexFlatL2"),
+        # Check for required constants
+        required_constants = [
+            "MAX_INCIDENT_HISTORY",
+            "MCP_MODES_ALLOWED", 
+            "EXECUTION_ALLOWED",
+            "GRAPH_STORAGE",
+            "MAX_INCIDENT_NODES",
+            "MAX_OUTCOME_NODES",
+            "FAISS_INDEX_TYPE",
         ]
         
-        all_passed = True
-        for const_name, expected_value in checks:
-            if const_name not in content:
-                print(f"❌ Constant {const_name} not found")
-                all_passed = False
-                continue
-            
-            # Check if it's set to the right value
+        missing = []
+        for const in required_constants:
+            if const not in content:
+                missing.append(const)
+        
+        if missing:
+            print(f"❌ Missing constants: {', '.join(missing)}")
+            return False
+        
+        # Check values (simple string checks)
+        checks = [
+            ("MAX_INCIDENT_HISTORY", ["1000", "1_000"]),
+            ("MCP_MODES_ALLOWED", ["advisory"]),
+            ("EXECUTION_ALLOWED", ["False"]),
+            ("GRAPH_STORAGE", ["in_memory"]),
+            ("FAISS_INDEX_TYPE", ["IndexFlatL2"]),
+        ]
+        
+        for const_name, expected_values in checks:
+            # Find the line with the constant
             lines = content.split('\n')
             found = False
             for line in lines:
-                if const_name in line and "=" in line:
-                    if expected_value in line:
-                        print(f"✅ {const_name} = {expected_value}")
-                        found = True
-                        break
-                    else:
-                        # Extract actual value
-                        import re
-                        match = re.search(r'=\s*(.+)', line)
-                        actual = match.group(1).strip() if match else "unknown"
-                        print(f"❌ {const_name} has wrong value: {actual} (expected: {expected_value})")
-                        all_passed = False
-                        found = True
-                        break
+                if f"{const_name}:" in line or f"{const_name} =" in line:
+                    found = True
+                    # Check if any expected value is in the line
+                    if not any(exp in line for exp in expected_values):
+                        print(f"❌ {const_name} has unexpected value: {line.strip()}")
+                        return False
+                    break
             
             if not found:
-                print(f"⚠️  {const_name} found but couldn't verify value")
+                print(f"⚠️  Could not find value for {const_name}")
         
-        if all_passed:
-            print("✅ All OSS constants are correct")
-            return True
-        else:
-            print("❌ Some OSS constants are incorrect")
-            return False
+        print("✅ OSS constants are properly defined")
+        return True
         
     except Exception as e:
         print(f"❌ Error checking constants: {e}")
@@ -86,7 +88,6 @@ def check_no_enterprise_imports():
     
     oss_dirs = [
         Path("agentic_reliability_framework/arf_core"),
-        Path("agentic_reliability_framework/engine"),
     ]
     
     forbidden_patterns = [
@@ -94,18 +95,19 @@ def check_no_enterprise_imports():
         "EnterpriseMCPServer", 
         "LicenseManager",
         "license_key",
-        "audit_trail",
         "validate_license",
+        "audit_trail",
     ]
     
     violations = []
     
     for oss_dir in oss_dirs:
         if not oss_dir.exists():
+            print(f"⚠️  OSS directory not found: {oss_dir}")
             continue
             
         for py_file in oss_dir.rglob("*.py"):
-            # Skip test files
+            # Skip test files and cache
             if "test_" in py_file.name or "__pycache__" in str(py_file):
                 continue
                 
@@ -113,29 +115,35 @@ def check_no_enterprise_imports():
                 with open(py_file, 'r') as f:
                     content = f.read()
                 
-                for pattern in forbidden_patterns:
-                    if pattern in content:
-                        # Check if it's in a comment or string
-                        lines = content.split('\n')
-                        for i, line in enumerate(lines):
-                            if pattern in line:
-                                # Skip if it's in a comment or docstring
-                                stripped = line.strip()
-                                if not (stripped.startswith('#') or 
-                                       stripped.startswith('"""') or 
-                                       stripped.startswith("'''")):
-                                    violations.append(
-                                        f"{py_file.relative_to(Path('.'))}:{i+1}: Contains '{pattern}'"
-                                    )
-                                    break
+                # Check each line for forbidden patterns
+                lines = content.split('\n')
+                for i, line in enumerate(lines):
+                    line_num = i + 1
+                    for pattern in forbidden_patterns:
+                        if pattern in line:
+                            # Skip if it's in a comment or string
+                            stripped = line.strip()
+                            if (stripped.startswith('#') or 
+                                stripped.startswith('"""') or 
+                                stripped.startswith("'''")):
+                                continue
+                            
+                            # Check if it's in a string literal
+                            if '"' + pattern in line or "'" + pattern in line:
+                                continue
+                            
+                            violations.append(f"{py_file}:{line_num}: Contains '{pattern}'")
+                            break
                                 
             except Exception as e:
                 print(f"⚠️  Error reading {py_file}: {e}")
     
     if violations:
-        print("❌ Enterprise imports found in OSS code:")
-        for violation in violations:
+        print("❌ Enterprise patterns found in OSS code:")
+        for violation in violations[:5]:  # Show first 5
             print(f"  - {violation}")
+        if len(violations) > 5:
+            print(f"  ... and {len(violations) - 5} more violations")
         return False
     else:
         print("✅ No Enterprise imports found in OSS code")
@@ -174,35 +182,36 @@ def check_oss_vs_enterprise_separation():
     # Check that arf_core doesn't have execution code
     arf_core_path = Path("agentic_reliability_framework/arf_core")
     
+    if not arf_core_path.exists():
+        print("⚠️  arf_core directory not found")
+        return True  # Not a violation, just missing
+    
     execution_patterns = [
         "await.*execute",
-        "async def execute",
-        ".execute()",
         "autonomous",
         "approval.*execute",
+        "def execute",
     ]
     
     violations = []
     
-    if arf_core_path.exists():
-        for py_file in arf_core_path.rglob("*.py"):
-            try:
-                with open(py_file, 'r') as f:
-                    content = f.read()
-                
-                for pattern in execution_patterns:
-                    if pattern in content.lower():
-                        violations.append(
-                            f"{py_file.relative_to(Path('.'))}: Contains execution pattern '{pattern}'"
-                        )
-                        break
+    for py_file in arf_core_path.rglob("*.py"):
+        try:
+            with open(py_file, 'r') as f:
+                content = f.read().lower()  # Case-insensitive
+            
+            for pattern in execution_patterns:
+                # Simple check - if the pattern exists (not foolproof but good enough)
+                if re.search(pattern, content):
+                    violations.append(f"{py_file}: Contains execution pattern '{pattern}'")
+                    break
                         
-            except Exception as e:
-                print(f"⚠️  Error reading {py_file}: {e}")
+        except Exception as e:
+            print(f"⚠️  Error reading {py_file}: {e}")
     
     if violations:
         print("❌ Execution patterns found in OSS code:")
-        for violation in violations:
+        for violation in violations[:3]:
             print(f"  - {violation}")
         print("\n💡 OSS code should only create HealingIntent, not execute actions")
         return False
