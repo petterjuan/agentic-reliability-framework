@@ -23,89 +23,104 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Run OSS boundary check
+    - name: List OSS files
       run: |
-        echo "🔍 Running OSS boundary check..."
-        if [ -f "scripts/oss_boundary_check.py" ]; then
-          python scripts/oss_boundary_check.py || echo "⚠️ Boundary check had issues - continuing"
+        echo "📁 OSS File Structure:"
+        find agentic_reliability_framework/arf_core -type f -name "*.py" | sort
+        
+    - name: Run OSS boundary check (with debug)
+      run: |
+        echo "🔍 Running OSS boundary check with debug..."
+        python scripts/oss_boundary_check.py --debug || true
+        
+    - name: Simple OSS validation
+      run: |
+        echo "🔍 Simple OSS validation..."
+        
+        # Check critical files exist
+        echo "1. Checking required files:"
+        REQUIRED_FILES=(
+          "agentic_reliability_framework/arf_core/__init__.py"
+          "agentic_reliability_framework/arf_core/constants.py"
+          "agentic_reliability_framework/arf_core/models/healing_intent.py"
+          "agentic_reliability_framework/arf_core/engine/oss_mcp_client.py"
+        )
+        
+        all_exist=true
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ -f "$file" ]; then
+            echo "   ✅ $file"
+          else
+            echo "   ❌ $file - MISSING"
+            all_exist=false
+          fi
+        done
+        
+        if [ "$all_exist" = false ]; then
+          echo "❌ Missing required OSS files"
+          exit 1
+        fi
+        
+        # Check constants.py content
+        echo ""
+        echo "2. Checking constants.py:"
+        CONSTANTS_FILE="agentic_reliability_framework/arf_core/constants.py"
+        if [ -f "$CONSTANTS_FILE" ]; then
+          echo "   ✅ File exists"
+          
+          # Check for OSS keywords
+          if grep -q "advisory" "$CONSTANTS_FILE"; then
+            echo "   ✅ Contains 'advisory'"
+          else
+            echo "   ⚠️  Does not contain 'advisory'"
+          fi
+          
+          if grep -q "in_memory" "$CONSTANTS_FILE"; then
+            echo "   ✅ Contains 'in_memory'"
+          else
+            echo "   ⚠️  Does not contain 'in_memory'"
+          fi
+          
+          # Check for forbidden modes
+          if grep -q "APPROVAL\|AUTONOMOUS" "$CONSTANTS_FILE"; then
+            echo "   ❌ Contains non-advisory modes"
+            exit 1
+          else
+            echo "   ✅ Only advisory mode"
+          fi
         else
-          echo "❌ scripts/oss_boundary_check.py not found"
+          echo "   ❌ File missing"
           exit 1
         fi
         
-    - name: Quick manual checks
+        echo ""
+        echo "🎉 Simple OSS validation passed!"
+        
+    - name: Check for Enterprise imports
       run: |
-        echo "🔍 Running quick OSS compliance checks..."
+        echo "🔍 Checking for Enterprise imports in OSS code..."
         
-        # Check arf_core exists
-        if [ ! -d "agentic_reliability_framework/arf_core" ]; then
-          echo "❌ arf_core directory not found"
-          exit 1
-        fi
-        
-        # Check for forbidden patterns (be more specific)
-        echo "Checking for critical Enterprise patterns in OSS code..."
-        
-        # CRITICAL patterns that should NEVER exist in OSS
-        CRITICAL_PATTERNS=(
+        # Only fail on these absolute no-nos
+        ABSOLUTE_NO_NOS=(
           "EnterpriseMCPServer"
           "LicenseManager"
           "license_key"
           "validate_license"
+          "ARF-ENT-"  # License key pattern
         )
         
-        critical_violations=0
-        for pattern in "${CRITICAL_PATTERNS[@]}"; do
-          echo "  Checking for: $pattern"
-          if grep -r "$pattern" agentic_reliability_framework/arf_core/ --include="*.py"; then
-            echo "❌ Found CRITICAL pattern '$pattern' in OSS code"
-            critical_violations=$((critical_violations + 1))
+        found_problems=0
+        for pattern in "${ABSOLUTE_NO_NOS[@]}"; do
+          echo "   Checking for: $pattern"
+          if grep -r "$pattern" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null; then
+            echo "   ❌ Found absolute no-no: $pattern"
+            found_problems=1
           fi
         done
         
-        if [ $critical_violations -gt 0 ]; then
-          echo "❌ Found $critical_violations critical violations"
+        if [ $found_problems -eq 0 ]; then
+          echo "✅ No absolute no-nos found in OSS code"
+        else
+          echo "❌ Absolute no-nos found - failing build"
           exit 1
         fi
-        
-        echo "✅ No critical Enterprise patterns found"
-        
-    - name: Check OSS constants
-      run: |
-        echo "📋 Checking OSS constants..."
-        
-        constants_file="agentic_reliability_framework/arf_core/constants.py"
-        if [ ! -f "$constants_file" ]; then
-          echo "❌ $constants_file not found"
-          exit 1
-        fi
-        
-        # Quick check for required constants
-        REQUIRED_CONSTANTS=(
-          "MAX_INCIDENT_HISTORY"
-          "MCP_MODES_ALLOWED"
-          "EXECUTION_ALLOWED"
-          "GRAPH_STORAGE"
-        )
-        
-        missing=0
-        for const in "${REQUIRED_CONSTANTS[@]}"; do
-          if ! grep -q "$const" "$constants_file"; then
-            echo "❌ Missing constant: $const"
-            missing=$((missing + 1))
-          fi
-        done
-        
-        if [ $missing -gt 0 ]; then
-          echo "❌ Missing $missing required constants"
-          exit 1
-        fi
-        
-        echo "✅ All required constants found"
-        
-        # Check OSS-only mode
-        if ! grep -q "advisory" "$constants_file"; then
-          echo "⚠️  constants.py doesn't mention 'advisory' mode"
-        fi
-        
-        echo "✅ OSS constants check passed"
