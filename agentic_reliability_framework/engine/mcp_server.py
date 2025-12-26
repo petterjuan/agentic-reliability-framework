@@ -788,40 +788,10 @@ async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
     Uses OSS analysis to create a complete HealingIntent
     that can be executed by Enterprise edition
     """
-    # Handle case where HealingIntent is not available
+    # If HealingIntent is not available, create minimal version
     if not HEALING_INTENT_AVAILABLE or HealingIntent is None:
-        # Create a simple fallback intent
-        from dataclasses import dataclass
-        
-        @dataclass
-        class SimpleHealingIntent:
-            action: str
-            component: str
-            parameters: Dict[str, Any]
-            justification: str = ""
-            confidence: float = 0.85
-            incident_id: str = ""
-            
-            def to_enterprise_request(self):
-                return {
-                    "action": self.action,
-                    "component": self.component,
-                    "parameters": self.parameters,
-                    "justification": self.justification,
-                    "confidence": self.confidence,
-                    "incident_id": self.incident_id,
-                    "requires_enterprise": True,
-                    "oss_metadata": {"fallback": True}
-                }
-        
-        return SimpleHealingIntent(
-            action=request.tool,
-            component=request.component,
-            parameters=request.parameters,
-            justification=request.justification,
-            incident_id=request.metadata.get("incident_id", ""),
-            confidence=0.85,
-        )
+        logger.warning("HealingIntent not available, creating minimal version")
+        return self._create_minimal_healing_intent(request)
     
     # Use OSS client for analysis if available
     if self.oss_client and hasattr(self.oss_client, 'analyze_and_recommend'):
@@ -841,7 +811,7 @@ async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
                 if not validation.valid:
                     raise ValueError(f"Validation failed: {', '.join(validation.errors)}")
             
-            # Use OSS client for analysis - handle different return types
+            # Use OSS client for analysis
             analysis_result = await self.oss_client.analyze_and_recommend(
                 tool_name=request.tool,
                 component=request.component,
@@ -849,30 +819,68 @@ async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
                 context=request.metadata
             )
             
-            # Handle different return types from OSS client
-            if hasattr(analysis_result, 'healing_intent'):
-                # OSS client returns wrapper object
-                return analysis_result.healing_intent
-            elif isinstance(analysis_result, HealingIntent):
-                # OSS client returns HealingIntent directly
+            # Handle return type - check if it's already a HealingIntent
+            if isinstance(analysis_result, HealingIntent):
                 return analysis_result
+            elif hasattr(analysis_result, 'healing_intent'):
+                # Some OSS clients return a wrapper object
+                return analysis_result.healing_intent
             else:
-                # Unknown return type, create basic intent
-                logger.warning(f"Unknown OSS client return type: {type(analysis_result)}")
-                # Fall through to create basic HealingIntent
+                # Unknown return type, log and fallback
+                logger.warning(f"Unexpected OSS client return type: {type(analysis_result)}")
                 
         except Exception as e:
             logger.warning(f"OSSMCPClient analysis failed: {e}")
             # Fall back to basic HealingIntent
     
-    # Fallback: Create basic HealingIntent
-    return HealingIntent(
+    # Create basic HealingIntent (fallback)
+    try:
+        return HealingIntent(
+            action=request.tool,
+            component=request.component,
+            parameters=request.parameters,
+            justification=request.justification,
+            incident_id=request.metadata.get("incident_id", ""),
+            confidence=0.85,
+        )
+    except Exception as e:
+        logger.error(f"Failed to create HealingIntent: {e}")
+        # Ultimate fallback
+        return self._create_minimal_healing_intent(request)
+
+
+def _create_minimal_healing_intent(self, request: MCPRequest):
+    """Create minimal healing intent when OSS package is not available"""
+    from dataclasses import dataclass
+    
+    @dataclass
+    class MinimalHealingIntent:
+        action: str
+        component: str
+        parameters: Dict[str, Any]
+        justification: str = ""
+        confidence: float = 0.85
+        incident_id: str = ""
+        
+        def to_enterprise_request(self):
+            return {
+                "action": self.action,
+                "component": self.component,
+                "parameters": self.parameters,
+                "justification": self.justification,
+                "confidence": self.confidence,
+                "incident_id": self.incident_id,
+                "requires_enterprise": True,
+                "oss_metadata": {"fallback": True}
+            }
+    
+    return MinimalHealingIntent(
         action=request.tool,
         component=request.component,
         parameters=request.parameters,
         justification=request.justification,
         incident_id=request.metadata.get("incident_id", ""),
-        confidence=0.85,  # Default confidence for OSS
+        confidence=0.85,
     )
     async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
         """
