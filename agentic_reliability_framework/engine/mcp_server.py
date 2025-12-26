@@ -1,5 +1,5 @@
 """
-Enhanced MCP Server for ARF v3 - OSS Edition
+Enhanced MCP Server for ARF v3 - OSS Edition (Pure Advisory)
 Pythonic implementation with proper typing, error handling, and safety features
 OSS EDITION: Advisory mode only, no execution capability
 """
@@ -127,7 +127,7 @@ class MCPResponse:
 
 @dataclass(frozen=True, slots=True)
 class ToolContext:
-    """Immutable context for tool execution"""
+    """Immutable context for tool execution (advisory only in OSS)"""
     component: str
     parameters: Dict[str, Any] = field(default_factory=dict)
     environment: str = "production"
@@ -137,7 +137,7 @@ class ToolContext:
 
 @dataclass(frozen=True, slots=True)
 class ToolResult:
-    """Immutable result of tool execution"""
+    """Immutable result of tool analysis (advisory only in OSS)"""
     success: bool
     message: str
     details: Dict[str, Any] = field(default_factory=dict)
@@ -146,12 +146,12 @@ class ToolResult:
 
     @classmethod
     def success_result(cls, message: str, **details: Any) -> "ToolResult":
-        """Create a successful result"""
+        """Create a successful advisory result"""
         return cls(success=True, message=message, details=details)
 
     @classmethod
     def failure_result(cls, message: str, **details: Any) -> "ToolResult":
-        """Create a failure result"""
+        """Create a failure advisory result"""
         return cls(success=False, message=message, details=details)
 
 
@@ -178,19 +178,15 @@ class ValidationResult:
 
 @runtime_checkable
 class MCPTool(Protocol):
-    """Protocol for MCP tools"""
+    """Protocol for MCP tools - advisory only in OSS"""
 
     @property
     def metadata(self) -> ToolMetadata:
         """Get tool metadata"""
         ...
 
-    async def execute(self, context: ToolContext) -> ToolResult:
-        """Execute the tool"""
-        ...
-
     def validate(self, context: ToolContext) -> ValidationResult:
-        """Validate the tool execution"""
+        """Validate the tool execution (advisory only)"""
         ...
 
     def get_tool_info(self) -> Dict[str, Any]:
@@ -216,6 +212,9 @@ class BaseMCPTool:
         return {
             **self.metadata,
             "class_name": self.__class__.__name__,
+            "oss_edition": True,
+            "can_execute": False,
+            "requires_enterprise": True,
         }
 
     def _add_safety_check(
@@ -226,7 +225,6 @@ class BaseMCPTool:
         details: str = ""
     ) -> ValidationResult:
         """Helper to add safety checks to validation result"""
-        # Create a copy of safety_checks dict and update it
         safety_checks = dict(validation.safety_checks)
         safety_checks[name] = SafetyCheck(
             name=name,
@@ -234,7 +232,6 @@ class BaseMCPTool:
             details=details
         )
 
-        # Create a new ValidationResult with updated safety_checks
         return ValidationResult(
             valid=validation.valid,
             errors=validation.errors.copy(),
@@ -244,55 +241,17 @@ class BaseMCPTool:
 
 
 class RollbackTool(BaseMCPTool):
-    """K8s/ECS/VM rollback adapter with enhanced safety"""
+    """K8s/ECS/VM rollback analysis - advisory only"""
 
     def __init__(self):
         super().__init__({
             "name": "rollback",
-            "description": "Rollback deployment to previous version",
+            "description": "Analyze deployment rollback feasibility (Advisory Only)",
             "supported_environments": ["kubernetes", "ecs", "vm"],
             "safety_level": "high",
             "timeout_seconds": 60,
             "required_permissions": ["deployment.write", "rollback.execute"]
         })
-
-    async def execute(self, context: ToolContext) -> ToolResult:
-        """Execute rollback with proper error handling"""
-        start_time = time.time()
-
-        try:
-            # Simulate different environment executions
-            if context.environment == "kubernetes":
-                result = await self._k8s_rollback(context)
-            elif context.environment == "ecs":
-                result = await self._ecs_rollback(context)
-            elif context.environment == "vm":
-                result = await self._vm_rollback(context)
-            else:
-                return ToolResult.failure_result(
-                    f"Unsupported environment: {context.environment}",
-                    supported_environments=self.metadata["supported_environments"]
-                )
-
-            # Update execution time
-            return ToolResult(
-                success=result.success,
-                message=result.message,
-                details=result.details,
-                execution_time_seconds=time.time() - start_time,
-                warnings=result.warnings
-            )
-
-        except asyncio.TimeoutError:
-            return ToolResult.failure_result(
-                f"Rollback timeout after {self.metadata['timeout_seconds']} seconds"
-            )
-        except Exception as e:
-            logger.exception(f"Rollback execution error: {e}")
-            return ToolResult.failure_result(
-                f"Rollback failed: {str(e)}",
-                error_type=type(e).__name__
-            )
 
     def validate(self, context: ToolContext) -> ValidationResult:
         """Validate rollback with comprehensive safety checks"""
@@ -365,77 +324,19 @@ class RollbackTool(BaseMCPTool):
 
         return validation
 
-    async def _k8s_rollback(self, context: ToolContext) -> ToolResult:
-        """Execute Kubernetes rollback"""
-        await asyncio.sleep(1)  # Simulate API call
-        return ToolResult.success_result(
-            f"Successfully rolled back {context.component} in Kubernetes",
-            action="k8s_rollback",
-            component=context.component,
-            namespace=context.metadata.get("namespace", "default"),
-            deployment=context.metadata.get("deployment"),
-            previous_revision=context.metadata.get("previous_revision"),
-            new_revision=context.metadata.get("new_revision")
-        )
-
-    async def _ecs_rollback(self, context: ToolContext) -> ToolResult:
-        """Execute ECS rollback"""
-        await asyncio.sleep(1)
-        return ToolResult.success_result(
-            f"Successfully rolled back {context.component} in ECS",
-            action="ecs_rollback",
-            component=context.component,
-            cluster=context.metadata.get("cluster"),
-            service=context.metadata.get("service"),
-            task_definition=context.metadata.get("task_definition")
-        )
-
-    async def _vm_rollback(self, context: ToolContext) -> ToolResult:
-        """Execute VM rollback"""
-        await asyncio.sleep(1)
-        return ToolResult.success_result(
-            f"Successfully rolled back {context.component} on VM",
-            action="vm_rollback",
-            component=context.component,
-            host=context.metadata.get("host"),
-            snapshot_id=context.metadata.get("snapshot_id")
-        )
-
 
 class RestartContainerTool(BaseMCPTool):
-    """Container restart tool with safety limits"""
+    """Container restart analysis - advisory only"""
 
     def __init__(self):
         super().__init__({
             "name": "restart_container",
-            "description": "Restart container instance",
+            "description": "Analyze container restart impact (Advisory Only)",
             "supported_environments": ["kubernetes", "ecs", "docker"],
             "safety_level": "medium",
             "timeout_seconds": 30,
             "required_permissions": ["container.restart"]
         })
-
-    async def execute(self, context: ToolContext) -> ToolResult:
-        """Execute container restart"""
-        start_time = time.time()
-
-        try:
-            await asyncio.sleep(0.5)  # Simulate API call
-
-            return ToolResult.success_result(
-                f"Successfully restarted {context.component}",
-                action="restart_container",
-                component=context.component,
-                environment=context.environment,
-                container_id=context.metadata.get("container_id"),
-                execution_time_seconds=time.time() - start_time
-            )
-        except Exception as e:
-            logger.exception(f"Container restart error: {e}")
-            return ToolResult.failure_result(
-                f"Container restart failed: {str(e)}",
-                execution_time_seconds=time.time() - start_time
-            )
 
     def validate(self, context: ToolContext) -> ValidationResult:
         """Validate container restart"""
@@ -476,41 +377,17 @@ class RestartContainerTool(BaseMCPTool):
 
 
 class ScaleOutTool(BaseMCPTool):
-    """Scale out tool with resource limits"""
+    """Scale out analysis - advisory only"""
 
     def __init__(self):
         super().__init__({
             "name": "scale_out",
-            "description": "Scale out service instances",
+            "description": "Analyze scale out feasibility (Advisory Only)",
             "supported_environments": ["kubernetes", "ecs"],
             "safety_level": "low",
             "timeout_seconds": 45,
             "required_permissions": ["deployment.scale"]
         })
-
-    async def execute(self, context: ToolContext) -> ToolResult:
-        """Execute scale out"""
-        start_time = time.time()
-
-        try:
-            scale_factor = context.parameters.get("scale_factor", 2)
-            await asyncio.sleep(1)  # Simulate API call
-
-            return ToolResult.success_result(
-                f"Successfully scaled {context.component} by factor {scale_factor}",
-                action="scale_out",
-                component=context.component,
-                scale_factor=scale_factor,
-                current_replicas=context.metadata.get("current_replicas"),
-                new_replicas=context.metadata.get("new_replicas"),
-                execution_time_seconds=time.time() - start_time
-            )
-        except Exception as e:
-            logger.exception(f"Scale out error: {e}")
-            return ToolResult.failure_result(
-                f"Scale out failed: {str(e)}",
-                execution_time_seconds=time.time() - start_time
-            )
 
     def validate(self, context: ToolContext) -> ValidationResult:
         """Validate scale out"""
@@ -557,26 +434,18 @@ class ScaleOutTool(BaseMCPTool):
 # ========== FACTORY FUNCTIONS ==========
 
 def create_circuit_breaker_tool() -> MCPTool:
-    """Factory function for circuit breaker tool"""
+    """Factory function for circuit breaker analysis tool"""
 
     class CircuitBreakerTool(BaseMCPTool):
         def __init__(self):
             super().__init__({
                 "name": "circuit_breaker",
-                "description": "Enable circuit breaker for service",
+                "description": "Analyze circuit breaker feasibility (Advisory Only)",
                 "supported_environments": ["all"],
                 "safety_level": "low",
                 "timeout_seconds": 10,
                 "required_permissions": ["circuit_breaker.manage"]
             })
-
-        async def execute(self, context: ToolContext) -> ToolResult:
-            await asyncio.sleep(0.1)
-            return ToolResult.success_result(
-                f"Circuit breaker enabled for {context.component}",
-                action="circuit_breaker",
-                component=context.component
-            )
 
         def validate(self, context: ToolContext) -> ValidationResult:
             return ValidationResult.valid_result()
@@ -585,26 +454,18 @@ def create_circuit_breaker_tool() -> MCPTool:
 
 
 def create_traffic_shift_tool() -> MCPTool:
-    """Factory function for traffic shift tool"""
+    """Factory function for traffic shift analysis tool"""
 
     class TrafficShiftTool(BaseMCPTool):
         def __init__(self):
             super().__init__({
                 "name": "traffic_shift",
-                "description": "Shift traffic to canary or backup",
+                "description": "Analyze traffic shifting strategies (Advisory Only)",
                 "supported_environments": ["kubernetes", "ecs", "load_balancer"],
                 "safety_level": "medium",
                 "timeout_seconds": 30,
                 "required_permissions": ["traffic.manage"]
             })
-
-        async def execute(self, context: ToolContext) -> ToolResult:
-            await asyncio.sleep(0.5)
-            return ToolResult.success_result(
-                f"Traffic shifted for {context.component}",
-                action="traffic_shift",
-                component=context.component
-            )
 
         def validate(self, context: ToolContext) -> ValidationResult:
             return ValidationResult.valid_result()
@@ -613,26 +474,18 @@ def create_traffic_shift_tool() -> MCPTool:
 
 
 def create_alert_tool() -> MCPTool:
-    """Factory function for alert tool"""
+    """Factory function for alert analysis tool"""
 
     class AlertTool(BaseMCPTool):
         def __init__(self):
             super().__init__({
                 "name": "alert_team",
-                "description": "Alert human team for intervention",
+                "description": "Analyze alert requirements (Advisory Only)",
                 "supported_environments": ["all"],
                 "safety_level": "low",
                 "timeout_seconds": 5,
                 "required_permissions": ["alert.create"]
             })
-
-        async def execute(self, context: ToolContext) -> ToolResult:
-            await asyncio.sleep(0.1)
-            return ToolResult.success_result(
-                f"Alert sent for {context.component}",
-                action="alert_team",
-                component=context.component
-            )
 
         def validate(self, context: ToolContext) -> ValidationResult:
             return ValidationResult.valid_result()
@@ -643,18 +496,26 @@ def create_alert_tool() -> MCPTool:
 # ========== OSS INTEGRATION IMPORT ==========
 # Import OSSMCPClient for advisory mode delegation
 try:
-    from arf_core.engine.oss_mcp_client import create_oss_mcp_client
+    from arf_core.engine.oss_mcp_client import OSSMCPClient, create_oss_mcp_client
     OSS_CLIENT_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"OSSMCPClient not available: {e}. Using fallback advisory mode.")
     OSS_CLIENT_AVAILABLE = False
+
+# Import HealingIntent for OSS analysis
+try:
+    from arf_core.models.healing_intent import HealingIntent
+    HEALING_INTENT_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"HealingIntent not available: {e}. Using basic advisory mode.")
+    HEALING_INTENT_AVAILABLE = False
 
 
 # ========== MCP SERVER (OSS EDITION) ==========
 
 class MCPServer:
     """
-    Enhanced MCP Server - OSS Edition
+    Enhanced MCP Server - OSS Edition (Pure Advisory)
     Advisory mode only, no execution capability
     
     Features:
@@ -663,6 +524,12 @@ class MCPServer:
     - Detailed metrics and monitoring
     - Extensible tool system
     - OSS Edition: Advisory mode only with HealingIntent integration
+    
+    Key OSS Limitations:
+    - NO execution capability
+    - NO autonomous mode
+    - NO approval workflows
+    - Creates HealingIntent for Enterprise handoff only
     """
 
     def __init__(self, mode: Optional[MCPMode] = None):
@@ -679,6 +546,7 @@ class MCPServer:
             "⚠️  OSS Edition - Advisory mode only\n"
             "• No execution capability\n"
             "• Analysis and recommendations only\n"
+            "• Creates HealingIntent for Enterprise handoff\n"
             "• Upgrade to Enterprise for execution: https://arf.dev/enterprise"
         )
         
@@ -697,7 +565,6 @@ class MCPServer:
 
         # State management
         self._cooldowns: Dict[str, float] = {}
-        self._approval_requests: Dict[str, MCPRequest] = {}
         self._execution_history: Deque[Dict[str, Any]] = deque(maxlen=1000)
 
         # Metrics
@@ -707,10 +574,10 @@ class MCPServer:
                      "average_duration_seconds": 0.0, "last_execution": None}
         )
 
-        logger.info(f"Initialized OSS MCPServer in advisory mode")
+        logger.info(f"Initialized OSS MCPServer (Advisory Only) - HealingIntent available: {HEALING_INTENT_AVAILABLE}")
 
     def _register_tools(self) -> Dict[str, MCPTool]:
-        """Register all available tools"""
+        """Register all available tools (advisory only)"""
         tools: Dict[str, MCPTool] = {
             "rollback": RollbackTool(),
             "restart_container": RestartContainerTool(),
@@ -720,36 +587,19 @@ class MCPServer:
             "alert_team": create_alert_tool(),
         }
 
-        logger.info(f"Registered {len(tools)} tools: {list(tools.keys())}")
+        logger.info(f"Registered {len(tools)} advisory tools: {list(tools.keys())}")
         return tools
-
-    @asynccontextmanager
-    async def _execution_context(self, request: MCPRequest) -> AsyncGenerator[None, None]:
-        """Context manager for tool execution with metrics"""
-        start_time = time.time()
-        try:
-            yield
-        finally:
-            # Update execution time for stats
-            execution_time = time.time() - start_time
-            stats = self._tool_stats[request.tool]
-            stats["total"] += 1
-            stats["average_duration_seconds"] = (
-                (stats["average_duration_seconds"] * (stats["total"] - 1) + execution_time)
-                / stats["total"]
-            )
-            stats["last_execution"] = time.time()
 
     async def execute_tool(self, request_dict: Dict[str, Any]) -> MCPResponse:
         """
         Execute a tool with comprehensive safety checks
         
         OSS Edition: Advisory only, no execution
+        Creates HealingIntent for Enterprise handoff
         """
         # OSS EDITION: Force advisory mode
         request_dict["mode"] = "advisory"
         
-        # === EXISTING EXECUTE_TOOL CODE ===
         # 1. Create and validate request
         request = self._create_request(request_dict)
         validation = self._validate_request(request)
@@ -786,7 +636,7 @@ class MCPServer:
             return self._create_error_response(
                 request,
                 MCPRequestStatus.FAILED,
-                f"Internal server error: {str(e)}"
+                f"OSS analysis error: {str(e)}"
             )
 
     def _create_request(self, request_dict: Dict[str, Any]) -> MCPRequest:
@@ -822,6 +672,10 @@ class MCPServer:
         # Check justification
         if len(request.justification) < 10:
             errors.append("Justification too short (min 10 characters)")
+        
+        # OSS-specific validation: Reject non-advisory modes
+        if request.mode != MCPMode.ADVISORY:
+            errors.append(f"OSS edition only supports advisory mode, got: {request.mode}")
         
         # Return immediately
         return {
@@ -886,156 +740,132 @@ class MCPServer:
             executed=False
         )
 
-    # FIXED LINE 249: Added explicit return type annotation
-    def _validate_healing_intent(self, intent: Dict[str, Any]) -> Dict[str, Any]:
+    async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
         """
-        Validate healing intent with safety checks
+        Create a HealingIntent from MCP request
         
-        Args:
-            intent: HealingIntent dictionary
-            
-        Returns:
-            Dictionary with validation results
+        Uses OSS analysis to create a complete HealingIntent
+        that can be executed by Enterprise edition
         """
-        errors: List[str] = []
-        warnings: List[str] = []
+        if not HEALING_INTENT_AVAILABLE:
+            raise ImportError("HealingIntent model not available")
         
-        # Check intent structure
-        if not isinstance(intent, dict):
-            return {"valid": False, "errors": ["Intent must be a dictionary"], "warnings": []}
+        # Use OSS client for analysis if available
+        if self.oss_client and hasattr(self.oss_client, 'analyze_and_recommend'):
+            try:
+                # Create tool context for validation
+                context = ToolContext(
+                    component=request.component,
+                    parameters=request.parameters,
+                    metadata=request.metadata,
+                    safety_guardrails=self.safety_guardrails
+                )
+                
+                # Validate the request
+                tool = self.registered_tools.get(request.tool)
+                if tool:
+                    validation = tool.validate(context)
+                    if not validation.valid:
+                        raise ValueError(f"Validation failed: {', '.join(validation.errors)}")
+                
+                # Use OSS client for analysis
+                healing_intent = await self.oss_client.analyze_and_recommend(
+                    tool_name=request.tool,
+                    component=request.component,
+                    parameters=request.parameters,
+                    context=request.metadata
+                )
+                
+                return healing_intent
+                
+            except Exception as e:
+                logger.warning(f"OSSMCPClient analysis failed: {e}")
+                # Fall back to basic HealingIntent
         
-        # Check required fields
-        required_fields = ["action", "component", "parameters", "justification"]
-        for field in required_fields:
-            if field not in intent:
-                errors.append(f"Missing required field: {field}")
-        
-        # Check OSS edition restrictions
-        if intent.get("requires_enterprise", False):
-            warnings.append("This intent requires Enterprise edition for execution")
-        
-        # Check confidence range
-        confidence = intent.get("confidence", 0.5)
-        if not (0.0 <= confidence <= 1.0):
-            errors.append(f"Confidence must be between 0.0 and 1.0, got {confidence}")
-        
-        return {
-            "valid": len(errors) == 0,
-            "errors": errors,
-            "warnings": warnings,
-            "confidence": confidence
-        }
-
-    # FIXED LINE 408: Added explicit return type annotation
-    async def _execute_with_approval(self, request: MCPRequest) -> MCPResponse:
-        """
-        Execute with approval workflow (OSS only - no actual approval)
-        
-        Args:
-            request: MCP request
-            
-        Returns:
-            MCP response with advisory information
-        """
-        # OSS Edition: Approval workflow not available
-        logger.warning(f"Approval workflow requested for {request.tool} on {request.component}")
-        
-        return MCPResponse(
-            request_id=request.request_id,
-            status=MCPRequestStatus.REJECTED,
-            message=f"Approval workflow for {request.tool} requires Enterprise edition",
-            executed=False,
-            result={
-                "requires_enterprise": True,
-                "upgrade_url": "https://arf.dev/enterprise",
-                "advisory_analysis": {
-                    "tool": request.tool,
-                    "component": request.component,
-                    "would_require_approval": True,
-                }
-            }
-        )
-
-    # FIXED LINE 481: Added explicit return type annotation
-    async def _execute_autonomous(self, request: MCPRequest) -> MCPResponse:
-        """
-        Execute in autonomous mode (OSS only - advisory)
-        
-        Args:
-            request: MCP request
-            
-        Returns:
-            MCP response with advisory information
-        """
-        # OSS Edition: Autonomous execution not available
-        logger.warning(f"Autonomous execution requested for {request.tool} on {request.component}")
-        
-        # Create advisory response
-        return MCPResponse(
-            request_id=request.request_id,
-            status=MCPRequestStatus.REJECTED,
-            message=f"Autonomous execution of {request.tool} requires Enterprise edition",
-            executed=False,
-            result={
-                "requires_enterprise": True,
-                "upgrade_url": "https://arf.dev/enterprise",
-                "advisory_analysis": {
-                    "tool": request.tool,
-                    "component": request.component,
-                    "confidence": 0.85,  # Mock confidence
-                    "similar_incidents_found": 0,  # Mock RAG results
-                }
-            }
+        # Fallback: Create basic HealingIntent
+        return HealingIntent(
+            action=request.tool,
+            component=request.component,
+            parameters=request.parameters,
+            justification=request.justification,
+            incident_id=request.metadata.get("incident_id", ""),
+            confidence=0.85,  # Default confidence for OSS
         )
 
     async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
         """
-        Handle advisory mode by delegating to OSSMCPClient
+        Handle advisory mode by creating HealingIntent
         
-        OSS Edition: Uses OSSMCPClient for proper HealingIntent creation
-        and RAG integration. Maintains backward compatibility while
-        ensuring OSS purity.
+        OSS Edition: Uses OSS analysis to create HealingIntent
+        for Enterprise handoff. No execution capability.
         """
-        # Try to use OSSMCPClient if available
-        if self.oss_client is not None:
-            try:
-                # Delegate to OSSMCPClient for proper OSS analysis
-                request_dict = {
-                    "tool": request.tool,
-                    "component": request.component,
-                    "parameters": request.parameters,
-                    "justification": request.justification,
-                    "metadata": request.metadata,
-                    "request_id": request.request_id,
-                }
-                
-                # Get OSS analysis result
-                oss_response = await self.oss_client.execute_tool(request_dict)
-                
-                # Convert OSSMCPResponse to MCPResponse for backward compatibility
-                return MCPResponse(
-                    request_id=oss_response.get("request_id", request.request_id),
-                    status=MCPRequestStatus.COMPLETED,
-                    message=oss_response.get("message", f"OSS Analysis: Recommend {request.tool} for {request.component}"),
-                    executed=False,
-                    result=oss_response.get("result", {})
-                )
-                
-            except Exception as e:
-                logger.warning(f"OSSMCPClient failed, using fallback: {e}")
-                # Continue to fallback implementation
+        start_time = time.time()
         
-        # Fallback to basic advisory response if OSSMCPClient is not available
-        return MCPResponse(
-            request_id=request.request_id,
-            status=MCPRequestStatus.COMPLETED,
-            message=f"Advisory: Would execute {request.tool} on {request.component}",
-            executed=False,
-            result={
+        try:
+            # Create tool context for validation
+            context = ToolContext(
+                component=request.component,
+                parameters=request.parameters,
+                metadata=request.metadata,
+                safety_guardrails=self.safety_guardrails
+            )
+            
+            # Validate the request
+            tool = self.registered_tools.get(request.tool)
+            if not tool:
+                return self._create_error_response(
+                    request,
+                    MCPRequestStatus.REJECTED,
+                    f"Unknown tool: {request.tool}"
+                )
+            
+            validation = tool.validate(context)
+            if not validation.valid:
+                return self._create_error_response(
+                    request,
+                    MCPRequestStatus.REJECTED,
+                    f"Validation failed: {', '.join(validation.errors)}"
+                )
+            
+            # Create HealingIntent for Enterprise handoff
+            healing_intent = None
+            if HEALING_INTENT_AVAILABLE:
+                try:
+                    healing_intent = await self._create_healing_intent(request)
+                except Exception as e:
+                    logger.warning(f"Failed to create HealingIntent: {e}")
+                    # Continue without HealingIntent
+            
+            # Update metrics
+            analysis_time = time.time() - start_time
+            stats = self._tool_stats[request.tool]
+            stats["total"] += 1
+            stats["average_duration_seconds"] = (
+                (stats["average_duration_seconds"] * (stats["total"] - 1) + analysis_time)
+                / stats["total"]
+            )
+            stats["last_execution"] = time.time()
+            
+            # Record advisory execution
+            self._execution_history.append({
+                "request_id": request.request_id,
+                "tool": request.tool,
+                "component": request.component,
+                "mode": request.mode.value,
+                "status": "advisory_completed",
+                "timestamp": time.time(),
+                "analysis_time_seconds": analysis_time,
+                "healing_intent_created": healing_intent is not None
+            })
+            
+            # Return advisory response
+            result_data = {
                 "mode": "advisory",
-                "would_execute": True,
+                "executed": False,
                 "justification": request.justification,
-                "validation": "Basic checks passed",
+                "validation_passed": True,
+                "safety_checks": validation.safety_checks,
+                "warnings": validation.warnings,
                 "requires_enterprise": True,
                 "upgrade_url": "https://arf.dev/enterprise",
                 "enterprise_features": [
@@ -1046,112 +876,35 @@ class MCPServer:
                     "audit_trails",
                     "compliance_reports"
                 ],
-                "oss_fallback": True,  # Indicate this is a fallback response
-                "healing_intent_available": False,  # No HealingIntent in fallback
+                "analysis_time_seconds": analysis_time,
+                "healing_intent_available": healing_intent is not None,
             }
-        )
-
-    # FIXED LINE 563: Added explicit return type annotation
-    async def _handle_rollback(self, context: ToolContext) -> ToolResult:
-        """
-        Handle rollback execution (OSS only - advisory)
-        
-        Args:
-            context: Tool execution context
             
-        Returns:
-            ToolResult with advisory information
-        """
-        # OSS Edition: Only advisory, no execution
-        logger.info(f"Advisory: Would rollback {context.component} with parameters {context.parameters}")
-        
-        return ToolResult.success_result(
-            message=f"Advisory: Would rollback {context.component}",
-            details={
-                "action": "rollback",
-                "component": context.component,
-                "parameters": context.parameters,
-                "execution_mode": "advisory",
-                "requires_enterprise": True,
-                "enterprise_features": ["autonomous_execution", "approval_workflows"],
-            }
-        )
-
-    # FIXED LINE 591: Added explicit return type annotation
-    async def _handle_restart_container(self, context: ToolContext) -> ToolResult:
-        """
-        Handle container restart (OSS only - advisory)
-        
-        Args:
-            context: Tool execution context
+            # Add HealingIntent data if available
+            if healing_intent:
+                result_data["healing_intent"] = healing_intent.to_enterprise_request()
+                result_data["oss_analysis"] = {
+                    "confidence": healing_intent.confidence,
+                    "similar_incidents_count": len(healing_intent.similar_incidents or []),
+                    "rag_used": healing_intent.rag_similarity_score is not None,
+                }
             
-        Returns:
-            ToolResult with advisory information
-        """
-        # OSS Edition: Only advisory, no execution
-        logger.info(f"Advisory: Would restart container {context.component}")
-        
-        return ToolResult.success_result(
-            message=f"Advisory: Would restart container {context.component}",
-            details={
-                "action": "restart_container",
-                "component": context.component,
-                "container_id": context.parameters.get("container_id"),
-                "execution_mode": "advisory",
-                "requires_enterprise": True,
-            }
-        )
-
-    # FIXED LINE 619: Added explicit return type annotation
-    async def _handle_scale_out(self, context: ToolContext) -> ToolResult:
-        """
-        Handle scale out (OSS only - advisory)
-        
-        Args:
-            context: Tool execution context
+            return MCPResponse(
+                request_id=request.request_id,
+                status=MCPRequestStatus.COMPLETED,
+                message=f"OSS Analysis: Recommend {request.tool} for {request.component}",
+                executed=False,
+                result=result_data
+            )
             
-        Returns:
-            ToolResult with advisory information
-        """
-        # OSS Edition: Only advisory, no execution
-        scale_factor = context.parameters.get("scale_factor", 2)
-        logger.info(f"Advisory: Would scale out {context.component} by factor {scale_factor}")
-        
-        return ToolResult.success_result(
-            message=f"Advisory: Would scale out {context.component} by factor {scale_factor}",
-            details={
-                "action": "scale_out",
-                "component": context.component,
-                "scale_factor": scale_factor,
-                "execution_mode": "advisory",
-                "requires_enterprise": True,
-            }
-        )
+        except Exception as e:
+            logger.exception(f"Error in advisory analysis: {e}")
+            return self._create_error_response(
+                request,
+                MCPRequestStatus.FAILED,
+                f"Advisory analysis failed: {str(e)}"
+            )
 
-    async def approve_request(
-        self,
-        approval_id: str,
-        approved: bool = True,
-        comment: str = ""
-    ) -> MCPResponse:
-        """
-        Approve or reject a pending request
-        
-        OSS EDITION: Always returns advisory response
-        """
-        # OSS Edition: No approval workflow
-        return MCPResponse(
-            request_id=approval_id,
-            status=MCPRequestStatus.REJECTED,
-            message="Approval workflow requires Enterprise edition",
-            executed=False,
-            result={
-                "requires_enterprise": True,
-                "upgrade_url": "https://arf.dev/enterprise"
-            }
-        )
-
-    # FIXED LINE 1211: Added proper return type and fixed the return value
     def get_server_stats(self) -> Dict[str, Any]:
         """Get comprehensive MCP server statistics"""
         engine = get_engine()
@@ -1169,9 +922,9 @@ class MCPServer:
             "mode": self.mode.value,
             "edition": "oss",
             "oss_restricted": True,
+            "execution_allowed": False,
             "registered_tools": len(self.registered_tools),
             "active_cooldowns": len(self._cooldowns),
-            "pending_approvals": len(self._approval_requests),
             "execution_history_count": len(self._execution_history),
             "tool_statistics": {k: dict(v) for k, v in self._tool_stats.items()},
             "uptime_seconds": float(time.time() - self._start_time),
@@ -1185,11 +938,12 @@ class MCPServer:
             "oss_limits": {
                 "max_incidents": 1000,
                 "execution_allowed": False,
-                "mode": "advisory"
+                "mode": "advisory",
+                "healing_intent_support": HEALING_INTENT_AVAILABLE,
             },
             "oss_integration": {
                 "using_oss_client": self.oss_client is not None,
-                "healing_intent_support": self.oss_client is not None,
+                "healing_intent_support": HEALING_INTENT_AVAILABLE,
                 "oss_client_available": OSS_CLIENT_AVAILABLE,
             }
         }
@@ -1225,7 +979,7 @@ class MCPServer:
     def get_tool_info(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """Get information about tools"""
         # Try to use OSSMCPClient for tool info if available
-        if self.oss_client is not None:
+        if self.oss_client is not None and hasattr(self.oss_client, 'get_tool_info'):
             try:
                 return self.oss_client.get_tool_info(tool_name)
             except Exception:
@@ -1254,7 +1008,7 @@ class MCPServer:
         }
 
     def get_recent_executions(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent execution history"""
+        """Get recent execution history (advisory only)"""
         return list(self._execution_history)[-limit:]
 
     def reset_stats(self) -> None:
@@ -1262,8 +1016,36 @@ class MCPServer:
         self._tool_stats.clear()
         self._execution_history.clear()
         self._cooldowns.clear()
-        self._approval_requests.clear()
         logger.info("OSS MCP server statistics reset")
+
+    def enforce_oss_purity(self) -> bool:
+        """
+        Validate that this server instance is pure OSS
+        
+        Returns:
+            True if pure OSS, False if Enterprise features detected
+        """
+        purity_checks = []
+        
+        # Check mode is advisory only
+        if self.mode != MCPMode.ADVISORY:
+            purity_checks.append(f"Mode must be ADVISORY, got {self.mode}")
+        
+        # Check no execution capability
+        if hasattr(self, '_execute_with_approval') or hasattr(self, '_execute_autonomous'):
+            purity_checks.append("Execution methods should not exist in OSS")
+        
+        # Check tools are advisory only
+        for tool_name, tool in self.registered_tools.items():
+            if hasattr(tool, 'execute'):
+                purity_checks.append(f"Tool {tool_name} has execute method (should be advisory only)")
+        
+        if purity_checks:
+            logger.warning(f"OSS purity violations: {purity_checks}")
+            return False
+        
+        logger.info("OSS purity check passed: No execution capabilities detected")
+        return True
 
 
 # Backward compatibility exports
