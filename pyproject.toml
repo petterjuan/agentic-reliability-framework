@@ -63,13 +63,6 @@ classifiers = [
 
 [tool.setuptools]
 packages = ["agentic_reliability_framework"]
-
-# REMOVE THIS DUPLICATE SECTION COMPLETELY:
-# [tool.setuptools.packages.find]
-# where = ["."]
-# include = ["agentic_reliability_framework*"]
-# exclude = ["tests*", "examples*", "scripts*", "archive*", "backup_builds*"]
-
 [tool.setuptools.package-data]
 "agentic_reliability_framework" = ["py.typed"]
 "agentic_reliability_framework.data" = ["*.json", "*.index"]
