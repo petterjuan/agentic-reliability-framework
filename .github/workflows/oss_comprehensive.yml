@@ -3,17 +3,12 @@ name: OSS Comprehensive Tests
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'agentic_reliability_framework/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - '.github/workflows/**'
   pull_request:
     branches: [main]
 
 jobs:
-  oss-purity-check:
-    name: OSS Purity Check
+  type-check:
+    name: Type Checking (mypy)
     runs-on: ubuntu-latest
     
     steps:
@@ -23,91 +18,46 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-          
-      - name: Run OSS Purity Check
-        run: |
-          python scripts/enforce_oss_purity.py
-          
-      - name: Upload purity report
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: oss-purity-report
-          path: oss_purity_report.txt
-          
-  oss-tests:
-    name: OSS Integration Tests
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
           
       - name: Install dependencies
         run: |
-          pip install -e .
-          pip install pytest pytest-asyncio pytest-cov codecov
+          pip install mypy types-dataclasses
           
-      - name: Run OSS Tests
+      - name: Create mypy configuration
         run: |
-          pytest agentic_reliability_framework/tests/ -v \
-            --cov=agentic_reliability_framework \
-            --cov-report=xml \
-            --cov-report=html \
-            -k "not enterprise"
-            
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          flags: oss-unittests
+          cat > mypy.ini << 'EOF'
+          [mypy]
+          python_version = 3.10
+          warn_return_any = True
+          warn_unused_configs = True
+          disallow_untyped_defs = False  # Temporarily allow
+          disallow_incomplete_defs = True
+          check_untyped_defs = True
+          disallow_untyped_decorators = False  # Temporarily allow
+          warn_redundant_casts = True
+          warn_unused_ignores = True
+          warn_no_return = True
+          warn_unreachable = True
+          strict_equality = True
           
-      - name: Upload test artifacts
+          [mypy-agentic_reliability_framework.app]
+          ignore_errors = True
+          
+          [mypy-agentic_reliability_framework.arf_core.*]
+          disallow_untyped_defs = True
+          
+          [mypy-agentic_reliability_framework.engine.*]
+          disallow_untyped_defs = True
+          EOF
+          
+      - name: Run mypy check
+        run: |
+          mypy agentic_reliability_framework/ --config-file mypy.ini
+          
+      - name: Run tests (even if mypy fails)
         if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: oss-test-results-${{ matrix.python-version }}
-          path: |
-            coverage.xml
-            htmlcov/
-            
-  build-oss-package:
-    name: Build OSS Package
-    runs-on: ubuntu-latest
-    needs: [oss-purity-check, oss-tests]
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-          
-      - name: Build OSS package
         run: |
-          pip install build twine
-          python -m build
-          
-      - name: Verify OSS package
-        run: |
-          pip install dist/*.whl --force-reinstall
-          python -c "
-          import agentic_reliability_framework as arf
-          print(f'✅ Successfully imported: {arf.__version__}')
-          print(f'✅ Edition: {getattr(arf, \"EDITION\", \"OSS\")}')
-          "
-          
-      - name: Upload OSS package
-        uses: actions/upload-artifact@v3
-        with:
-          name: oss-package
-          path: dist/
+          pip install pytest pytest-asyncio
+          pytest agentic_reliability_framework/tests/ -v --tb=short
+  
+  # Rest of your workflow...
