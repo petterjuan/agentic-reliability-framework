@@ -1,8 +1,10 @@
-include LICENSE
 include README.md
-include requirements.txt
+include LICENSE
 include pyproject.toml
-recursive-include agentic_reliability_framework *.py
-recursive-include examples *.py
-recursive-include docs *.md
-include agentic_reliability_framework/data/*
+
+# Include data files
+recursive-include agentic_reliability_framework/data *.json *.index
+
+# Include typing information
+recursive-include agentic_reliability_framework *.pyi
+include agentic_reliability_framework/py.typed
