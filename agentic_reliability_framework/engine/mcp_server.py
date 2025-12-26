@@ -764,64 +764,99 @@ class MCPServer:
             executed=False
         )
 
-    async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
-        """
-        Create a HealingIntent from MCP request
+async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
+    """
+    Create a HealingIntent from MCP request
+    
+    Uses OSS analysis to create a complete HealingIntent
+    that can be executed by Enterprise edition
+    """
+    # Handle case where HealingIntent is not available
+    if not HEALING_INTENT_AVAILABLE or HealingIntent is None:
+        # Create a simple fallback intent
+        from dataclasses import dataclass
         
-        Uses OSS analysis to create a complete HealingIntent
-        that can be executed by Enterprise edition
-        """
-        if not HEALING_INTENT_AVAILABLE:
-            # Try to import directly
-            try:
-                from ..arf_core.models.healing_intent import HealingIntent
-                HEALING_INTENT_AVAILABLE = True
-            except ImportError:
-                raise ImportError("HealingIntent model not available")
+        @dataclass
+        class SimpleHealingIntent:
+            action: str
+            component: str
+            parameters: Dict[str, Any]
+            justification: str = ""
+            confidence: float = 0.85
+            incident_id: str = ""
+            
+            def to_enterprise_request(self):
+                return {
+                    "action": self.action,
+                    "component": self.component,
+                    "parameters": self.parameters,
+                    "justification": self.justification,
+                    "confidence": self.confidence,
+                    "incident_id": self.incident_id,
+                    "requires_enterprise": True,
+                    "oss_metadata": {"fallback": True}
+                }
         
-        # Use OSS client for analysis if available
-        if self.oss_client and hasattr(self.oss_client, 'analyze_and_recommend'):
-            try:
-                # Create tool context for validation
-                context = ToolContext(
-                    component=request.component,
-                    parameters=request.parameters,
-                    metadata=request.metadata,
-                    safety_guardrails=self.safety_guardrails
-                )
-                
-                # Validate the request
-                tool = self.registered_tools.get(request.tool)
-                if tool:
-                    validation = tool.validate(context)
-                    if not validation.valid:
-                        raise ValueError(f"Validation failed: {', '.join(validation.errors)}")
-                
-                # Use OSS client for analysis
-                from ..arf_core.engine.oss_mcp_client import OSSAnalysisResult
-                analysis_result = await self.oss_client.analyze_and_recommend(
-                    tool_name=request.tool,
-                    component=request.component,
-                    parameters=request.parameters,
-                    context=request.metadata
-                )
-                
-                return analysis_result.healing_intent
-                
-            except Exception as e:
-                logger.warning(f"OSSMCPClient analysis failed: {e}")
-                # Fall back to basic HealingIntent
-        
-        # Fallback: Create basic HealingIntent
-        return HealingIntent(
+        return SimpleHealingIntent(
             action=request.tool,
             component=request.component,
             parameters=request.parameters,
             justification=request.justification,
             incident_id=request.metadata.get("incident_id", ""),
-            confidence=0.85,  # Default confidence for OSS
+            confidence=0.85,
         )
-
+    
+    # Use OSS client for analysis if available
+    if self.oss_client and hasattr(self.oss_client, 'analyze_and_recommend'):
+        try:
+            # Create tool context for validation
+            context = ToolContext(
+                component=request.component,
+                parameters=request.parameters,
+                metadata=request.metadata,
+                safety_guardrails=self.safety_guardrails
+            )
+            
+            # Validate the request
+            tool = self.registered_tools.get(request.tool)
+            if tool:
+                validation = tool.validate(context)
+                if not validation.valid:
+                    raise ValueError(f"Validation failed: {', '.join(validation.errors)}")
+            
+            # Use OSS client for analysis - handle different return types
+            analysis_result = await self.oss_client.analyze_and_recommend(
+                tool_name=request.tool,
+                component=request.component,
+                parameters=request.parameters,
+                context=request.metadata
+            )
+            
+            # Handle different return types from OSS client
+            if hasattr(analysis_result, 'healing_intent'):
+                # OSS client returns wrapper object
+                return analysis_result.healing_intent
+            elif isinstance(analysis_result, HealingIntent):
+                # OSS client returns HealingIntent directly
+                return analysis_result
+            else:
+                # Unknown return type, create basic intent
+                logger.warning(f"Unknown OSS client return type: {type(analysis_result)}")
+                # Fall through to create basic HealingIntent
+                
+        except Exception as e:
+            logger.warning(f"OSSMCPClient analysis failed: {e}")
+            # Fall back to basic HealingIntent
+    
+    # Fallback: Create basic HealingIntent
+    return HealingIntent(
+        action=request.tool,
+        component=request.component,
+        parameters=request.parameters,
+        justification=request.justification,
+        incident_id=request.metadata.get("incident_id", ""),
+        confidence=0.85,  # Default confidence for OSS
+    )
     async def _handle_advisory_mode(self, request: MCPRequest) -> MCPResponse:
         """
         Handle advisory mode by creating HealingIntent
