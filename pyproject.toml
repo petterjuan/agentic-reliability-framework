@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "setuptools-scm"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,11 +9,10 @@ description = "Agentic Reliability Framework - OSS Edition: AI-powered infrastru
 readme = "README.md"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Juan Petter", email = "ai@petterjuan.com"}
+    {name = "Juan Petter", email = "petter2025us@outlook.com"}
 ]
 requires-python = ">=3.10"
 dependencies = [
-    # From setup.py
     "gradio>=4.19.0",
     "pydantic>=2.0.0", 
     "numpy>=1.24.0",
@@ -21,8 +20,6 @@ dependencies = [
     "requests>=2.31.0",
     "circuitbreaker>=1.4.0",
     "atomicwrites>=1.4.0",
-    
-    # Additional from your imports
     "pandas>=2.0.0",
     "httpx>=0.25.0",
 ]
@@ -44,7 +41,6 @@ Homepage = "https://github.com/petterjuan/agentic-reliability-framework"
 Documentation = "https://docs.arf.dev"
 Enterprise = "https://arf.dev/enterprise"
 
-# Add classifiers for PyPI
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -104,17 +100,3 @@ warn_unreachable = true
 strict_equality = true
 follow_imports = "normal"
 implicit_reexport = false
-
-[[tool.mypy.overrides]]
-module = [
-    "agentic_reliability_framework.arf_core.*",
-    "agentic_reliability_framework.engine.*", 
-    "agentic_reliability_framework.memory.*",
-]
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = [
-    "tests.*",
-]
-ignore_errors = true
