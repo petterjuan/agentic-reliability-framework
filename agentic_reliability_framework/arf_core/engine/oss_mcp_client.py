@@ -1,4 +1,3 @@
-# File: arf_core/engine/oss_mcp_client.py
 """
 OSS MCP Client - Advisory Mode Only
 Apache 2.0 Licensed - Enterprise execution requires commercial license
@@ -20,9 +19,10 @@ from typing import Dict, Any, Optional, List, Union, Tuple, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from arf_core.models import ReliabilityEvent, EventSeverity
+# FIXED: Use relative imports since we're inside arf_core
+from ..models import ReliabilityEvent, EventSeverity
 
-from ...constants import (
+from ..constants import (
     OSS_EDITION,
     OSS_LICENSE,
     ENTERPRISE_UPGRADE_URL,
@@ -35,7 +35,7 @@ from ...constants import (
     check_oss_compliance,
 )
 
-from ...models.healing_intent import (
+from ..models.healing_intent import (
     HealingIntent,
     HealingIntentSerializer,
     IntentSource,
@@ -46,7 +46,7 @@ from ...models.healing_intent import (
     create_oss_advisory_intent,
 )
 
-from ...config.oss_config import oss_config
+from ..config.oss_config import oss_config
 
 logger = logging.getLogger(__name__)
 
@@ -545,6 +545,9 @@ class OSSMCPClient:
         
         try:
             # Try to get RAG graph from lazy loader
+            # FIXED: Use correct import path from main package
+            import sys
+            sys.path.insert(0, '.')
             from agentic_reliability_framework.lazy import get_rag_graph
             
             rag_graph = get_rag_graph()
@@ -552,9 +555,7 @@ class OSSMCPClient:
                 return []
             
             # Create mock event for similarity search
-            # EventSeverity and ReliabilityEvent are imported at module level
-            
-            # Use EventSeverity enum - CORRECTED: No fallback imports needed
+            # EventSeverity and ReliabilityEvent are already imported via relative imports
             severity = EventSeverity.MEDIUM
             
             event = ReliabilityEvent(
