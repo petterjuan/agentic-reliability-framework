@@ -37,10 +37,9 @@ __all__ = [
     
     # === OSS-SPECIFIC EXPORTS ===
     "OSSMCPClient",                      # OSS-only MCP client (advisory)
-    "create_oss_mcp_client",             # Factory for OSS client
-    "validate_oss_config",               # OSS configuration validator
+    "create_mcp_client",                 # Factory for OSS client (NOTE: renamed from create_oss_mcp_client)
+    "validate_oss_constants",            # OSS configuration validator
     "get_oss_capabilities",              # Get OSS edition capabilities
-    "check_oss_compliance",              # Check OSS compliance
     "OSSBoundaryError",                  # OSS boundary violation error
     
     # === FACTORY FUNCTIONS ===
@@ -76,10 +75,9 @@ if TYPE_CHECKING:  # pragma: no cover - static-analysis only
     
     # === OSS-SPECIFIC ===
     OSSMCPClient: Any
-    create_oss_mcp_client: Any
-    validate_oss_config: Any
+    create_mcp_client: Any  # NOTE: renamed
+    validate_oss_constants: Any
     get_oss_capabilities: Any
-    check_oss_compliance: Any
     OSSBoundaryError: Any
     
     # === FACTORY FUNCTIONS ===
@@ -94,21 +92,20 @@ def __getattr__(name: str) -> Any:
     """
     map_module_attr: dict[str, tuple[str, str]] = {
         # === HEALING INTENT EXPORTS ===
-        "HealingIntent": ("arf_core.models.healing_intent", "HealingIntent"),
-        "HealingIntentSerializer": ("arf_core.models.healing_intent", "HealingIntentSerializer"),
+        "HealingIntent": ("agentic_reliability_framework.arf_core", "HealingIntent"),
+        "HealingIntentSerializer": ("agentic_reliability_framework.arf_core", "HealingIntentSerializer"),
         
         # === OSS-SPECIFIC COMPONENTS ===
-        "OSSMCPClient": ("arf_core.engine.oss_mcp_client", "OSSMCPClient"),
-        "create_oss_mcp_client": ("arf_core.engine.oss_mcp_client", "create_oss_mcp_client"),
-        "validate_oss_config": ("arf_core.constants", "validate_oss_config"),
-        "get_oss_capabilities": ("arf_core.constants", "get_oss_capabilities"),
-        "check_oss_compliance": ("arf_core.constants", "check_oss_compliance"),
-        "OSSBoundaryError": ("arf_core.constants", "OSSBoundaryError"),
+        "OSSMCPClient": ("agentic_reliability_framework.arf_core", "OSSMCPClient"),
+        "create_mcp_client": ("agentic_reliability_framework.arf_core", "create_mcp_client"),
+        "validate_oss_constants": ("agentic_reliability_framework.arf_core", "validate_oss_constants"),
+        "get_oss_capabilities": ("agentic_reliability_framework.arf_core", "get_oss_capabilities"),
+        "OSSBoundaryError": ("agentic_reliability_framework.arf_core", "OSSBoundaryError"),
         
         # === FACTORY FUNCTIONS ===
-        "create_rollback_intent": ("arf_core.models.healing_intent", "create_rollback_intent"),
-        "create_restart_intent": ("arf_core.models.healing_intent", "create_restart_intent"),
-        "create_scale_out_intent": ("arf_core.models.healing_intent", "create_scale_out_intent"),
+        "create_rollback_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_rollback_intent"),
+        "create_restart_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_restart_intent"),
+        "create_scale_out_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_scale_out_intent"),
         
         # === CORE ENGINES ===
         "V3ReliabilityEngine": (".engine.reliability", "V3ReliabilityEngine"),
