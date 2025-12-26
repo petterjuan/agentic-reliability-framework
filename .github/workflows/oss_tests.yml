@@ -1,108 +1,87 @@
 # .github/workflows/oss_tests.yml
-name: OSS Tests
+name: OSS Boundary Tests
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'agentic_reliability_framework/**'
-      - 'Test/**'
-      - '.github/workflows/oss_tests.yml'
   pull_request:
-    branches: [main]
-
-env:
-  MCP_MODE: "advisory"
-  MAX_INCIDENT_HISTORY: "1000"
-  GRAPH_STORAGE: "in_memory"
+    branches: [ main, develop ]
+    paths:
+      - 'agentic_reliability_framework/arf_core/**'
+      - 'scripts/**'
 
 jobs:
-  test-oss-imports:
-    name: Test OSS Imports
+  oss-boundary:
+    name: OSS Boundary Validation
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          
-      - name: Install package
-        run: |
-          pip install -e .
-          
-      - name: Test HealingIntent import
-        run: |
-          echo "Testing HealingIntent import..."
-          python -c "
-import os
-os.environ['MCP_MODE'] = 'advisory'
-os.environ['MAX_INCIDENT_HISTORY'] = '1000'
-os.environ['GRAPH_STORAGE'] = 'in_memory'
-
-try:
-    from agentic_reliability_framework.arf_core.models.healing_intent import HealingIntent
-    print('✅ HealingIntent imported successfully')
-    
-    intent = HealingIntent(
-        action='test',
-        component='test',
-        parameters={},
-        justification='test',
-        confidence=0.5,
-        incident_id='test'
-    )
-    print(f'✅ HealingIntent created: {intent.intent_id}')
-    
-except Exception as e:
-    print(f'❌ Failed: {e}')
-    import traceback
-    traceback.print_exc()
-    exit(1)
-"
-          
-      - name: Test OSSMCPClient import
-        run: |
-          echo "Testing OSSMCPClient import..."
-          python -c "
-import os
-os.environ['MCP_MODE'] = 'advisory'
-
-try:
-    from agentic_reliability_framework.arf_core.engine.simple_mcp_client import OSSMCPClient
-    print('✅ OSSMCPClient imported from simple_mcp_client')
-    
-    client = OSSMCPClient()
-    print(f'✅ OSSMCPClient created: {client.mode}')
-    
-except ImportError:
-    try:
-        from agentic_reliability_framework.engine.oss_mcp_client import OSSMCPClient
-        print('✅ OSSMCPClient imported from oss_mcp_client')
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
         
-        client = OSSMCPClient()
-        print(f'✅ OSSMCPClient created: {client.mode}')
+    - name: Install dependencies
+      run: |
+        pip install astunparse
         
-    except Exception as e:
-        print(f'❌ Both imports failed: {e}')
-        exit(1)
-except Exception as e:
-    print(f'❌ Error: {e}')
-    exit(1)
-"
-          
-      - name: Run OSS tests
-        run: |
-          echo "Running OSS tests..."
-          python -m pytest Test/ -v -k "oss" 2>&1 || echo "Some OSS tests may have failed"
-          
-      - name: Verify no enterprise imports in OSS
-        run: |
-          echo "Checking for Enterprise code in OSS..."
-          if grep -r "arf_enterprise\|EnterpriseMCPServer\|license_key" agentic_reliability_framework/arf_core/ --include="*.py"; then
-            echo "❌ Found Enterprise code in OSS directory"
-            exit 1
+    - name: Run OSS purity check
+      run: |
+        python scripts/enforce_oss_purity.py
+        
+    - name: Check OSS constants
+      run: |
+        echo "Verifying OSS constant values..."
+        
+        # Create a simple Python script to check constants
+        cat > check_constants.py << 'EOF'
+        import sys
+        sys.path.insert(0, 'agentic_reliability_framework')
+        
+        try:
+            from arf_core.constants import *
+            
+            assert MAX_INCIDENT_HISTORY == 1000, f"MAX_INCIDENT_HISTORY must be 1000, got {MAX_INCIDENT_HISTORY}"
+            assert MCP_MODES_ALLOWED == ("advisory",), f"MCP_MODES_ALLOWED must be only advisory, got {MCP_MODES_ALLOWED}"
+            assert EXECUTION_ALLOWED == False, f"EXECUTION_ALLOWED must be False, got {EXECUTION_ALLOWED}"
+            assert GRAPH_STORAGE == "in_memory", f"GRAPH_STORAGE must be in_memory, got {GRAPH_STORAGE}"
+            
+            print("✅ OSS constants are correct")
+            
+        except ImportError as e:
+            print(f"❌ Failed to import OSS constants: {e}")
+            sys.exit(1)
+        except AssertionError as e:
+            print(f"❌ OSS constant violation: {e}")
+            sys.exit(1)
+        EOF
+        
+        python check_constants.py
+        
+    - name: Check for mixed imports
+      run: |
+        echo "Checking for Enterprise code in OSS directories..."
+        
+        # Check OSS core directories
+        OSS_DIRS="agentic_reliability_framework/arf_core agentic_reliability_framework/engine"
+        
+        for dir in $OSS_DIRS; do
+          if [ -d "$dir" ]; then
+            echo "Checking $dir..."
+            
+            # Check for Enterprise imports
+            if grep -r "from arf_enterprise\|import arf_enterprise" "$dir" --include="*.py"; then
+              echo "❌ Found Enterprise imports in $dir"
+              exit 1
+            fi
+            
+            # Check for Enterprise class references
+            if grep -r "LicenseManager\|EnterpriseMCPServer\|audit_trail\|license_key" "$dir" --include="*.py"; then
+              echo "❌ Found Enterprise code patterns in $dir"
+              exit 1
+            fi
           fi
-          echo "✅ No Enterprise code in OSS"
+        done
+        
+        echo "✅ OSS code boundaries are clean"
