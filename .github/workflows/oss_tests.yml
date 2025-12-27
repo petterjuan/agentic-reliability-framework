@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - FINAL WORKING VERSION
+# .github/workflows/oss_tests.yml - WITH INSTALLATION
 name: OSS Boundary Tests
 
 on:
@@ -21,6 +21,9 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+      
+    - name: Install package in development mode
+      run: pip install -e .
       
     - name: Install pytest
       run: pip install pytest
