@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - SUPER SIMPLE
+# .github/workflows/oss_tests.yml - IMPROVED VERSION
 name: OSS Boundary Tests
 
 on:
@@ -17,28 +17,97 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Simple OSS Check
+    - name: Smart OSS Check
       run: |
-        echo "🔍 SIMPLE OSS CHECK"
-        echo "==================="
+        echo "🔍 SMART OSS CHECK"
+        echo "=================="
         
-        # Just check the basics
         echo "1. Checking OSS structure..."
         if [ -d "agentic_reliability_framework/arf_core" ]; then
           echo "   ✅ arf_core exists"
         else
-          echo "   ⚠️  arf_core missing (creating)"
-          mkdir -p agentic_reliability_framework/arf_core
+          echo "   ⚠️  arf_core missing"
+          exit 1
         fi
         
-        echo "2. Checking for Enterprise code..."
-        # Only fail on absolute no-nos
-        if grep -r "EnterpriseMCPServer" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null; then
-          echo "   ❌ EnterpriseMCPServer found in OSS!"
-          exit 1
-        else
-          echo "   ✅ No EnterpriseMCPServer"
-        fi
+        echo "2. Checking for Enterprise code (smart check)..."
+        
+        # Use Python for smarter checking
+        python3 << 'EOF'
+        import os
+        import re
+        
+        def check_file_for_enterprise(filepath):
+            """Check if file contains actual Enterprise code, not just comments"""
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                
+            # Remove comments and strings for checking
+            lines = []
+            in_string = False
+            string_char = None
+            for line in content.split('\n'):
+                clean_line = ""
+                i = 0
+                while i < len(line):
+                    if not in_string and line[i] in ('"', "'"):
+                        in_string = True
+                        string_char = line[i]
+                        i += 1
+                    elif in_string and line[i] == string_char:
+                        in_string = False
+                        string_char = None
+                        i += 1
+                    elif not in_string and line[i] == '#':
+                        break  # Rest of line is comment
+                    elif not in_string:
+                        clean_line += line[i]
+                        i += 1
+                    else:
+                        i += 1
+                
+                if clean_line.strip():
+                    lines.append(clean_line)
+            
+            # Check cleaned content
+            cleaned = '\n'.join(lines)
+            
+            # Look for problematic patterns (not in comments/strings)
+            patterns = [
+                r'import EnterpriseMCPServer',
+                r'from.*EnterpriseMCPServer',
+                r'class.*EnterpriseMCPServer',
+                r'EnterpriseMCPServer\s*=',
+                r'EnterpriseMCPServer\(',
+            ]
+            
+            for pattern in patterns:
+                if re.search(pattern, cleaned):
+                    return True, f"Found pattern: {pattern}"
+            
+            return False, None
+        
+        # Check all Python files in arf_core
+        arf_core_dir = "agentic_reliability_framework/arf_core"
+        violations = []
+        
+        for root, dirs, files in os.walk(arf_core_dir):
+            for file in files:
+                if file.endswith('.py'):
+                    filepath = os.path.join(root, file)
+                    has_violation, reason = check_file_for_enterprise(filepath)
+                    if has_violation:
+                        violations.append(f"{filepath}: {reason}")
+        
+        if violations:
+            print("🚨 Enterprise code violations found:")
+            for v in violations:
+                print(f"  • {v}")
+            exit(1)
+        else:
+            print("✅ No Enterprise code violations found")
+            print("✅ OSS boundary check passed!")
+        EOF
         
         echo ""
         echo "🎉 OSS CHECK PASSED!"
