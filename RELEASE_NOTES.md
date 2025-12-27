@@ -75,7 +75,7 @@ Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQL
 
 *   GitHub Issues: [https://github.com/petterjuan/agentic-reliability-framework/issues](https://github.com/petterjuan/agentic-reliability-framework/issues)
     
-*   OSS Documentation: [https://docs.arf.dev/oss](https://docs.arf.dev/oss)
+*   OSS Documentation: [https://docs.arf.dev/oss]([https://docs.arf.dev/oss](https://github.com/petterjuan/agentic-reliability-framework/tree/main/docs))
     
 *   Enterprise Upgrade: [https://arf.dev/enterprise](https://arf.dev/enterprise)
     
