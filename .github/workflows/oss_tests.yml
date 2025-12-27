@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - SIMPLIFIED ROBUST VERSION
+# .github/workflows/oss_tests.yml - FINAL FIXED VERSION
 name: OSS Boundary Tests
 
 on:
@@ -17,12 +17,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Basic OSS Structure Check
+    - name: OSS Boundary Validation
       run: |
-        echo "🔍 BASIC OSS STRUCTURE CHECK"
-        echo "============================"
+        echo "🔍 OSS BOUNDARY VALIDATION"
+        echo "=========================="
         
         # Check 1: Required directories exist
+        echo ""
         echo "1. Checking required directories..."
         REQUIRED_DIRS=(
           "agentic_reliability_framework"
@@ -72,64 +73,186 @@ jobs:
           exit 1
         fi
         
-        # Check 3: Quick enterprise code check (simplified)
+        # Check 3: Smart enterprise code check
         echo ""
-        echo "3. Quick enterprise code check..."
+        echo "3. Checking for Enterprise code violations..."
         
-        # Use simple grep but exclude comments
-        VIOLATIONS=0
+        # Create a Python script for smart checking
+        python3 << 'EOF'
+import os
+import re
+import sys
+
+def is_comment_or_string(line):
+    """Check if line is a comment or contains only strings"""
+    stripped = line.strip()
+    
+    # Whole line comment
+    if stripped.startswith('#'):
+        return True
+    
+    # Check for string assignments (allowed in OSS)
+    string_patterns = [
+        'ENTERPRISE_UPGRADE_URL',
+        'enterprise_features',
+        'requires_enterprise',
+        'enterprise_metadata',
+        'enterprise_edition',
+        'EnterpriseMCPServer',  # Can be in strings for documentation
+    ]
+    
+    for pattern in string_patterns:
+        if pattern in line and ('"' in line or "'" in line):
+            # Check if it's in a string literal
+            if '"' + pattern + '"' in line or "'" + pattern + "'" in line:
+                return True
+    
+    return False
+
+def check_file(filepath):
+    """Check a single file for Enterprise code violations"""
+    violations = []
+    
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
         
-        # Check for import statements with Enterprise
-        if grep -r "^\s*import.*[Ee]ntreprise" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null | grep -v "#" | head -5; then
-          echo "   ❌ Found 'import ...Enterprise...' in code (not comment)"
-          VIOLATIONS=$((VIOLATIONS + 1))
-        fi
+        for i, line in enumerate(lines, 1):
+            line_stripped = line.rstrip('\n')
+            
+            # Skip comments and allowed string references
+            if is_comment_or_string(line_stripped):
+                continue
+            
+            # Check for problematic patterns
+            patterns = [
+                # Import statements
+                (r'^\s*import\s+.*Enterprise', 'import Enterprise module'),
+                (r'^\s*from\s+.*\bEnterprise\b', 'from Enterprise module import'),
+                
+                # Class definitions
+                (r'^\s*class\s+.*Enterprise', 'Enterprise class definition'),
+                
+                # Function definitions
+                (r'^\s*def\s+.*enterprise', 'enterprise function (lowercase)'),
+                (r'^\s*def\s+.*Enterprise', 'Enterprise function (uppercase)'),
+                
+                # Variable usage (not in strings)
+                (r'EnterpriseMCPServer\s*(?!=)', 'EnterpriseMCPServer usage'),
+                (r'enterprise_mcp_server\s*(?!=)', 'enterprise_mcp_server usage'),
+            ]
+            
+            for pattern, description in patterns:
+                if re.search(pattern, line_stripped, re.IGNORECASE):
+                    # Additional check: not in a comment
+                    if '#' in line_stripped:
+                        code_part = line_stripped.split('#')[0]
+                        if re.search(pattern, code_part, re.IGNORECASE):
+                            violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
+                    else:
+                        violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
+                    break  # Only report first violation per line
+    
+    except Exception as e:
+        print(f"⚠️  Could not check {filepath}: {e}")
+    
+    return violations
+
+def main():
+    arf_core_dir = "agentic_reliability_framework/arf_core"
+    all_violations = []
+    
+    for root, dirs, files in os.walk(arf_core_dir):
+        for file in files:
+            if file.endswith('.py'):
+                filepath = os.path.join(root, file)
+                violations = check_file(filepath)
+                if violations:
+                    all_violations.append((filepath, violations))
+    
+    if all_violations:
+        print("❌ Enterprise code violations found:")
+        print("-" * 60)
+        for filepath, violations in all_violations:
+            print(f"\n📁 {filepath}:")
+            for violation in violations:
+                print(f"   • {violation}")
+        print("-" * 60)
+        print(f"\nTotal violations: {sum(len(v) for _, v in all_violations)}")
+        sys.exit(1)
+    else:
+        print("✅ No Enterprise code violations found")
         
-        if grep -r "^\s*from.*[Ee]ntreprise" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null | grep -v "#" | head -5; then
-          echo "   ❌ Found 'from ...Enterprise...' in code (not comment)"
-          VIOLATIONS=$((VIOLATIONS + 1))
-        fi
+        # Quick sanity check: count files checked
+        py_files = []
+        for root, dirs, files in os.walk(arf_core_dir):
+            for file in files:
+                if file.endswith('.py'):
+                    py_files.append(os.path.join(root, file))
         
-        # Check for class definitions with EnterpriseMCPServer
-        if grep -r "^\s*class.*EnterpriseMCPServer" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null; then
-          echo "   ❌ Found 'class ...EnterpriseMCPServer' definition"
-          VIOLATIONS=$((VIOLATIONS + 1))
-        fi
+        print(f"✅ Checked {len(py_files)} Python files in arf_core/")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+EOF
         
-        if [ $VIOLATIONS -gt 0 ]; then
-          echo "❌ Found $VIOLATIONS enterprise code violations"
-          exit 1
-        else
-          echo "   ✅ No obvious enterprise code violations"
+        python_exit_code=$?
+        
+        if [ $python_exit_code -ne 0 ]; then
+            echo "❌ Enterprise code violations detected"
+            exit 1
         fi
         
         # Check 4: Can import basic OSS module
         echo ""
-        echo "4. Testing basic import..."
+        echo "4. Testing basic OSS imports..."
         python3 -c "
-        try:
-            import agentic_reliability_framework
-            print('   ✅ Successfully imported agentic_reliability_framework')
-            print(f'   Version: {agentic_reliability_framework.__version__}')
-            
-            # Try to import OSS core components
-            from agentic_reliability_framework.arf_core import constants
-            print(f'   ✅ OSS constants: {constants.OSS_EDITION}')
-            
-            from agentic_reliability_framework.arf_core.models import healing_intent
-            print('   ✅ OSS healing_intent module available')
-            
-        except Exception as e:
-            print(f'   ❌ Import failed: {e}')
-            import traceback
-            traceback.print_exc()
-            exit(1)
+import sys
+try:
+    # Test 1: Main package import
+    import agentic_reliability_framework as arf
+    print('   ✅ Successfully imported agentic_reliability_framework')
+    print(f'   Version: {arf.__version__}')
+    
+    # Test 2: OSS constants
+    from agentic_reliability_framework.arf_core import constants
+    print(f'   ✅ OSS constants: {constants.OSS_EDITION}')
+    print(f'   License: {constants.OSS_LICENSE}')
+    
+    # Test 3: OSS models
+    from agentic_reliability_framework.arf_core.models import healing_intent
+    print('   ✅ OSS healing_intent module available')
+    
+    # Test 4: OSS MCP client
+    try:
+        from agentic_reliability_framework.arf_core.engine.simple_mcp_client import OSSMCPClient
+        print('   ✅ OSS MCP client available')
+    except ImportError:
+        from agentic_reliability_framework.arf_core.engine.oss_mcp_client import OSSMCPClient
+        print('   ✅ OSS MCP client available (alternative)')
+    
+    print('')
+    print('🎉 All OSS imports working correctly!')
+    
+except ImportError as e:
+    print(f'   ❌ Import failed: {e}')
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
+except Exception as e:
+    print(f'   ⚠️  Other error: {e}')
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
         "
         
         echo ""
-        echo "🎉 OSS BOUNDARY CHECK PASSED!"
-        echo "============================="
+        echo "=========================================="
+        echo "🎉 OSS BOUNDARY VALIDATION PASSED!"
+        echo "=========================================="
         echo "✓ All required directories exist"
         echo "✓ All required files exist"
-        echo "✓ No enterprise code violations"
-        echo "✓ Basic imports work"
+        echo "✓ No Enterprise code violations"
+        echo "✓ All OSS imports work correctly"
+        echo "✓ OSS edition is clean and functional"
