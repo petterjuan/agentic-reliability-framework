@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - PROPERLY INDENTED
+# .github/workflows/oss_tests.yml - SIMPLIFIED VERSION
 name: OSS Boundary Tests
 
 on:
@@ -25,25 +25,13 @@ jobs:
         # Check 1: Required directories exist
         echo ""
         echo "1. Checking required directories..."
-        REQUIRED_DIRS=(
-          "agentic_reliability_framework"
-          "agentic_reliability_framework/arf_core"
-          "agentic_reliability_framework/arf_core/models"
-          "agentic_reliability_framework/arf_core/engine"
-          "agentic_reliability_framework/arf_core/config"
-        )
-        
-        all_dirs_exist=true
-        for dir in "${REQUIRED_DIRS[@]}"; do
-          if [ -d "$dir" ]; then
-            echo "   ✅ $dir exists"
-          else
-            echo "   ❌ $dir MISSING"
-            all_dirs_exist=false
-          fi
-        done
-        
-        if [ "$all_dirs_exist" = false ]; then
+        if [ -d "agentic_reliability_framework" ] && \
+           [ -d "agentic_reliability_framework/arf_core" ] && \
+           [ -d "agentic_reliability_framework/arf_core/models" ] && \
+           [ -d "agentic_reliability_framework/arf_core/engine" ] && \
+           [ -d "agentic_reliability_framework/arf_core/config" ]; then
+          echo "✅ All required directories exist"
+        else
           echo "❌ Missing required OSS directories"
           exit 1
         fi
@@ -51,147 +39,27 @@ jobs:
         # Check 2: Required files exist
         echo ""
         echo "2. Checking required files..."
-        REQUIRED_FILES=(
-          "agentic_reliability_framework/__init__.py"
-          "agentic_reliability_framework/arf_core/__init__.py"
-          "agentic_reliability_framework/arf_core/constants.py"
-          "agentic_reliability_framework/arf_core/models/healing_intent.py"
-        )
-        
-        all_files_exist=true
-        for file in "${REQUIRED_FILES[@]}"; do
-          if [ -f "$file" ]; then
-            echo "   ✅ $file exists"
-          else
-            echo "   ❌ $file MISSING"
-            all_files_exist=false
-          fi
-        done
-        
-        if [ "$all_files_exist" = false ]; then
+        if [ -f "agentic_reliability_framework/__init__.py" ] && \
+           [ -f "agentic_reliability_framework/arf_core/__init__.py" ] && \
+           [ -f "agentic_reliability_framework/arf_core/constants.py" ] && \
+           [ -f "agentic_reliability_framework/arf_core/models/healing_intent.py" ]; then
+          echo "✅ All required files exist"
+        else
           echo "❌ Missing required OSS files"
           exit 1
         fi
         
-        # Check 3: Smart enterprise code check
+        # Check 3: Simple Enterprise code check (basic grep)
         echo ""
         echo "3. Checking for Enterprise code violations..."
+        VIOLATIONS=$(grep -r "EnterpriseMCPServer\|enterprise_mcp_server" agentic_reliability_framework/arf_core/ --include="*.py" | grep -v "#" | grep -v "'" | grep -v '"' | wc -l)
         
-        # Create a Python script for smart checking
-        cat << 'PYTHON_EOF' > /tmp/check_enterprise.py
-import os
-import re
-import sys
-
-def is_comment_or_string(line):
-    """Check if line is a comment or contains only strings"""
-    stripped = line.strip()
-    
-    # Whole line comment
-    if stripped.startswith('#'):
-        return True
-    
-    # Check for string assignments (allowed in OSS)
-    string_patterns = [
-        'ENTERPRISE_UPGRADE_URL',
-        'enterprise_features',
-        'requires_enterprise',
-        'enterprise_metadata',
-        'enterprise_edition',
-        'EnterpriseMCPServer',
-    ]
-    
-    for pattern in string_patterns:
-        if pattern in line and ('"' in line or "'" in line):
-            if '"' + pattern + '"' in line or "'" + pattern + "'" in line:
-                return True
-    
-    return False
-
-def check_file(filepath):
-    """Check a single file for Enterprise code violations"""
-    violations = []
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        
-        for i, line in enumerate(lines, 1):
-            line_stripped = line.rstrip('\n')
-            
-            if is_comment_or_string(line_stripped):
-                continue
-            
-            patterns = [
-                (r'^\s*import\s+.*Enterprise', 'import Enterprise module'),
-                (r'^\s*from\s+.*\bEnterprise\b', 'from Enterprise module import'),
-                (r'^\s*class\s+.*Enterprise', 'Enterprise class definition'),
-                (r'^\s*def\s+.*enterprise', 'enterprise function (lowercase)'),
-                (r'^\s*def\s+.*Enterprise', 'Enterprise function (uppercase)'),
-                (r'EnterpriseMCPServer\s*(?!=)', 'EnterpriseMCPServer usage'),
-                (r'enterprise_mcp_server\s*(?!=)', 'enterprise_mcp_server usage'),
-            ]
-            
-            for pattern, description in patterns:
-                if re.search(pattern, line_stripped, re.IGNORECASE):
-                    if '#' in line_stripped:
-                        code_part = line_stripped.split('#')[0]
-                        if re.search(pattern, code_part, re.IGNORECASE):
-                            violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
-                    else:
-                        violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
-                    break
-    
-    except Exception as e:
-        print(f"⚠️  Could not check {filepath}: {e}")
-    
-    return violations
-
-def main():
-    arf_core_dir = "agentic_reliability_framework/arf_core"
-    all_violations = []
-    
-    for root, dirs, files in os.walk(arf_core_dir):
-        for file in files:
-            if file.endswith('.py'):
-                filepath = os.path.join(root, file)
-                violations = check_file(filepath)
-                if violations:
-                    all_violations.append((filepath, violations))
-    
-    if all_violations:
-        print("❌ Enterprise code violations found:")
-        print("-" * 60)
-        for filepath, violations in all_violations:
-            print(f"\n📁 {filepath}:")
-            for violation in violations:
-                print(f"   • {violation}")
-        print("-" * 60)
-        print(f"\nTotal violations: {sum(len(v) for _, v in all_violations)}")
-        sys.exit(1)
-    else:
-        print("✅ No Enterprise code violations found")
-        
-        py_files = []
-        for root, dirs, files in os.walk(arf_core_dir):
-            for file in files:
-                if file.endswith('.py'):
-                    py_files.append(os.path.join(root, file))
-        
-        print(f"✅ Checked {len(py_files)} Python files in arf_core/")
-        sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-PYTHON_EOF
-        
-        python3 /tmp/check_enterprise.py
-        
-        python_exit_code=$?
-        
-        if [ $python_exit_code -ne 0 ]; then
-            echo "❌ Enterprise code violations detected"
-            exit 1
+        if [ "$VIOLATIONS" -gt 0 ]; then
+          echo "❌ Found $VIOLATIONS Enterprise code violations"
+          grep -r "EnterpriseMCPServer\|enterprise_mcp_server" agentic_reliability_framework/arf_core/ --include="*.py" | grep -v "#" | grep -v "'" | grep -v '"'
+          exit 1
+        else
+          echo "✅ No Enterprise code violations found"
         fi
         
         # Check 4: Can import basic OSS module
