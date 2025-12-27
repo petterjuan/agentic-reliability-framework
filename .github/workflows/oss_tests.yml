@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - FINAL FIXED VERSION WITH PROPER YAML
+# .github/workflows/oss_tests.yml - FIXED VERSION
 name: OSS Boundary Tests
 
 on:
@@ -55,7 +55,7 @@ jobs:
           "agentic_reliability_framework/__init__.py"
           "agentic_reliability_framework/arf_core/__init__.py"
           "agentic_reliability_framework/arf_core/constants.py"
-          "agentic_reliability_framework/arf_core/models/healing_intent.py"
+          "agentic_reliability_framework.arf_core.models.healing_intent.py"
         )
         
         all_files_exist=true
@@ -77,8 +77,8 @@ jobs:
         echo ""
         echo "3. Checking for Enterprise code violations..."
         
-        # Create a Python script for smart checking - using temp file to avoid YAML heredoc issues
-        cat > /tmp/check_enterprise.py << 'SCRIPT_EOF'
+        # Create a Python script for smart checking
+        python3 << 'EOF'
 import os
 import re
 import sys
@@ -98,12 +98,11 @@ def is_comment_or_string(line):
         'requires_enterprise',
         'enterprise_metadata',
         'enterprise_edition',
-        'EnterpriseMCPServer',  # Can be in strings for documentation
+        'EnterpriseMCPServer',
     ]
     
     for pattern in string_patterns:
         if pattern in line and ('"' in line or "'" in line):
-            # Check if it's in a string literal
             if '"' + pattern + '"' in line or "'" + pattern + "'" in line:
                 return True
     
@@ -120,38 +119,28 @@ def check_file(filepath):
         for i, line in enumerate(lines, 1):
             line_stripped = line.rstrip('\n')
             
-            # Skip comments and allowed string references
             if is_comment_or_string(line_stripped):
                 continue
             
-            # Check for problematic patterns
             patterns = [
-                # Import statements
                 (r'^\s*import\s+.*Enterprise', 'import Enterprise module'),
                 (r'^\s*from\s+.*\bEnterprise\b', 'from Enterprise module import'),
-                
-                # Class definitions
                 (r'^\s*class\s+.*Enterprise', 'Enterprise class definition'),
-                
-                # Function definitions
                 (r'^\s*def\s+.*enterprise', 'enterprise function (lowercase)'),
                 (r'^\s*def\s+.*Enterprise', 'Enterprise function (uppercase)'),
-                
-                # Variable usage (not in strings)
                 (r'EnterpriseMCPServer\s*(?!=)', 'EnterpriseMCPServer usage'),
                 (r'enterprise_mcp_server\s*(?!=)', 'enterprise_mcp_server usage'),
             ]
             
             for pattern, description in patterns:
                 if re.search(pattern, line_stripped, re.IGNORECASE):
-                    # Additional check: not in a comment
                     if '#' in line_stripped:
                         code_part = line_stripped.split('#')[0]
                         if re.search(pattern, code_part, re.IGNORECASE):
                             violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
                     else:
                         violations.append(f"Line {i}: {description} - '{line_stripped.strip()}'")
-                    break  # Only report first violation per line
+                    break
     
     except Exception as e:
         print(f"⚠️  Could not check {filepath}: {e}")
@@ -183,7 +172,6 @@ def main():
     else:
         print("✅ No Enterprise code violations found")
         
-        # Quick sanity check: count files checked
         py_files = []
         for root, dirs, files in os.walk(arf_core_dir):
             for file in files:
@@ -195,16 +183,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-SCRIPT_EOF
-        
-        python3 /tmp/check_enterprise.py
-        
-        python_exit_code=$?
-        
-        if [ $python_exit_code -ne 0 ]; then
-            echo "❌ Enterprise code violations detected"
-            exit 1
-        fi
+EOF
         
         # Check 4: Can import basic OSS module
         echo ""
@@ -212,27 +191,19 @@ SCRIPT_EOF
         python3 -c "
 import sys
 try:
-    # Test 1: Main package import
     import agentic_reliability_framework as arf
     print('   ✅ Successfully imported agentic_reliability_framework')
     print(f'   Version: {arf.__version__}')
     
-    # Test 2: OSS constants
     from agentic_reliability_framework.arf_core import constants
     print(f'   ✅ OSS constants: {constants.OSS_EDITION}')
     print(f'   License: {constants.OSS_LICENSE}')
     
-    # Test 3: OSS models
     from agentic_reliability_framework.arf_core.models import healing_intent
     print('   ✅ OSS healing_intent module available')
     
-    # Test 4: OSS MCP client
-    try:
-        from agentic_reliability_framework.arf_core.engine.simple_mcp_client import OSSMCPClient
-        print('   ✅ OSS MCP client available')
-    except ImportError:
-        from agentic_reliability_framework.arf_core.engine.oss_mcp_client import OSSMCPClient
-        print('   ✅ OSS MCP client available (alternative)')
+    from agentic_reliability_framework.arf_core.engine.simple_mcp_client import OSSMCPClient
+    print('   ✅ OSS MCP client available')
     
     print('')
     print('🎉 All OSS imports working correctly!')
