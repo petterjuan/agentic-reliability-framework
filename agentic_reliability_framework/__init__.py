@@ -8,19 +8,96 @@ from typing import Any, TYPE_CHECKING
 
 from .__version__ import __version__  # runtime import for __version__
 
+# ============================================================================
+# DIRECT OSS IMPORTS - NO LAZY LOADING FOR OSS COMPONENTS
+# ============================================================================
+
+# Import OSS components DIRECTLY to avoid circular dependencies
+try:
+    from agentic_reliability_framework.arf_core import (
+        # OSS Models
+        HealingIntent,
+        HealingIntentSerializer,
+        create_rollback_intent,
+        create_restart_intent,
+        create_scale_out_intent,
+        
+        # OSS Engine
+        OSSMCPClient,
+        create_mcp_client,
+        
+        # OSS Constants & Validation
+        validate_oss_constants,
+        get_oss_capabilities,
+        OSSBoundaryError,
+        
+        # OSS Metadata
+        OSS_EDITION,
+        OSS_LICENSE,
+    )
+    OSS_AVAILABLE = True
+except ImportError as e:
+    OSS_AVAILABLE = False
+    print(f"⚠️  OSS components not available: {e}")
+    
+    # Create minimal stubs for OSS components
+    class HealingIntent:
+        pass
+    
+    class HealingIntentSerializer:
+        pass
+    
+    class OSSMCPClient:
+        def __init__(self):
+            self.mode = "advisory"
+    
+    def create_mcp_client():
+        return OSSMCPClient()
+    
+    def validate_oss_constants():
+        return {"status": "oss_not_available"}
+    
+    def get_oss_capabilities():
+        return {"available": False}
+    
+    class OSSBoundaryError(Exception):
+        pass
+    
+    def create_rollback_intent():
+        return None
+    
+    def create_restart_intent():
+        return None
+    
+    def create_scale_out_intent():
+        return None
+    
+    OSS_EDITION = True
+    OSS_LICENSE = "Apache 2.0"
+
 __all__ = [
     # Version
     "__version__",
     
-    # === HEALING INTENT & OSS EXPORTS ===
-    "HealingIntent",                     # OSS->Enterprise boundary
-    "HealingIntentSerializer",           # Serialization utilities
+    # === HEALING INTENT & OSS EXPORTS (DIRECT) ===
+    "HealingIntent",
+    "HealingIntentSerializer",
+    "create_rollback_intent",
+    "create_restart_intent",
+    "create_scale_out_intent",
+    "OSSMCPClient",
+    "create_mcp_client",
+    "validate_oss_constants",
+    "get_oss_capabilities",
+    "OSSBoundaryError",
+    "OSS_EDITION",
+    "OSS_LICENSE",
     
-    # === CORE ENGINES ===
+    # === CORE ENGINES (LAZY LOADED) ===
     "V3ReliabilityEngine",
-    "EnhancedReliabilityEngine",         # Backward compatibility alias
-    "ReliabilityEngine",                 # Backward compatibility alias
-    "EnhancedV3ReliabilityEngine",       # The actual enhanced v3 engine
+    "EnhancedReliabilityEngine",
+    "ReliabilityEngine",
+    "EnhancedV3ReliabilityEngine",
     
     # === OTHER ENGINES ===
     "SimplePredictiveEngine",
@@ -34,25 +111,21 @@ __all__ = [
     "get_faiss_index",
     "get_business_metrics",
     "enhanced_engine",
-    
-    # === OSS-SPECIFIC EXPORTS ===
-    "OSSMCPClient",                      # OSS-only MCP client (advisory)
-    "create_mcp_client",                 # Factory for OSS client (NOTE: renamed from create_oss_mcp_client)
-    "validate_oss_constants",            # OSS configuration validator
-    "get_oss_capabilities",              # Get OSS edition capabilities
-    "OSSBoundaryError",                  # OSS boundary violation error
-    
-    # === FACTORY FUNCTIONS ===
-    "create_rollback_intent",            # Common intent creators
-    "create_restart_intent",
-    "create_scale_out_intent",
 ]
 
-# Inform static analyzers/types about the exported names without importing modules.
+# Inform static analyzers/types about the exported names
 if TYPE_CHECKING:  # pragma: no cover - static-analysis only
-    # === HEALING INTENT ===
+    # === HEALING INTENT & OSS ===
     HealingIntent: Any
     HealingIntentSerializer: Any
+    create_rollback_intent: Any
+    create_restart_intent: Any
+    create_scale_out_intent: Any
+    OSSMCPClient: Any
+    create_mcp_client: Any
+    validate_oss_constants: Any
+    get_oss_capabilities: Any
+    OSSBoundaryError: Any
     
     # === CORE ENGINES ===
     V3ReliabilityEngine: Any
@@ -72,87 +145,70 @@ if TYPE_CHECKING:  # pragma: no cover - static-analysis only
     get_faiss_index: Any
     get_business_metrics: Any
     enhanced_engine: Any
-    
-    # === OSS-SPECIFIC ===
-    OSSMCPClient: Any
-    create_mcp_client: Any  # NOTE: renamed
-    validate_oss_constants: Any
-    get_oss_capabilities: Any
-    OSSBoundaryError: Any
-    
-    # === FACTORY FUNCTIONS ===
-    create_rollback_intent: Any
-    create_restart_intent: Any
-    create_scale_out_intent: Any
 
+# ============================================================================
+# LAZY LOADING FOR NON-OSS COMPONENTS ONLY
+# ============================================================================
+
+_map_module_attr: dict[str, tuple[str, str]] = {
+    # === CORE ENGINES ===
+    "V3ReliabilityEngine": (".engine.reliability", "V3ReliabilityEngine"),
+    "EnhancedReliabilityEngine": (".engine.reliability", "EnhancedReliabilityEngine"),
+    "ReliabilityEngine": (".engine.reliability", "ReliabilityEngine"),
+    
+    # === ENHANCED V3 ENGINE ===
+    "EnhancedV3ReliabilityEngine": (".engine.v3_reliability", "V3ReliabilityEngine"),
+    
+    # === OTHER ENGINES ===
+    "SimplePredictiveEngine": (".app", "SimplePredictiveEngine"),
+    "BusinessImpactCalculator": (".app", "BusinessImpactCalculator"),
+    "AdvancedAnomalyDetector": (".app", "AdvancedAnomalyDetector"),
+    "create_enhanced_ui": (".app", "create_enhanced_ui"),
+    
+    # === LAZY LOADERS ===
+    "get_engine": (".lazy", "get_engine"),
+    "get_agents": (".lazy", "get_agents"),
+    "get_faiss_index": (".lazy", "get_faiss_index"),
+    "get_business_metrics": (".lazy", "get_business_metrics"),
+    "enhanced_engine": (".lazy", "get_enhanced_reliability_engine"),
+}
 
 def __getattr__(name: str) -> Any:
     """
-    Lazy-load heavy modules on attribute access using importlib + getattr.
+    Lazy-load heavy modules on attribute access.
+    OSS components are imported directly above.
     """
-    map_module_attr: dict[str, tuple[str, str]] = {
-        # === HEALING INTENT EXPORTS ===
-        "HealingIntent": ("agentic_reliability_framework.arf_core", "HealingIntent"),
-        "HealingIntentSerializer": ("agentic_reliability_framework.arf_core", "HealingIntentSerializer"),
-        
-        # === OSS-SPECIFIC COMPONENTS ===
-        "OSSMCPClient": ("agentic_reliability_framework.arf_core", "OSSMCPClient"),
-        "create_mcp_client": ("agentic_reliability_framework.arf_core", "create_mcp_client"),
-        "validate_oss_constants": ("agentic_reliability_framework.arf_core", "validate_oss_constants"),
-        "get_oss_capabilities": ("agentic_reliability_framework.arf_core", "get_oss_capabilities"),
-        "OSSBoundaryError": ("agentic_reliability_framework.arf_core", "OSSBoundaryError"),
-        
-        # === FACTORY FUNCTIONS ===
-        "create_rollback_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_rollback_intent"),
-        "create_restart_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_restart_intent"),
-        "create_scale_out_intent": ("agentic_reliability_framework.arf_core.models.healing_intent", "create_scale_out_intent"),
-        
-        # === CORE ENGINES ===
-        "V3ReliabilityEngine": (".engine.reliability", "V3ReliabilityEngine"),
-        "EnhancedReliabilityEngine": (".engine.reliability", "EnhancedReliabilityEngine"),
-        "ReliabilityEngine": (".engine.reliability", "ReliabilityEngine"),
-        
-        # === ENHANCED V3 ENGINE ===
-        "EnhancedV3ReliabilityEngine": (".engine.v3_reliability", "V3ReliabilityEngine"),
-        
-        # === OTHER ENGINES ===
-        "SimplePredictiveEngine": (".app", "SimplePredictiveEngine"),
-        "BusinessImpactCalculator": (".app", "BusinessImpactCalculator"),
-        "AdvancedAnomalyDetector": (".app", "AdvancedAnomalyDetector"),
-        "create_enhanced_ui": (".app", "create_enhanced_ui"),
-        
-        # === LAZY LOADERS ===
-        "get_engine": (".lazy", "get_engine"),
-        "get_agents": (".lazy", "get_agents"),
-        "get_faiss_index": (".lazy", "get_faiss_index"),
-        "get_business_metrics": (".lazy", "get_business_metrics"),
-        "enhanced_engine": (".lazy", "get_enhanced_reliability_engine"),
-    }
-
-    entry = map_module_attr.get(name)
+    entry = _map_module_attr.get(name)
     if entry is None:
+        # Check if it's an OSS component (should be in globals already)
+        oss_components = [
+            "HealingIntent", "HealingIntentSerializer", "OSSMCPClient", 
+            "create_mcp_client", "validate_oss_constants", "get_oss_capabilities",
+            "OSSBoundaryError", "OSS_EDITION", "OSS_LICENSE",
+            "create_rollback_intent", "create_restart_intent", "create_scale_out_intent"
+        ]
+        if name in oss_components:
+            if not OSS_AVAILABLE:
+                raise AttributeError(
+                    f"OSS component '{name}' not available. "
+                    f"The arf_core module failed to import."
+                )
+            return globals().get(name)
+        
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
     module_name, attr_name = entry
     
     try:
-        # Handle relative imports for core modules
+        # Handle relative imports
         module: Any
         if module_name.startswith("."):
             module = import_module(module_name, package=__package__)
         else:
-            # For arf_core imports (separate module)
             module = import_module(module_name)
             
         return getattr(module, attr_name)
     except ImportError as exc:
-        # Provide helpful error message for missing OSS components
-        if "arf_core" in module_name:
-            raise AttributeError(
-                f"OSS component '{name}' not available. "
-                f"The arf_core module may not be installed or imported correctly. "
-                f"Expected module: {module_name}"
-            ) from exc
         raise AttributeError(
             f"module {module_name!r} not found: {exc}"
         ) from exc
@@ -163,15 +219,18 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> list[str]:
-    """Expose the declared public symbols for tab-completion and tooling."""
+    """Expose the declared public symbols for tab-completion."""
     std = set(globals().keys())
     return sorted(std.union(__all__))
 
 
-# Print helpful info on import (development only)
+# Print helpful info on import
 if __name__ != "__main__":
     import sys
     if "pytest" not in sys.modules and "test" not in sys.argv[0]:
         print(f"✅ Agentic Reliability Framework v{__version__}")
-        print(f"📦 Includes: HealingIntent, OSSMCPClient, EnhancedV3ReliabilityEngine")
-        print(f"🔗 OSS→Enterprise handoff ready")
+        if OSS_AVAILABLE:
+            print(f"📦 OSS Edition: HealingIntent, OSSMCPClient (advisory-only)")
+        else:
+            print(f"⚠️  OSS components not available")
+        print(f"🔗 EnhancedV3ReliabilityEngine ready")
