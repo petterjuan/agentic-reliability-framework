@@ -259,11 +259,6 @@ def check_oss_compliance() -> bool:
         if tier != "oss":
             return False
         
-        # Check license
-        license_key = os.getenv("ARF_LICENSE_KEY", "")
-        if license_key.startswith("ARF-ENT-") or license_key.startswith("ARF-TRIAL-"):
-            return False
-        
         # Check for Enterprise dependencies
         try:
             # These imports should fail in OSS edition
