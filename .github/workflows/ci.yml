@@ -39,7 +39,7 @@ jobs:
         python -m pytest Test/ -v --tb=short --cov=agentic_reliability_framework --cov-report=xml || echo "⚠️ Some tests failed"
         
     - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
         flags: unittests
