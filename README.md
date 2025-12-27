@@ -5,7 +5,7 @@
 <h2 align="center">Enterprise-Grade Multi-Agent AI for Autonomous System Reliability & Self-Healing</h2>
 
 > **ARF is the first enterprise framework that enables autonomous, self-healing, context-aware AI agents for infrastructure reliability monitoring and remediation at scale.**
-> Battle-tested architecture for autonomous incident detection and healing 
+> Battle-tested architecture for autonomous incident detection and healing.
 
 <div align="center">
 
@@ -23,15 +23,15 @@
 
 ---
 
-# Agentic Reliability Framework (ARF) v3.3.0
+# Agentic Reliability Framework (ARF) v3.3.4 — Stable
 
 ## Executive Summary
 
-Modern systems do not fail because metrics are missing. 
+Modern systems do not fail because metrics are missing.
 
 They fail because **decisions arrive too late**.
 
-ARF is a **graph-native, agentic reliability platform** that treats incidents as *memory and reasoning problems*, not alerting problems. It captures operational experience, reasons over it using AI agents, and enforces safe execution boundaries for autonomous healing.
+ARF is a **graph-native, agentic reliability platform** that treats incidents as *memory and reasoning problems*, not alerting problems. It captures operational experience, reasons over it using AI agents, and enforces **stable, production-grade execution boundaries** for autonomous healing.
 
 This is not another monitoring tool.
 
@@ -39,21 +39,18 @@ This is **operational intelligence**.
 
 A dual-architecture reliability framework where **OSS analyzes and creates intent**, and **Enterprise safely executes intent**.
 
-This repository contains the **Apache 2.0 OSS edition**. Enterprise components are distributed separately under a commercial license.
+This repository contains the **Apache 2.0 OSS edition (v3.3.4 Stable)**. Enterprise components are distributed separately under a commercial license.
 
 ---
 
 ## Why ARF Exists
 
-**The Problem** 
+**The Problem**
 
-*   **AI Agents Fail in Production**: 73% of AI agent projects fail due to unpredictability, lack of memory, and unsafe execution 
-    
-*   **MTTR is Too High**: Average incident resolution takes 14+ minutes while revenue bleeds 
-    
-*   **Alert Fatigue**: Teams ignore 40%+ of alerts due to false positives and lack of context 
-    
-*   **No Learning**: Systems repeat the same failures because they don't remember past incidents
+- **AI Agents Fail in Production**: 73% of AI agent projects fail due to unpredictability, lack of memory, and unsafe execution
+- **MTTR is Too High**: Average incident resolution takes 14+ minutes while revenue bleeds
+- **Alert Fatigue**: Teams ignore 40%+ of alerts due to false positives and lack of context
+- **No Learning**: Systems repeat the same failures because they don't remember past incidents
 
 Traditional reliability stacks optimize for:
 - Detection latency
@@ -61,17 +58,15 @@ Traditional reliability stacks optimize for:
 - Dashboard density
 
 But the real business loss happens between:
+
 > *“Something is wrong” → “We know what to do.”*
 
-ARF collapses that gap by providing a **hybrid intelligence system** that combines: 
+ARF collapses that gap by providing a **hybrid intelligence system** that combines:
 
-*   **🤖 AI Agents** for complex pattern recognition 
-    
-*   **⚙️ Deterministic Rules** for reliable, predictable responses 
-    
-*   **🧠 RAG Graph Memory** for context-aware decision making 
-    
-*   **🔒 MCP Safety Layer** for zero-trust execution
+- **🤖 AI Agents** for complex pattern recognition
+- **⚙️ Deterministic Rules** for reliable, predictable responses
+- **🧠 RAG Graph Memory** for context-aware decision making
+- **🔒 MCP Safety Layer** for zero-trust execution
 
 ---
 
@@ -82,7 +77,7 @@ ARF collapses that gap by providing a **hybrid intelligence system** that comb
 - Recalls similar historical incidents (FAISS + graph)
 - Applies deterministic safety policies
 - Creates an immutable `HealingIntent`
-- **Never executes actions**
+- **Never executes actions (advisory-only, permanently)**
 
 **Enterprise**
 - Validates license and usage
@@ -94,6 +89,39 @@ ARF collapses that gap by providing a **hybrid intelligence system** that comb
 - Thread-safe
 - Circuit-breaker protected
 - Deterministic, idempotent intent model
+
+---
+
+> **OSS is permanently advisory-only by design.**
+> Execution, persistence, and autonomous actions are exclusive to Enterprise.
+
+---
+
+## 🆓 OSS Edition (Apache 2.0)
+
+| Feature | Implementation | Limits |
+|------|--------------|-------|
+| MCP Mode | Advisory only (`OSSMCPClient`) | No execution |
+| RAG Memory | In-memory graph + FAISS | 1000 incidents (LRU) |
+| Similarity Search | FAISS cosine similarity | Top-K only |
+| Learning | Pattern stats only | No persistence |
+| Healing | `HealingIntent` creation | Advisory only |
+| Policies | Deterministic guardrails | Warnings + blocks |
+| Storage | RAM only | Process-lifetime |
+| Support | GitHub Issues | No SLA |
+
+---
+
+## 💰 Enterprise Edition (Commercial)
+
+| Feature | Implementation | Value |
+|------|---------------|------|
+| MCP Modes | Advisory / Approval / Autonomous | Controlled execution |
+| Storage | Neo4j + FAISS (hybrid) | Persistent, unlimited |
+| Dashboard | React + FastAPI | Live system view |
+| Analytics | Graph Neural Networks | Predictive MTTR |
+| Compliance | SOC2 / GDPR / HIPAA | Full audit trails |
+| Pricing | $0.10 / incident + $499 / month | Usage-based |
 
 ---
 **️ Why Choose ARF Over Alternatives**
@@ -748,8 +776,9 @@ export BUSINESS_HOURS_END=17:00
 ### OSS (≈5 minutes)
 
 ```bash
-pip install agentic-reliability-framework
+pip install agentic-reliability-framework==3.3.4
 ```
+
 Runs:
 
 *   OSS MCP (advisory only)
@@ -760,13 +789,10 @@ Runs:
 
 Run locally or deploy as a service.
 
-Enterprise (≈15 minutes)
-```
-pip install arf-enterprise
-docker-compose up -d neo4j redis
-arf-enterprise --license-key YOUR_KEY
-```
----
+## License
+
+Apache 2.0 (OSS)
+Commercial license required for Enterprise features.
 
 ## Roadmap (Public)
 
@@ -784,25 +810,18 @@ arf-enterprise --license-key YOUR_KEY
 ARF encodes operational experience into software — permanently.
 
 ---
-
-## License
-
-Apache 2.0 (OSS)  
-Commercial license required for Enterprise features.
-
----
 ### Citing ARF
 
 If you use the Agentic Reliability Framework in production or research, please cite:
 
 **BibTeX:**
 ```bibtex
-@software{ARF2024, 
-  title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for Autonomous System Reliability}, 
-  author = {Juan Petter and Contributors}, 
-  year = {2024}, 
-  version = {3.0.0}, 
-  url = {https://github.com/petterjuan/agentic-reliability-framework} 
+@software{ARF2025,
+  title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for Autonomous System Reliability},
+  author = {Juan Petter and Contributors},
+  year = {2025},
+  version = {3.3.4},
+  url = {https://github.com/petterjuan/agentic-reliability-framework}
 }
 ```
 ### Quick Links
