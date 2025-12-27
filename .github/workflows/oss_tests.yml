@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - FINAL FIXED VERSION
+# .github/workflows/oss_tests.yml - FINAL FIXED VERSION WITH PROPER YAML
 name: OSS Boundary Tests
 
 on:
@@ -77,8 +77,8 @@ jobs:
         echo ""
         echo "3. Checking for Enterprise code violations..."
         
-        # Create a Python script for smart checking
-        python3 << 'EOF'
+        # Create a Python script for smart checking - using temp file to avoid YAML heredoc issues
+        cat > /tmp/check_enterprise.py << 'SCRIPT_EOF'
 import os
 import re
 import sys
@@ -195,7 +195,9 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
+SCRIPT_EOF
+        
+        python3 /tmp/check_enterprise.py
         
         python_exit_code=$?
         
