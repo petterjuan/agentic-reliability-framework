@@ -20,3 +20,10 @@
 ## 🚀 Quick Start
 ```bash
 pip install agentic-reliability-framework==3.3.4
+```
+```python
+import agentic_reliability_framework as arf
+from agentic_reliability_framework import HealingIntent, OSSMCPClient
+
+print(f"✅ ARF v{arf.__version__} - Stable and Ready!")
+```
