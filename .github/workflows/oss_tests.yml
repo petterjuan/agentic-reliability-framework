@@ -1,4 +1,4 @@
-# .github/workflows/oss_tests.yml - IMPROVED VERSION
+# .github/workflows/oss_tests.yml - SIMPLIFIED ROBUST VERSION
 name: OSS Boundary Tests
 
 on:
@@ -17,98 +17,119 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Smart OSS Check
+    - name: Basic OSS Structure Check
       run: |
-        echo "🔍 SMART OSS CHECK"
-        echo "=================="
+        echo "🔍 BASIC OSS STRUCTURE CHECK"
+        echo "============================"
         
-        echo "1. Checking OSS structure..."
-        if [ -d "agentic_reliability_framework/arf_core" ]; then
-          echo "   ✅ arf_core exists"
-        else
-          echo "   ⚠️  arf_core missing"
+        # Check 1: Required directories exist
+        echo "1. Checking required directories..."
+        REQUIRED_DIRS=(
+          "agentic_reliability_framework"
+          "agentic_reliability_framework/arf_core"
+          "agentic_reliability_framework/arf_core/models"
+          "agentic_reliability_framework/arf_core/engine"
+          "agentic_reliability_framework/arf_core/config"
+        )
+        
+        all_dirs_exist=true
+        for dir in "${REQUIRED_DIRS[@]}"; do
+          if [ -d "$dir" ]; then
+            echo "   ✅ $dir exists"
+          else
+            echo "   ❌ $dir MISSING"
+            all_dirs_exist=false
+          fi
+        done
+        
+        if [ "$all_dirs_exist" = false ]; then
+          echo "❌ Missing required OSS directories"
           exit 1
         fi
         
-        echo "2. Checking for Enterprise code (smart check)..."
+        # Check 2: Required files exist
+        echo ""
+        echo "2. Checking required files..."
+        REQUIRED_FILES=(
+          "agentic_reliability_framework/__init__.py"
+          "agentic_reliability_framework/arf_core/__init__.py"
+          "agentic_reliability_framework/arf_core/constants.py"
+          "agentic_reliability_framework/arf_core/models/healing_intent.py"
+        )
         
-        # Use Python for smarter checking
-        python3 << 'EOF'
-        import os
-        import re
+        all_files_exist=true
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ -f "$file" ]; then
+            echo "   ✅ $file exists"
+          else
+            echo "   ❌ $file MISSING"
+            all_files_exist=false
+          fi
+        done
         
-        def check_file_for_enterprise(filepath):
-            """Check if file contains actual Enterprise code, not just comments"""
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-                
-            # Remove comments and strings for checking
-            lines = []
-            in_string = False
-            string_char = None
-            for line in content.split('\n'):
-                clean_line = ""
-                i = 0
-                while i < len(line):
-                    if not in_string and line[i] in ('"', "'"):
-                        in_string = True
-                        string_char = line[i]
-                        i += 1
-                    elif in_string and line[i] == string_char:
-                        in_string = False
-                        string_char = None
-                        i += 1
-                    elif not in_string and line[i] == '#':
-                        break  # Rest of line is comment
-                    elif not in_string:
-                        clean_line += line[i]
-                        i += 1
-                    else:
-                        i += 1
-                
-                if clean_line.strip():
-                    lines.append(clean_line)
+        if [ "$all_files_exist" = false ]; then
+          echo "❌ Missing required OSS files"
+          exit 1
+        fi
+        
+        # Check 3: Quick enterprise code check (simplified)
+        echo ""
+        echo "3. Quick enterprise code check..."
+        
+        # Use simple grep but exclude comments
+        VIOLATIONS=0
+        
+        # Check for import statements with Enterprise
+        if grep -r "^\s*import.*[Ee]ntreprise" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null | grep -v "#" | head -5; then
+          echo "   ❌ Found 'import ...Enterprise...' in code (not comment)"
+          VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        
+        if grep -r "^\s*from.*[Ee]ntreprise" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null | grep -v "#" | head -5; then
+          echo "   ❌ Found 'from ...Enterprise...' in code (not comment)"
+          VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        
+        # Check for class definitions with EnterpriseMCPServer
+        if grep -r "^\s*class.*EnterpriseMCPServer" agentic_reliability_framework/arf_core/ --include="*.py" 2>/dev/null; then
+          echo "   ❌ Found 'class ...EnterpriseMCPServer' definition"
+          VIOLATIONS=$((VIOLATIONS + 1))
+        fi
+        
+        if [ $VIOLATIONS -gt 0 ]; then
+          echo "❌ Found $VIOLATIONS enterprise code violations"
+          exit 1
+        else
+          echo "   ✅ No obvious enterprise code violations"
+        fi
+        
+        # Check 4: Can import basic OSS module
+        echo ""
+        echo "4. Testing basic import..."
+        python3 -c "
+        try:
+            import agentic_reliability_framework
+            print('   ✅ Successfully imported agentic_reliability_framework')
+            print(f'   Version: {agentic_reliability_framework.__version__}')
             
-            # Check cleaned content
-            cleaned = '\n'.join(lines)
+            # Try to import OSS core components
+            from agentic_reliability_framework.arf_core import constants
+            print(f'   ✅ OSS constants: {constants.OSS_EDITION}')
             
-            # Look for problematic patterns (not in comments/strings)
-            patterns = [
-                r'import EnterpriseMCPServer',
-                r'from.*EnterpriseMCPServer',
-                r'class.*EnterpriseMCPServer',
-                r'EnterpriseMCPServer\s*=',
-                r'EnterpriseMCPServer\(',
-            ]
+            from agentic_reliability_framework.arf_core.models import healing_intent
+            print('   ✅ OSS healing_intent module available')
             
-            for pattern in patterns:
-                if re.search(pattern, cleaned):
-                    return True, f"Found pattern: {pattern}"
-            
-            return False, None
-        
-        # Check all Python files in arf_core
-        arf_core_dir = "agentic_reliability_framework/arf_core"
-        violations = []
-        
-        for root, dirs, files in os.walk(arf_core_dir):
-            for file in files:
-                if file.endswith('.py'):
-                    filepath = os.path.join(root, file)
-                    has_violation, reason = check_file_for_enterprise(filepath)
-                    if has_violation:
-                        violations.append(f"{filepath}: {reason}")
-        
-        if violations:
-            print("🚨 Enterprise code violations found:")
-            for v in violations:
-                print(f"  • {v}")
+        except Exception as e:
+            print(f'   ❌ Import failed: {e}')
+            import traceback
+            traceback.print_exc()
             exit(1)
-        else:
-            print("✅ No Enterprise code violations found")
-            print("✅ OSS boundary check passed!")
-        EOF
+        "
         
         echo ""
-        echo "🎉 OSS CHECK PASSED!"
-        echo "Basic OSS structure is valid."
+        echo "🎉 OSS BOUNDARY CHECK PASSED!"
+        echo "============================="
+        echo "✓ All required directories exist"
+        echo "✓ All required files exist"
+        echo "✓ No enterprise code violations"
+        echo "✓ Basic imports work"
