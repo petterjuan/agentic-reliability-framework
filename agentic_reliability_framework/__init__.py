@@ -1,19 +1,40 @@
-# agentic_reliability_framework/__init__.py (FIXED)
+# agentic_reliability_framework/__init__.py (URGENT FIX)
 """
 Agentic Reliability Framework (ARF) - OSS Edition
 Production-grade multi-agent AI for reliability monitoring (Advisory only)
 Apache 2.0 Licensed
 """
 
-from importlib import import_module
-from typing import Any
+# ============================================================================
+# VERSION - IMPORT FIRST
+# ============================================================================
+
+from .__version__ import __version__
 
 # ============================================================================
-# DIRECT OSS IMPORTS - NO CIRCULAR DEPENDENCIES
+# DIRECT ABSOLUTE IMPORTS - NO CIRCULAR DEPENDENCIES
 # ============================================================================
+
+# IMPORTANT: Import DIRECTLY from source modules, not through arf_core
+# This breaks the circular dependency chain
 
 try:
-    # Direct import of OSS components
+    # 1. Import HealingIntent directly from its module
+    from agentic_reliability_framework.arf_core.models.healing_intent import (
+        HealingIntent,
+        HealingIntentSerializer,
+        create_rollback_intent,
+        create_restart_intent,
+        create_scale_out_intent
+    )
+    
+    # 2. Import OSSMCPClient directly
+    from agentic_reliability_framework.arf_core.engine.simple_mcp_client import (
+        OSSMCPClient,
+        create_mcp_client
+    )
+    
+    # 3. Import constants directly
     from agentic_reliability_framework.arf_core.constants import (
         OSS_EDITION,
         OSS_LICENSE,
@@ -24,28 +45,13 @@ try:
         OSSBoundaryError
     )
     
-    # Import HealingIntent directly
-    from agentic_reliability_framework.arf_core.models.healing_intent import (
-        HealingIntent,
-        HealingIntentSerializer,
-        create_rollback_intent,
-        create_restart_intent,
-        create_scale_out_intent
-    )
-    
-    # Import OSS MCP client
-    from agentic_reliability_framework.arf_core.engine.simple_mcp_client import (
-        OSSMCPClient,
-        create_mcp_client
-    )
-    
     OSS_AVAILABLE = True
     
 except ImportError as e:
     OSS_AVAILABLE = False
     print(f"⚠️  OSS components not available: {e}")
     
-    # Create minimal stubs
+    # Create minimal stubs for emergency fallback
     class HealingIntent:
         pass
     
@@ -82,7 +88,9 @@ except ImportError as e:
     EXECUTION_ALLOWED = False
     MCP_MODES_ALLOWED = ("advisory",)
 
-from .__version__ import __version__
+# ============================================================================
+# PUBLIC API - MINIMAL & CLEAN
+# ============================================================================
 
 __all__ = [
     # Version
@@ -107,11 +115,17 @@ __all__ = [
     # OSS Engine
     "OSSMCPClient",
     "create_mcp_client",
+    
+    # Availability
+    "OSS_AVAILABLE",
 ]
 
 # ============================================================================
-# LAZY LOADING FOR APP MODULES ONLY (Not OSS core)
+# LAZY LOADING FOR HEAVY MODULES ONLY
 # ============================================================================
+
+from importlib import import_module
+from typing import Any
 
 _map_module_attr: dict[str, tuple[str, str]] = {
     # App components (not part of OSS core)
@@ -124,7 +138,7 @@ _map_module_attr: dict[str, tuple[str, str]] = {
 def __getattr__(name: str) -> Any:
     """
     Lazy-load heavy modules on attribute access.
-    OSS core components are imported directly above.
+    OSS core components are already imported above.
     """
     if name in globals():
         return globals()[name]
@@ -147,13 +161,21 @@ def __dir__() -> list[str]:
     std = set(globals().keys())
     return sorted(std.union(__all__))
 
+# ============================================================================
+# IMPORT VERIFICATION
+# ============================================================================
 
-# Print helpful info on import
 if __name__ != "__main__":
     import sys
     if "pytest" not in sys.modules and "test" not in sys.argv[0]:
         print(f"✅ Agentic Reliability Framework v{__version__} (OSS Edition)")
         if OSS_AVAILABLE:
             print(f"📦 HealingIntent & OSSMCPClient available (advisory-only)")
+            # Quick sanity check
+            try:
+                hi = HealingIntent(action="test", component="test")
+                print(f"✓ HealingIntent instantiation successful")
+            except Exception as e:
+                print(f"⚠️  HealingIntent instantiation failed: {e}")
         else:
-            print(f"⚠️  OSS core components not available")
+            print(f"❌ OSS core components not available - package is BROKEN")
