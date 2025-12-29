@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 # FIXED: Use relative imports since we're inside arf_core
-from ..models import ReliabilityEvent, EventSeverity
+from ..models import ReliabilityEvent, EventSeverity, create_compatible_event
 
 from ..constants import (
     OSS_EDITION,
@@ -544,30 +544,32 @@ class OSSMCPClient:
             return self.similarity_cache[cache_key]
         
         try:
-            # Try to get RAG graph from lazy loader
-            # FIXED: Use correct import path from main package
-            import sys
-            sys.path.insert(0, '.')
-            from agentic_reliability_framework.lazy import get_rag_graph
+            # SAFE IMPORT: Try multiple import strategies
+            rag_graph = None
             
-            rag_graph = get_rag_graph()
-            if rag_graph is None or not rag_graph.is_enabled():
+            # Strategy 1: Try relative import first (works in development)
+            try:
+                from ...lazy import get_rag_graph
+                rag_graph = get_rag_graph()
+            except (ImportError, ValueError):
+                # Strategy 2: Try absolute import (works when installed)
+                try:
+                    from agentic_reliability_framework.lazy import get_rag_graph
+                    rag_graph = get_rag_graph()
+                except ImportError:
+                    logger.debug("RAG graph not available via absolute import")
+            
+            # Check if we got a RAG graph
+            if rag_graph is None or not hasattr(rag_graph, 'is_enabled') or not rag_graph.is_enabled():
                 return []
             
-            # Create mock event for similarity search
-            # EventSeverity and ReliabilityEvent are already imported via relative imports
-            severity = EventSeverity.MEDIUM
+            # Create a compatibility event for RAG graph
+            # The RAG graph expects a Pydantic ReliabilityEvent from models.py
+            # We need to create a compatible event
+            event = self._create_compatible_event_for_rag(component, context)
             
-            event = ReliabilityEvent(
-                component=component,
-                severity=severity,  # Correct type: EventSeverity enum
-                latency_p99=context.get("latency_p99", 100) if context else 100,
-                error_rate=context.get("error_rate", 0.05) if context else 0.05,
-                throughput=context.get("throughput", 1000) if context else 1000,
-                cpu_util=context.get("cpu_util", 0.5) if context else 0.5,
-                memory_util=context.get("memory_util", 0.5) if context else 0.5,
-                timestamp=datetime.now(),
-            )
+            if event is None:
+                return []
             
             # Find similar incidents (limit to 5 for OSS)
             similar_nodes = rag_graph.find_similar(event, k=5)
@@ -607,12 +609,50 @@ class OSSMCPClient:
             
             return similar_incidents
             
-        except ImportError:
-            logger.debug("RAG graph not available")
-            return []
         except Exception as e:
             logger.error(f"Error querying RAG: {e}", exc_info=True)
             return []
+    
+    def _create_compatible_event_for_rag(self, component: str, context: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Create a compatible event for the RAG graph
+        
+        The RAG graph expects a Pydantic ReliabilityEvent from models.py
+        This method creates one that matches the expected structure
+        """
+        try:
+            # Use the compatibility wrapper
+            severity = EventSeverity.MEDIUM
+            
+            # Get severity from context if available
+            if context and "severity" in context:
+                severity_str = context["severity"]
+                # Convert string to EventSeverity enum
+                severity_map = {
+                    "low": EventSeverity.LOW,
+                    "medium": EventSeverity.MEDIUM,
+                    "high": EventSeverity.HIGH,
+                    "critical": EventSeverity.CRITICAL
+                }
+                if severity_str.lower() in severity_map:
+                    severity = severity_map[severity_str.lower()]
+            
+            # Use the compatibility wrapper to create the event
+            event = create_compatible_event(
+                component=component,
+                severity=severity,
+                latency_p99=context.get("latency_p99", 100) if context else 100,
+                error_rate=context.get("error_rate", 0.05) if context else 0.05,
+                throughput=context.get("throughput", 1000) if context else 1000,
+                cpu_util=context.get("cpu_util", 0.5) if context else 0.5,
+                memory_util=context.get("memory_util", 0.5) if context else 0.5,
+            )
+            
+            return event
+            
+        except Exception as e:
+            logger.error(f"Error creating compatible event for RAG: {e}", exc_info=True)
+            return None
     
     def _calculate_rag_similarity_score(self, similar_incidents: List[Dict[str, Any]]) -> float:
         """
