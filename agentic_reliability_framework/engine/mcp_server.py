@@ -496,8 +496,8 @@ def create_alert_tool() -> MCPTool:
 # ========== OSS INTEGRATION IMPORT ==========
 # CORRECT: Import from arf_core package
 try:
-    # Import using absolute import from the arf_core module
-    from agentic_reliability_framework.arf_core import (
+    # Use relative imports to avoid circular dependencies
+    from ..arf_core import (
         HealingIntent,
         OSSMCPClient,
         create_mcp_client as create_oss_mcp_client
