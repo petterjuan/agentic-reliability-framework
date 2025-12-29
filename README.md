@@ -2,9 +2,9 @@
   <img src="https://dummyimage.com/1200x260/0d1117/00d4ff&text=AGENTIC+RELIABILITY+FRAMEWORK" width="100%" alt="Agentic Reliability Framework Banner" />
 </p>
 
-<h2 align="center">Enterprise-Grade Multi-Agent AI for Autonomous System Reliability & Self-Healing</h2>
+<h2 align="center">Enterprise-Grade Multi-Agent AI for Autonomous System Reliability & Advisory Healing Intelligence</h2>
 
-> **ARF is the first enterprise framework that enables autonomous, self-healing, context-aware AI agents for infrastructure reliability monitoring and remediation at scale.**
+> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents with advisory healing intelligence (OSS) and executed remediation (Enterprise) for infrastructure reliability monitoring and remediation at scale.**
 > Battle-tested architecture for autonomous incident detection and healing.
 
 <div align="center">
@@ -24,6 +24,13 @@
 ---
 
 # Agentic Reliability Framework (ARF) v3.3.6 — Production Stability Release
+
+> ⚠️ **IMPORTANT OSS DISCLAIMER**
+>
+> This Apache 2.0 OSS edition is **analysis and advisory-only**.
+> It **does NOT execute actions**, **does NOT auto-heal**, and **does NOT perform remediation**.
+>
+> All execution, automation, persistence, and learning loops are **Enterprise-only** features.
 
 ## Executive Summary
 
@@ -66,7 +73,8 @@ If you can import it, it is safe to use in production.
 **The Problem**
 
 - **AI Agents Fail in Production**: 73% of AI agent projects fail due to unpredictability, lack of memory, and unsafe execution
-- **MTTR is Too High**: Average incident resolution takes 14+ minutes while revenue bleeds
+- **MTTR is Too High**: Average incident resolution takes 14+ minutes _in traditional systems_.
+  \*_Measured MTTR reductions are Enterprise-only and require execution + learning loops._
 - **Alert Fatigue**: Teams ignore 40%+ of alerts due to false positives and lack of context
 - **No Learning**: Systems repeat the same failures because they don't remember past incidents
 
@@ -79,7 +87,7 @@ But the real business loss happens between:
 
 > *“Something is wrong” → “We know what to do.”*
 
-ARF collapses that gap by providing a **hybrid intelligence system** that combines:
+ARF collapses that gap by providing a hybrid intelligence system that advises safely in OSS and executes deterministically in Enterprise. 
 
 - **🤖 AI Agents** for complex pattern recognition
 - **⚙️ Deterministic Rules** for reliable, predictable responses
@@ -94,7 +102,7 @@ ARF collapses that gap by providing a **hybrid intelligence system** that combin
 - Ingests telemetry and incident context
 - Recalls similar historical incidents (FAISS + graph)
 - Applies deterministic safety policies
-- Creates an immutable `HealingIntent`
+- Creates an immutable HealingIntent **without executing remediation**
 - **Never executes actions (advisory-only, permanently)**
 
 **Enterprise**
@@ -151,7 +159,7 @@ ARF collapses that gap by providing a **hybrid intelligence system** that combin
 | **Traditional Monitoring** (Datadog, New Relic, Prometheus) | ❌ No learning capability | ✅ High safety (read-only) | ✅ High determinism (rules-based) | ❌ Reactive only - alerts after failures occur |
 | **LLM-Only Agents** (AutoGPT, LangChain, CrewAI) | ⚠️ Limited learning (context window only) | ❌ Low safety (direct API access) | ❌ Low determinism (hallucinations) | ⚠️ Unpredictable - cannot guarantee outcomes |
 | **Rule-Based Automation** (Ansible, Terraform, scripts) | ❌ No learning (static rules) | ✅ High safety (manual review) | ✅ High determinism (exact execution) | ⚠️ Brittle - breaks with system changes |
-| **ARF (Hybrid Intelligence)** | ✅ Continuous learning (RAG Graph memory) | ✅ High safety (MCP guardrails + approval workflows) | ✅ High determinism (Policy Engine + AI synthesis) | ✅ Quantified ROI (Business impact dashboard + auto-heal metrics) |
+| **ARF (Hybrid Intelligence)** | ✅ Continuous learning (RAG Graph memory) | ✅ High safety (MCP guardrails + approval workflows) | ✅ High determinism (Policy Engine + AI synthesis) | ✅ Quantified ROI (Enterprise-only: execution + learning required) |
 
 **Key Differentiators** 
 
@@ -180,7 +188,9 @@ _**💰 ROI Measurement**_ 
 
 *   **Alternatives**: Hard to quantify value beyond "fewer alerts" 
     
-*   **ARF**: Tracks revenue saved, auto-heal rates, MTTR improvements with business dashboard
+*   **ARF (Enterprise)**: Tracks revenue saved, auto-heal rates, and MTTR improvements via execution-aware business dashboards
+
+*   **OSS**: Generates advisory intent only (no execution, no ROI measurement)
 
 **Migration Paths**
 
@@ -312,11 +322,12 @@ graph TB
    A1 --> E[Policy Engine] 
    A1 --> B1 
    E & B1 --> C1 
-   C1 --> F[Healing Actions] 
+   C1 --> F[Healing Actions (Enterprise Only)]
    F --> G[Business Impact Dashboard] 
    F --> B1[Continuous Learning Loop] 
    G --> H[Quantified ROI: Revenue Saved, MTTR Reduction]
    ```
+Healing Actions occur only in Enterprise deployments.
 
 ### OSS Architecture
 ```mermaid
@@ -329,7 +340,10 @@ graph TD
     E --> C
     F --> C
     C --> G[HealingIntent]
+    G --> H[STOP: Advisory Only]
 ```
+OSS execution halts permanently at HealingIntent. No actions are performed.
+
 ### **Stop point:** OSS halts permanently at HealingIntent.
 
 ### Enterprise Architecture
@@ -532,6 +546,14 @@ Enterprise captures it.
 
 ### 💰 Business Value and ROI
 
+> 🔒 **Enterprise-Only Metrics**
+>
+> All metrics, benchmarks, MTTR reductions, auto-heal rates, revenue protection figures,
+> and ROI calculations in this section are derived from **Enterprise deployments only**.
+>
+> The OSS edition does **not** execute actions, does **not** auto-heal, and does **not**
+> measure business impact.
+
 #### Detection & Resolution Speed
 
 ARF dramatically reduces incident detection and resolution times compared to industry averages:
@@ -614,9 +636,9 @@ ARF delivers measurable benefits across industries:
 **After ARF**
 - 5–10 min MTTR
 - Institutional memory
-- Self-healing patterns
+- Institutionalized remediation patterns (Enterprise execution)
 
-This is a **revenue protection system**, not a cost center.
+This is a **revenue protection system in Enterprise deployments**, and a **trust-building advisory intelligence layer in OSS**.
 
 ---
 
@@ -770,7 +792,10 @@ export BUSINESS_HOURS_END=17:00
 
 ---
 
-### ⚡ Performance & Scaling
+### ⚡ Enterprise Performance & Scaling Benchmarks
+> OSS performance is limited to advisory analysis and intent generation.
+> Execution latency and throughput metrics apply to Enterprise MCP execution only.
+
 
 #### Benchmarks
 
