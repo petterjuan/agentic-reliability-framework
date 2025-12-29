@@ -2,10 +2,10 @@
   <img src="https://dummyimage.com/1200x260/0d1117/00d4ff&text=AGENTIC+RELIABILITY+FRAMEWORK" width="100%" alt="Agentic Reliability Framework Banner" />
 </p>
 
-<h2 align="center">Enterprise-Grade Multi-Agent AI for Autonomous System Reliability & Advisory Healing Intelligence</h2>
+<h2 align="center">Enterprise-Grade Multi-Agent AI for autonomous system reliability **intelligence** & Advisory Healing Intelligence</h2>
 
-> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents with advisory healing intelligence (OSS) and executed remediation (Enterprise) for infrastructure reliability monitoring and remediation at scale.**
-> Battle-tested architecture for autonomous incident detection and healing.
+> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents** with **advisory healing intelligence (OSS) and **executed remediation (Enterprise) for infrastructure reliability monitoring and remediation at scale.**
+> _Battle-tested architecture for autonomous incident detection and_ _**advisory remediation intelligence**_.
 
 <div align="center">
 
@@ -145,7 +145,7 @@ ARF collapses that gap by providing a hybrid intelligence system that advises sa
 | MCP Modes | Advisory / Approval / Autonomous | Controlled execution |
 | Storage | Neo4j + FAISS (hybrid) | Persistent, unlimited |
 | Dashboard | React + FastAPI | Live system view |
-| Analytics | Graph Neural Networks | Predictive MTTR |
+| Analytics | Graph Neural Networks | Predictive MTTR (Enterprise-only) |
 | Compliance | SOC2 / GDPR / HIPAA | Full audit trails |
 | Pricing | $0.10 / incident + $499 / month | Usage-based |
 
@@ -229,14 +229,14 @@ _**💰 ROI Measurement**_ 
 
 **Technical Comparison Summary**
 
-| Aspect        | Traditional Monitoring | LLM Agents           | Rule Automation         | ARF (Hybrid Intelligence)           |
+| Aspect        | Traditional Monitoring | LLM Agents           | Rule Automation         | ARF (Hybrid Intelligence)          |
 |---------------|----------------------|--------------------|------------------------|------------------------------------|
-| **Architecture** | Time-series + alerts  | LLM + tools        | Scripts + cron         | Hybrid: RAG + MCP + Policies       |
-| **Learning**     | None                  | Episodic           | None                   | Continuous (RAG Graph)             |
+| **Architecture** | Time-series + alerts  | LLM + tools        | Scripts + cron         | Hybrid: RAG + MCP + Policies        |
+| **Learning**     | None                  | Episodic           | None                   | Continuous (RAG Graph)              |
 | **Safety**       | Read-only             | Risky              | Manual review          | Three-mode guardrails               |
 | **Determinism**  | High                  | Low                | High                   | High (policy-backed)                |
 | **Setup Time**   | Days                  | Weeks              | Days                   | Hours                               |
-| **Maintenance**  | High                  | Very High          | High                   | Low (self-improving)                |
+| **Maintenance**  | High                  | Very High          | High                   | Low (Enterprise learning loops)     |
 | **ROI Timeline** | 6-12 months           | Unpredictable      | 3-6 months             | 30 days                             |
 
 _ARF provides the intelligence of AI agents with the reliability of traditional automation, creating a new category of "Reliable AI Systems."_
@@ -308,7 +308,7 @@ graph TB
        B4 --> B7[Success Rate Analytics] 
    end 
     
-   subgraph "Layer 3: Safe Execution" 
+   subgraph "Layer 3: Execution Control (OSS Advisory / Enterprise Execution)" 
        C1[MCP Server] --> C2[Advisory Mode - OSS Default] 
        C1 --> C3[Approval Mode - Human-in-Loop] 
        C1 --> C4[Autonomous Mode - Enterprise] 
@@ -556,7 +556,7 @@ Enterprise captures it.
 
 #### Detection & Resolution Speed
 
-ARF dramatically reduces incident detection and resolution times compared to industry averages:
+**Enterprise deployments of ARF** dramatically reduce incident detection and resolution times compared to industry averages:
 
 | Metric                        | Industry Average | ARF Performance | Improvement        |
 |-------------------------------|----------------|----------------|------------------|
@@ -602,7 +602,7 @@ ARF transforms reliability operations from a high-cost, reactive burden into a h
 
 ---
 
-### 🏢 Industry-Specific Impact
+### 🏢 Industry-Specific Impact (Enterprise Deployments)
 
 ARF delivers measurable benefits across industries:
 
@@ -626,7 +626,7 @@ ARF delivers measurable benefits across industries:
 | Media     | 30 min                        | 0.8 min          | 90%       | 94% faster |
 | Logistics | 90 min                        | 0.8 min          | 85%       | 94% faster |
 
-**Bottom Line:** ARF converts reliability from a cost center (2–5% of engineering budget) into a profit engine, delivering **5.2×+ ROI** and sustainable competitive advantage.
+**Bottom Line:** **Enterprise ARF deployments** convert reliability from a cost center (2–5% of engineering budget) into a profit engine, delivering **5.2×+ ROI** and sustainable competitive advantage.
 
 **Before ARF**
 - 45 min MTTR
@@ -860,7 +860,7 @@ If you use the Agentic Reliability Framework in production or research, please c
 **BibTeX:**
 ```bibtex
 @software{ARF2026,
-  title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for Autonomous System Reliability},
+  title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for autonomous system reliability intelligence},
   author = {Juan Petter and Contributors},
   year = {2026},
   version = {3.3.6},
