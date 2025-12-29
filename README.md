@@ -4,7 +4,8 @@
 
 <h2 align="center">Enterprise-Grade Multi-Agent AI for autonomous system reliability **intelligence** & Advisory Healing Intelligence</h2>
 
-> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents** with **advisory healing intelligence (OSS) and **executed remediation (Enterprise) for infrastructure reliability monitoring and remediation at scale.**
+> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents** with advisory healing intelligence (OSS) and **executed remediation (Enterprise)** for infrastructure reliability monitoring and remediation at scale.
+
 > _Battle-tested architecture for autonomous incident detection and_ _**advisory remediation intelligence**_.
 
 <div align="center">
@@ -46,7 +47,7 @@ This is **operational intelligence**.
 
 A dual-architecture reliability framework where **OSS analyzes and creates intent**, and **Enterprise safely executes intent**.
 
-This repository contains the **Apache 2.0 OSS edition (v3.3.5 Stable)**. Enterprise components are distributed separately under a commercial license.
+This repository contains the **Apache 2.0 OSS edition (v3.3.6 Stable)**. Enterprise components are distributed separately under a commercial license.
 
 > **v3.3.6 Production Stability Release**
 >
@@ -261,6 +262,7 @@ Signals → Incidents → Memory Graph → Decision → Policy → Execution
 **Three-Layer Hybrid Intelligence: The ARF Paradigm** 
 
 ARF introduces a **hybrid intelligence architecture** that combines the best of three worlds: **AI reasoning**, **deterministic rules**, and **continuous learning**. This three-layer approach ensures both innovation and reliability in production environments.
+
 ```mermaid
 graph TB 
    subgraph "Layer 1: Cognitive Intelligence" 
@@ -300,9 +302,11 @@ graph TB
    F --> B1[Continuous Learning Loop] 
    G --> H[Quantified ROI: Revenue Saved, MTTR Reduction]
    ```
+
 Healing Actions occur only in Enterprise deployments.
 
 ### OSS Architecture
+
 ```mermaid
 graph TD
     A[Telemetry / Metrics] --> B[Reliability Engine]
@@ -315,11 +319,13 @@ graph TD
     C --> G[HealingIntent]
     G --> H[STOP: Advisory Only]
 ```
+
 OSS execution halts permanently at HealingIntent. No actions are performed.
 
 ### **Stop point:** OSS halts permanently at HealingIntent.
 
 ### Enterprise Architecture
+
 ```mermaid
 graph TD
     A[HealingIntent] --> B[License Manager]
@@ -329,6 +335,7 @@ graph TD
     E --> F[MCP Execution]
     F --> G[Audit Trail]
 ```
+
 **Architecture Philosophy**: Each layer addresses a critical failure mode of current AI systems: 
 
 1.  **Cognitive Layer** prevents _"reasoning from scratch"_ for each incident 
@@ -342,6 +349,7 @@ graph TD
 ### 1. RAG Graph Memory (Not Vector Soup)
 
 ### ARF models **incidents, actions, and outcomes as a graph**, rather than simple embeddings. This allows causal reasoning, pattern recall, and outcome-aware recommendations.
+
 ```mermaid
 graph TD
     Incident -->|caused_by| Component
@@ -376,6 +384,7 @@ This separation:
           |       HealingIntent       |
           +-------------------------->|
 ```
+
 ### 3. MCP (Model Context Protocol) Execution Control
 
 Every action passes through:
@@ -388,6 +397,7 @@ Every action passes through:
 \* Controlled execution modes with policy enforcement:
 
 No silent actions. Ever.
+
 ```mermaid
 graph LR
     Action_Request --> Advisory_Mode --> Approval_Mode --> Autonomous_Mode
@@ -396,6 +406,7 @@ graph LR
     Autonomous_Mode -->|auto-execute| Safety_Guardrails
     Safety_Guardrails --> Execution_Log
 ```
+
 **Execution Safety Features:**
 
 1.  **Blast radius checks:** Limit scope of automated actions.
@@ -451,6 +462,7 @@ Enterprise: [Detection] [Recall] [Decision] [Safety] [Execution] [Learning]
 | Learning Agent  | Extract outcomes and update predictive models / RAG patterns          | ❌  | ✅         |
 
 # ARF v3.0 Dual-Layer Architecture
+
 ```
           ┌───────────────────────────┐
           │        Telemetry          │
@@ -495,6 +507,7 @@ Enterprise: [Detection] [Recall] [Decision] [Safety] [Execution] [Learning]
  │       HealingIntent (Executed, Audit-ready)         │
  └─────────────────────────────────────────────────────┘
 ```
+
 ---
 
 ## OSS vs Enterprise Philosophy
@@ -667,6 +680,7 @@ graph LR
    style Media fill:#ef4444 
    style Logistics fill:#8b5cf6
    ```
+
 ---
 
 ### 🔒 Security & Compliance
@@ -690,6 +704,7 @@ export SAFETY_ACTION_BLACKLIST="DATABASE_DROP,FULL_ROLLOUT,SYSTEM_SHUTDOWN"
 export SAFETY_MAX_BLAST_RADIUS=3
 export MCP_MODE=approval  # advisory, approval, or autonomous
 ```
+
 **Layer Breakdown:**
 
 *   **Action Blacklisting** – Prevent dangerous operations
@@ -745,6 +760,7 @@ export MCP_MODE=approval  # advisory, approval, or autonomous
         *   **Production:** advisory or approval
 
 Quick Configuration Example
+
 ```
 # Set up basic security parameters
 export SAFETY_ACTION_BLACKLIST="DATABASE_DROP,FULL_ROLLOUT,SYSTEM_SHUTDOWN"
@@ -831,6 +847,7 @@ ARF encodes operational experience into software — permanently.
 If you use the Agentic Reliability Framework in production or research, please cite:
 
 **BibTeX:**
+
 ```bibtex
 @software{ARF2026,
   title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for autonomous system reliability intelligence},
@@ -840,6 +857,7 @@ If you use the Agentic Reliability Framework in production or research, please c
   url = {https://github.com/petterjuan/agentic-reliability-framework}
 }
 ```
+
 ### Quick Links
 
 - **Live Demo:** [Try ARF on Hugging Face](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)  
