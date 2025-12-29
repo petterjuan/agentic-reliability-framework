@@ -1,6 +1,6 @@
 # Agentic Reliability Framework (ARF) — Quick Start
 
-Welcome to ARF v3.3.0 — a hybrid intelligence framework for autonomous system reliability, self-healing, and context-aware incident management.
+Welcome to ARF v3.3.6 — a hybrid intelligence framework for autonomous system reliability, self-healing, and context-aware incident management.
 
 This guide shows you how to get started quickly with **event processing, safety, and self-healing**.
 
@@ -11,14 +11,30 @@ This guide shows you how to get started quickly with **event processing, safety,
 ### OSS Edition (Advisory Only)
 
 ```bash
-pip install agentic-reliability-framework
+pip install agentic-reliability-framework==3.3.6
 ```
 *   Runs advisory-only MCP mode
     
 *   In-memory RAG graph + FAISS for incident similarity
     
 *   No actions executed (safe for testing)
-    
+
+> **Important:**  
+> The OSS edition is **permanently advisory-only**.
+> No actions are executed, no data is persisted, and no autonomous behavior is enabled.
+
+### ✅ Import Verification (v3.3.6+)
+
+All public imports are now guaranteed stable:
+
+```python
+from agentic_reliability_framework import HealingIntent, OSSMCPClient
+from agentic_reliability_framework.arf_core.models import ReliabilityEvent
+
+print("✅ ARF imports verified")
+```
+If this imports cleanly, your environment is correctly configured.
+
 
 ### Enterprise Edition (Full Execution)
 ```
