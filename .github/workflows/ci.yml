@@ -118,7 +118,7 @@ jobs:
         python -c "import agentic_reliability_framework; print(f'✅ Import successful: {agentic_reliability_framework.__version__}')"
         
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: agentic-reliability-framework-wheel
         path: dist/*.whl
