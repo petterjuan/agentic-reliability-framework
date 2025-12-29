@@ -4,14 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentic-reliability-framework"
-version = "3.3.6"  
-description = "Agentic Reliability Framework - OSS Edition: AI-powered infrastructure reliability monitoring"
-readme = "README.md"
-license = {text = "Apache-2.0"}
-authors = [
-    {name = "Juan Petter", email = "ai@petterjuan.com"}
-]
+version = "3.3.6"
+description = "Agentic Reliability Framework (OSS Edition): Enterprise-grade multi-agent AI for infrastructure reliability monitoring and advisory-only self-healing."
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+
+authors = [
+    { name = "Juan Petter", email = "ai@petterjuan.com" }
+]
+
+keywords = [
+    "agentic-ai",
+    "ai-infrastructure",
+    "reliability-engineering",
+    "self-healing-systems",
+    "observability",
+    "rag",
+    "faiss",
+    "mcp",
+    "site-reliability-engineering",
+    "autonomous-systems"
+]
+
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -25,18 +40,31 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Recovery Tools",
-    "Typing :: Typed",
+    "Typing :: Typed"
 ]
+
 dependencies = [
-    "gradio>=4.19.0",
-    "pydantic>=2.0.0", 
+    # Core runtime
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.8",
+
+    # Data / reasoning
     "numpy>=1.24.0",
+    "pandas>=2.0.0",
+
+    # RAG + similarity
     "faiss-cpu>=1.7.0",
+
+    # Transport / IO
+    "httpx>=0.25.0",
     "requests>=2.31.0",
+
+    # Reliability primitives
     "circuitbreaker>=1.4.0",
     "atomicwrites>=1.4.0",
-    "pandas>=2.0.0",
-    "httpx>=0.25.0",
+
+    # OSS demo / local UI (non-executing)
+    "gradio>=4.19.0"
 ]
 
 [project.optional-dependencies]
@@ -48,10 +76,32 @@ dev = [
     "ruff>=0.1.0",
     "black>=23.0.0",
     "types-requests",
-    "types-PyYAML",
+    "types-PyYAML"
 ]
 
 [project.urls]
 Homepage = "https://github.com/petterjuan/agentic-reliability-framework"
-Documentation = "https://docs.arf.dev"
+Repository = "https://github.com/petterjuan/agentic-reliability-framework"
+Documentation = "https://github.com/petterjuan/agentic-reliability-framework/tree/main/docs"
+"Live Demo" = "https://huggingface.co/spaces/petter2025/agentic-reliability-framework"
 Enterprise = "https://arf.dev/enterprise"
+
+[tool.setuptools]
+packages = { find = { include = ["agentic_reliability_framework*"] } }
+
+[tool.setuptools.package-data]
+agentic_reliability_framework = ["py.typed"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+warn_unused_configs = true
+
+[tool.ruff]
+lin
