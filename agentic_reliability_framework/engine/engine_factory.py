@@ -14,7 +14,7 @@ You may obtain a copy of the License at
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
+See the License for the complete language governing permissions and
 limitations under the License.
 """
 
@@ -92,6 +92,38 @@ class EngineFactory:
         self._engines_created = 0
         logger.info("Initialized EngineFactory (OSS Edition)")
     
+    def _get_faiss_index(self):
+        """Get or create FAISS index for RAG"""
+        try:
+            # Try to import from memory module
+            from ..memory.faiss_index import create_faiss_index
+            
+            # Check if we should use in-memory or persistent index
+            if hasattr(config, 'index_file') and config.index_file:
+                logger.info(f"Creating FAISS index from {config.index_file}")
+                return create_faiss_index(persist_path=config.index_file)
+            else:
+                logger.info("Creating in-memory FAISS index")
+                return create_faiss_index()
+                
+        except ImportError as e:
+            logger.warning(f"FAISS not available: {e}")
+            # Return a minimal mock for compatibility
+            class MockFAISS:
+                def get_count(self):
+                    return 0
+                def add_async(self, vectors):
+                    return 0
+                def query(self, vector, top_k=5):
+                    return []
+                def add_text(self, text, embedding):
+                    return 0
+            
+            return MockFAISS()
+        except Exception as e:
+            logger.error(f"Failed to create FAISS index: {e}")
+            return None
+    
     def create_engine(self, engine_config: Optional[EngineConfig] = None) -> Union[OSSV3ReliabilityEngine, OSSEnhancedV3ReliabilityEngine]:
         """
         Create a reliability engine instance
@@ -122,27 +154,28 @@ class EngineFactory:
             if use_enhanced:
                 logger.info("Creating EnhancedV3ReliabilityEngine (OSS limits apply)")
                 
-                # Get RAG and MCP for enhanced engine
-                rag_graph = None
+                # Get FAISS index for RAG
+                faiss_index = None
+                if config.rag_enabled:
+                    faiss_index = self._get_faiss_index()
+                    if faiss_index is None:
+                        logger.warning("FAISS index not available, RAG disabled")
+                        # Fall back to base engine
+                        return self._create_base_engine()
+                
+                # Get MCP for enhanced engine
                 mcp_server = None
+                if config.mcp_enabled:
+                    try:
+                        from ..lazy import get_mcp_server
+                        mcp_server = get_mcp_server()
+                    except ImportError:
+                        logger.warning("MCP server not available")
                 
-                try:
-                    # Only import if we need it
-                    from ..lazy import get_rag_graph
-                    rag_graph = get_rag_graph()
-                except ImportError:
-                    logger.warning("RAG graph not available")
-                
-                try:
-                    from ..lazy import get_mcp_server
-                    mcp_server = get_mcp_server()
-                except ImportError:
-                    logger.warning("MCP server not available")
-                
-                # Create enhanced engine
+                # CORRECTED: Create enhanced engine with proper parameters
                 enhanced_base_engine: EnhancedV3Engine = EnhancedV3Engine(
-                    rag_graph=rag_graph,
-                    mcp_server=mcp_server
+                    faiss_index=faiss_index,  # FIXED: Pass faiss_index, not rag_graph
+                    mcp_server=mcp_server      # FIXED: Positional argument
                 )
                 
                 # Wrap in OSS wrapper
@@ -163,33 +196,36 @@ class EngineFactory:
                 return enhanced_engine
                 
             else:
-                logger.info("Creating V3ReliabilityEngine (OSS Edition)")
-                base_engine: BaseV3Engine = BaseV3Engine()
-                
-                # Wrap in OSS wrapper
-                oss_engine: OSSV3ReliabilityEngine = OSSV3ReliabilityEngine(base_engine)
-                
-                self._engines_created += 1
-                
-                # Log OSS capabilities
-                logger.info(f"OSS Engine Created: {type(oss_engine).__name__}")
-                logger.info(f"OSS Limits: 1000 incident nodes max, advisory mode only")
-                
-                if hasattr(oss_engine, '_requires_enterprise') and oss_engine._requires_enterprise:
-                    logger.info(
-                        "💡 Upgrade to Enterprise for more features: "
-                        "https://arf.dev/enterprise"
-                    )
-                
-                return oss_engine
+                return self._create_base_engine()
             
         except Exception as e:
             logger.error(f"Failed to create engine: {e}")
-            # Fallback to basic engine - use different variable names to avoid redefinition
-            from .reliability import V3ReliabilityEngine as BaseV3Engine
-            fallback_base_engine = BaseV3Engine()
-            fallback_engine = OSSV3ReliabilityEngine(fallback_base_engine)
-            return fallback_engine
+            # Fallback to basic engine
+            return self._create_base_engine()
+    
+    def _create_base_engine(self) -> OSSV3ReliabilityEngine:
+        """Create base V3 engine with OSS wrapper"""
+        from .reliability import V3ReliabilityEngine as BaseV3Engine
+        
+        logger.info("Creating V3ReliabilityEngine (OSS Edition)")
+        base_engine: BaseV3Engine = BaseV3Engine()
+        
+        # Wrap in OSS wrapper
+        oss_engine: OSSV3ReliabilityEngine = OSSV3ReliabilityEngine(base_engine)
+        
+        self._engines_created += 1
+        
+        # Log OSS capabilities
+        logger.info(f"OSS Engine Created: {type(oss_engine).__name__}")
+        logger.info(f"OSS Limits: 1000 incident nodes max, advisory mode only")
+        
+        if hasattr(oss_engine, '_requires_enterprise') and oss_engine._requires_enterprise:
+            logger.info(
+                "💡 Upgrade to Enterprise for more features: "
+                "https://arf.dev/enterprise"
+            )
+        
+        return oss_engine
     
     def create_enhanced_engine(
         self, 
@@ -216,34 +252,35 @@ class EngineFactory:
             )
             rag_nodes_limit = 1000
         
-        # Get RAG and MCP for enhanced engine
-        rag_graph = None
+        # Get FAISS index for RAG if enabled
+        faiss_index = None
+        if enable_rag and config.rag_enabled:
+            faiss_index = self._get_faiss_index()
+            if faiss_index is None:
+                logger.warning("FAISS index not available, RAG will be disabled")
+                enable_rag = False
+        
+        # Get MCP server
         mcp_server = None
-        
-        if enable_rag:
+        if config.mcp_enabled:
             try:
-                from ..lazy import get_rag_graph
-                rag_graph = get_rag_graph()
+                from ..lazy import get_mcp_server
+                mcp_server = get_mcp_server()
             except ImportError:
-                logger.warning("RAG graph not available")
-        
-        try:
-            from ..lazy import get_mcp_server
-            mcp_server = get_mcp_server()
-        except ImportError:
-            logger.warning("MCP server not available")
+                logger.warning("MCP server not available")
         
         from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
         
+        # CORRECTED: Create enhanced engine with proper parameters
         enhanced_base_engine: EnhancedV3Engine = EnhancedV3Engine(
-            rag_graph=rag_graph,
-            mcp_server=mcp_server
+            faiss_index=faiss_index,  # FIXED: Pass faiss_index
+            mcp_server=mcp_server      # FIXED: Positional argument
         )
         
         # Wrap in OSS wrapper with capabilities
         oss_enhanced_engine: OSSEnhancedV3ReliabilityEngine = OSSEnhancedV3ReliabilityEngine(
             enhanced_base_engine,
-            enable_rag=enable_rag,
+            enable_rag=enable_rag and faiss_index is not None,  # Only enable if we have FAISS
             rag_nodes_limit=rag_nodes_limit
         )
         
@@ -261,7 +298,7 @@ class EngineFactory:
             "license": "Apache 2.0",
             "engines_available": {
                 "V3ReliabilityEngine": True,
-                "EnhancedV3ReliabilityEngine": True,
+                "EnhancedV3ReliabilityEngine": config.rag_enabled or config.mcp_enabled,
             },
             "limits": {
                 "max_rag_incident_nodes": 1000,
@@ -279,9 +316,9 @@ class EngineFactory:
                 "self_healing_execution": False,  # OSS: Advisory only
             },
             "requires_enterprise": (
-                config.rag_max_incident_nodes >= 1000 or
-                config.rag_max_outcome_nodes >= 5000 or
-                config.mcp_mode != "advisory"
+                getattr(config, 'rag_max_incident_nodes', 0) >= 1000 or
+                getattr(config, 'rag_max_outcome_nodes', 0) >= 5000 or
+                getattr(config, 'mcp_mode', 'advisory') != "advisory"
             ),
             "enterprise_features": [
                 "autonomous_execution",
