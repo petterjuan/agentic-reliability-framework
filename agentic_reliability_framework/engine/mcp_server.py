@@ -73,6 +73,17 @@ class MCPRequestStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+# ========== CONFIDENCE BASIS ==========
+
+class ConfidenceBasis(str, Enum):
+    """Sources of confidence for healing decisions."""
+    POLICY_ONLY = "policy_only"
+    POLICY_PLUS_SAFETY = "policy_plus_safety"
+    HISTORICAL_SIMILARITY = "historical_similarity"
+    DETERMINISTIC_GUARANTEE = "deterministic_guarantee"
+    LEARNED_OUTCOMES = "learned_outcomes"
+
+
 # ========== DATA CLASSES ==========
 
 @dataclass(frozen=True, slots=True)
@@ -111,18 +122,28 @@ class MCPResponse:
     result: Optional[Dict[str, Any]] = None
     approval_id: Optional[str] = None
     timestamp: float = field(default_factory=time.time)
+    confidence_basis: Optional[str] = None  # NEW: Track confidence source
+    learning_applied: bool = False  # NEW: Explicit learning flag
+    learning_reason: str = "OSS advisory mode"  # NEW: Learning status
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary"""
-        return {
+        result = {
             "request_id": self.request_id,
             "status": self.status.value,
             "message": self.message,
             "executed": self.executed,
             "result": self.result,
             "approval_id": self.approval_id,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
+            "learning_applied": self.learning_applied,  # NEW
+            "learning_reason": self.learning_reason,    # NEW
         }
+        
+        if self.confidence_basis:
+            result["confidence_basis"] = self.confidence_basis
+        
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -510,9 +531,9 @@ try:
 except ImportError as e:
     logger.warning(f"Failed to import from arf_core: {e}. Creating fallbacks...")
     
-    # Define minimal HealingIntent
+    # Define minimal HealingIntent with confidence basis
     from dataclasses import dataclass
-    from typing import Dict, Any
+    from typing import Dict, Any, Optional, List
     
     @dataclass
     class HealingIntent:
@@ -523,6 +544,11 @@ except ImportError as e:
         justification: str = ""
         confidence: float = 0.85
         incident_id: str = ""
+        similar_incidents: Optional[List[Dict[str, Any]]] = None
+        rag_similarity_score: Optional[float] = None
+        confidence_basis: str = "policy_only"  # NEW
+        learning_applied: bool = False  # NEW
+        learning_reason: str = "OSS advisory mode"  # NEW
         
         def to_enterprise_request(self):
             return {
@@ -532,6 +558,11 @@ except ImportError as e:
                 "justification": self.justification,
                 "confidence": self.confidence,
                 "incident_id": self.incident_id,
+                "similar_incidents": self.similar_incidents,
+                "rag_similarity_score": self.rag_similarity_score,
+                "confidence_basis": self.confidence_basis,  # NEW
+                "learning_applied": self.learning_applied,  # NEW
+                "learning_reason": self.learning_reason,    # NEW
                 "requires_enterprise": True,
                 "oss_metadata": {"fallback": True}
             }
@@ -562,7 +593,10 @@ except ImportError as e:
                 parameters=parameters,
                 justification=f"Fallback analysis for {tool_name} on {component}",
                 confidence=0.75,
-                incident_id=context.get("incident_id", "") if context else ""
+                incident_id=context.get("incident_id", "") if context else "",
+                confidence_basis="policy_only",
+                learning_applied=False,
+                learning_reason="OSS advisory mode"
             )
     
     def create_oss_mcp_client():
@@ -799,7 +833,9 @@ class MCPServer:
             request_id=request.request_id,
             status=status,
             message=message,
-            executed=False
+            executed=False,
+            learning_applied=False,  # NEW: Always false for OSS
+            learning_reason="OSS advisory mode does not learn from outcomes"
         )
 
     async def _create_healing_intent(self, request: MCPRequest) -> HealingIntent:
@@ -843,6 +879,14 @@ class MCPServer:
                 
                 # The OSS client returns a HealingIntent directly
                 # Make sure it's marked as OSS advisory
+                # Add confidence basis from request metadata if available
+                healing_intent.confidence_basis = request.metadata.get(
+                    "confidence_basis", 
+                    "policy_only"
+                )
+                healing_intent.learning_applied = False
+                healing_intent.learning_reason = "OSS advisory mode"
+                
                 return healing_intent.mark_as_oss_advisory()
                     
             except Exception as e:
@@ -851,14 +895,30 @@ class MCPServer:
         
         # Fallback: Create basic HealingIntent using the factory method
         try:
-            return HealingIntent.from_analysis(
+            # Extract confidence basis from metadata
+            confidence_basis = request.metadata.get("confidence_basis", "policy_only")
+            
+            # Determine if deterministic guarantee
+            deterministic_actions = {"restart_container", "scale_out", "rollback"}
+            if (request.tool in deterministic_actions and 
+                request.metadata.get("deterministic_guarantee", False)):
+                confidence_basis = "deterministic_guarantee"
+            
+            healing_intent = HealingIntent.from_analysis(
                 action=request.tool,
                 component=request.component,
                 parameters=request.parameters,
                 justification=request.justification,
-                confidence=0.85,
+                confidence=request.metadata.get("confidence", 0.85),
                 incident_id=request.metadata.get("incident_id", ""),
-            ).mark_as_oss_advisory()  # IMPORTANT: Mark as OSS advisory
+            )
+            
+            # Add confidence basis and learning flags
+            healing_intent.confidence_basis = confidence_basis
+            healing_intent.learning_applied = False
+            healing_intent.learning_reason = "OSS advisory mode does not learn from outcomes"
+            
+            return healing_intent.mark_as_oss_advisory()
         
         except Exception as e:
             logger.error(f"Failed to create HealingIntent: {e}")
@@ -877,6 +937,9 @@ class MCPServer:
             justification: str = ""
             confidence: float = 0.85
             incident_id: str = ""
+            confidence_basis: str = "policy_only"  # NEW
+            learning_applied: bool = False  # NEW
+            learning_reason: str = "OSS advisory mode"  # NEW
             
             def to_enterprise_request(self):
                 return {
@@ -886,6 +949,9 @@ class MCPServer:
                     "justification": self.justification,
                     "confidence": self.confidence,
                     "incident_id": self.incident_id,
+                    "confidence_basis": self.confidence_basis,  # NEW
+                    "learning_applied": self.learning_applied,  # NEW
+                    "learning_reason": self.learning_reason,    # NEW
                     "requires_enterprise": True,
                     "oss_metadata": {"fallback": True}
                 }
@@ -962,8 +1028,15 @@ class MCPServer:
                 "status": "advisory_completed",
                 "timestamp": time.time(),
                 "analysis_time_seconds": analysis_time,
-                "healing_intent_created": healing_intent is not None
+                "healing_intent_created": healing_intent is not None,
+                "confidence_basis": request.metadata.get("confidence_basis", "policy_only"),  # NEW
+                "deterministic_guarantee": request.metadata.get("deterministic_guarantee", False),  # NEW
             })
+            
+            # Extract confidence basis from healing intent or metadata
+            confidence_basis = request.metadata.get("confidence_basis", "policy_only")
+            if healing_intent and hasattr(healing_intent, 'confidence_basis'):
+                confidence_basis = healing_intent.confidence_basis
             
             # Return advisory response
             result_data = {
@@ -985,6 +1058,11 @@ class MCPServer:
                 ],
                 "analysis_time_seconds": analysis_time,
                 "healing_intent_available": healing_intent is not None,
+                # NEW: Confidence and learning information
+                "confidence_basis": confidence_basis,
+                "learning_applied": False,  # OSS default
+                "learning_reason": "OSS advisory mode does not persist or learn from outcomes",
+                "deterministic_guarantee": request.metadata.get("deterministic_guarantee", False),
             }
             
             # Add HealingIntent data if available
@@ -992,8 +1070,10 @@ class MCPServer:
                 result_data["healing_intent"] = healing_intent.to_enterprise_request()
                 result_data["oss_analysis"] = {
                     "confidence": healing_intent.confidence,
+                    "confidence_basis": confidence_basis,
                     "similar_incidents_count": len(healing_intent.similar_incidents or []),
                     "rag_used": healing_intent.rag_similarity_score is not None,
+                    "deterministic_guarantee": confidence_basis == "deterministic_guarantee",
                 }
             
             return MCPResponse(
@@ -1001,7 +1081,10 @@ class MCPServer:
                 status=MCPRequestStatus.COMPLETED,
                 message=f"OSS Analysis: Recommend {request.tool} for {request.component}",
                 executed=False,
-                result=result_data
+                result=result_data,
+                confidence_basis=confidence_basis,
+                learning_applied=False,
+                learning_reason="OSS advisory mode"
             )
             
         except Exception as e:
@@ -1148,6 +1231,11 @@ class MCPServer:
         for tool_name, tool in self.registered_tools.items():
             if hasattr(tool, 'execute'):
                 purity_checks.append(f"Tool {tool_name} has execute method (should be advisory only)")
+        
+        # Check learning boundaries
+        for history in self._execution_history[-10:]:
+            if history.get("learning_applied", False):
+                purity_checks.append(f"History entry {history.get('request_id')} has learning_applied=True (OSS violation)")
         
         if purity_checks:
             logger.warning(f"OSS purity violations: {purity_checks}")
