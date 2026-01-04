@@ -1,4 +1,3 @@
-# arf_core/models/__init__.py - FIXED VERSION
 """
 OSS Models Module
 Apache 2.0 Licensed
@@ -18,7 +17,7 @@ from .healing_intent import (
     create_oss_advisory_intent,
 )
 
-# Define EventSeverity enum
+# Define EventSeverity enum locally to avoid circular imports
 from enum import Enum
 
 class EventSeverity(Enum):
@@ -28,9 +27,43 @@ class EventSeverity(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
-# Define ReliabilityEvent compatibility wrapper
-from typing import Any, Optional, Dict
+# Create a local ReliabilityEvent class to avoid circular imports
+from typing import Any, Optional, Dict, List
 from datetime import datetime
+from dataclasses import dataclass, field
+from typing import Optional as Opt
+
+@dataclass
+class ReliabilityEvent:
+    """Local ReliabilityEvent for OSS to avoid circular imports"""
+    component: str
+    severity: Any
+    latency_p99: float = 100.0
+    error_rate: float = 0.05
+    throughput: float = 1000.0
+    cpu_util: float = 0.5
+    memory_util: float = 0.5
+    timestamp: datetime = field(default_factory=datetime.now)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Convert severity to string if it's an enum"""
+        if hasattr(self.severity, 'value'):
+            self.severity = self.severity.value
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary format"""
+        return {
+            "component": self.component,
+            "severity": self.severity,
+            "latency_p99": self.latency_p99,
+            "error_rate": self.error_rate,
+            "throughput": self.throughput,
+            "cpu_util": self.cpu_util,
+            "memory_util": self.memory_util,
+            "timestamp": self.timestamp.isoformat(),
+            "metadata": self.metadata
+        }
 
 def create_compatible_event(
     component: str,
@@ -42,91 +75,48 @@ def create_compatible_event(
     memory_util: float = 0.5,
     timestamp: Optional[datetime] = None,
     **extra_kwargs: Any
-):
+) -> ReliabilityEvent:
     """
     Create a ReliabilityEvent that's compatible with both Pydantic and dataclass expectations
     
     This is a factory function that returns an object with the right attributes
     regardless of whether the Pydantic model is available.
     """
-    # Convert severity if it's an EventSeverity enum
-    severity_value = severity.value if hasattr(severity, 'value') else str(severity)
+    event_kwargs = {
+        "component": component,
+        "severity": severity,
+        "latency_p99": latency_p99,
+        "error_rate": error_rate,
+        "throughput": throughput,
+        "cpu_util": cpu_util,
+        "memory_util": memory_util,
+    }
     
-    try:
-        # Try to use Pydantic model (primary for RAG graph)
-        from agentic_reliability_framework.models import ReliabilityEvent as PydanticEvent
-        from agentic_reliability_framework.models import EventSeverity as PydanticEventSeverity
-        
-        # Map severity string to Pydantic EventSeverity enum
-        severity_map = {
-            "low": PydanticEventSeverity.LOW,
-            "medium": PydanticEventSeverity.MEDIUM,
-            "high": PydanticEventSeverity.HIGH,
-            "critical": PydanticEventSeverity.CRITICAL
-        }
-        
-        pydantic_severity = severity_map.get(severity_value.lower(), PydanticEventSeverity.MEDIUM)
-        
-        # Create Pydantic event
-        event_kwargs = {
-            "component": component,
-            "severity": pydantic_severity,
-            "latency_p99": latency_p99,
-            "error_rate": error_rate,
-            "throughput": throughput,
-            "cpu_util": cpu_util if cpu_util is not None else 0.5,
-            "memory_util": memory_util if memory_util is not None else 0.5,
-        }
-        
-        # Add timestamp if provided (Pydantic model has default)
-        if timestamp is not None:
-            event_kwargs["timestamp"] = timestamp
-        
-        # Add any extra kwargs
-        event_kwargs.update(extra_kwargs)
-        
-        return PydanticEvent(**event_kwargs)
-        
-    except ImportError:
-        # Fallback to dataclass when Pydantic is not available
-        from dataclasses import dataclass
-        
-        @dataclass
-        class FallbackReliabilityEvent:
-            component: str
-            severity: Any
-            latency_p99: float = 100.0
-            error_rate: float = 0.05
-            throughput: float = 1000.0
-            cpu_util: float = 0.5
-            memory_util: float = 0.5
-            timestamp: Optional[datetime] = None
-            
-            def __post_init__(self):
-                if self.timestamp is None:
-                    self.timestamp = datetime.now()
-                
-                # Ensure severity is a string
-                if hasattr(self.severity, 'value'):
-                    self.severity = self.severity.value
-        
-        return FallbackReliabilityEvent(
-            component=component,
-            severity=severity,
-            latency_p99=latency_p99,
-            error_rate=error_rate,
-            throughput=throughput,
-            cpu_util=cpu_util,
-            memory_util=memory_util,
-            timestamp=timestamp,
-        )
+    if timestamp is not None:
+        event_kwargs["timestamp"] = timestamp
+    
+    if extra_kwargs:
+        event_kwargs["metadata"] = extra_kwargs
+    
+    return ReliabilityEvent(**event_kwargs)
 
-# For backward compatibility, create a class-like interface
-class ReliabilityEvent:
-    """Compatibility wrapper for ReliabilityEvent"""
+# For backward compatibility with existing code
+class ReliabilityEventCompat(ReliabilityEvent):
+    """Compatibility wrapper that behaves like both dataclass and Pydantic model"""
     
-    def __new__(cls, *args, **kwargs):
-        return create_compatible_event(*args, **kwargs)
+    @classmethod
+    def parse_obj(cls, data: Dict[str, Any]) -> 'ReliabilityEventCompat':
+        """Mimic Pydantic's parse_obj method"""
+        return cls(**data)
+    
+    def dict(self) -> Dict[str, Any]:
+        """Mimic Pydantic's dict method"""
+        return self.to_dict()
+    
+    def json(self) -> str:
+        """Mimic Pydantic's json method"""
+        import json
+        return json.dumps(self.to_dict())
 
 __all__ = [
     "HealingIntent",
@@ -141,6 +131,7 @@ __all__ = [
     "create_scale_out_intent",
     "create_oss_advisory_intent",
     "ReliabilityEvent",
+    "ReliabilityEventCompat",
     "EventSeverity",
     "create_compatible_event",
 ]
