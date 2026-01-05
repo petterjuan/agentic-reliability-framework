@@ -21,8 +21,6 @@ limitations under the License.
 import logging
 from typing import Dict, Any, Optional, Union, TYPE_CHECKING
 
-from ..config import config
-
 logger = logging.getLogger(__name__)
 
 # Type aliases
@@ -51,12 +49,28 @@ class OSSV3ReliabilityEngine:
     
     def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the base engine"""
-        return getattr(self._engine, name)
+        try:
+            return getattr(self._engine, name)
+        except AttributeError:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'. "
+                f"Base engine type: {type(self._engine).__name__}"
+            )
     
     def __dir__(self) -> list[str]:
         """Include both engine attributes and OSS attributes"""
         engine_dir = dir(self._engine)
         return sorted(set(engine_dir + list(self.__dict__.keys())))
+    
+    @property
+    def oss_edition(self) -> bool:
+        """Return OSS edition flag"""
+        return self._oss_edition
+    
+    @property
+    def oss_capabilities(self) -> Dict[str, Any]:
+        """Return OSS capabilities"""
+        return self._oss_capabilities.copy()
 
 
 class OSSEnhancedV3ReliabilityEngine:
@@ -77,12 +91,28 @@ class OSSEnhancedV3ReliabilityEngine:
     
     def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the base engine"""
-        return getattr(self._engine, name)
+        try:
+            return getattr(self._engine, name)
+        except AttributeError:
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'. "
+                f"Base engine type: {type(self._engine).__name__}"
+            )
     
     def __dir__(self) -> list[str]:
         """Include both engine attributes and OSS attributes"""
         engine_dir = dir(self._engine)
         return sorted(set(engine_dir + list(self.__dict__.keys())))
+    
+    @property
+    def oss_edition(self) -> bool:
+        """Return OSS edition flag"""
+        return self._oss_edition
+    
+    @property
+    def oss_capabilities(self) -> Dict[str, Any]:
+        """Return OSS capabilities"""
+        return self._oss_capabilities.copy()
 
 
 class EngineFactory:
@@ -90,7 +120,26 @@ class EngineFactory:
     
     def __init__(self) -> None:
         self._engines_created = 0
+        self._config = self._get_config()
         logger.info("Initialized EngineFactory (OSS Edition)")
+    
+    def _get_config(self) -> Any:
+        """Safely get config module"""
+        try:
+            from ..config import config
+            return config
+        except ImportError:
+            logger.warning("Config module not available, using defaults")
+            # Return a minimal config object
+            class DefaultConfig:
+                rag_enabled = False
+                mcp_enabled = False
+                index_file = None
+                
+                def __getattr__(self, name):
+                    return None
+            
+            return DefaultConfig()
     
     def _get_faiss_index(self):
         """Get or create FAISS index for RAG"""
@@ -99,25 +148,50 @@ class EngineFactory:
             from ..memory.faiss_index import create_faiss_index
             
             # Check if we should use in-memory or persistent index
-            if hasattr(config, 'index_file') and config.index_file:
-                logger.info(f"Creating FAISS index from {config.index_file}")
-                return create_faiss_index(persist_path=config.index_file)
+            if hasattr(self._config, 'index_file') and self._config.index_file:
+                logger.info(f"Creating FAISS index from {self._config.index_file}")
+                return create_faiss_index(persist_path=self._config.index_file)
             else:
                 logger.info("Creating in-memory FAISS index")
                 return create_faiss_index()
                 
         except ImportError as e:
             logger.warning(f"FAISS not available: {e}")
-            # Return a minimal mock for compatibility
+            # Return a complete mock for compatibility
             class MockFAISS:
+                def __init__(self):
+                    self._count = 0
+                    self._vectors = []
+                
                 def get_count(self):
-                    return 0
+                    return self._count
+                
                 def add_async(self, vectors):
-                    return 0
+                    self._vectors.extend(vectors)
+                    self._count += len(vectors)
+                    return self._count
+                
                 def query(self, vector, top_k=5):
                     return []
+                
                 def add_text(self, text, embedding):
-                    return 0
+                    self._count += 1
+                    return self._count
+                
+                def search(self, query_vector, k=5):
+                    return []
+                
+                def get_dimension(self):
+                    return 768
+                
+                def is_trained(self):
+                    return True
+                
+                def save(self, path):
+                    pass
+                
+                def load(self, path):
+                    pass
             
             return MockFAISS()
         except Exception as e:
@@ -147,7 +221,7 @@ class EngineFactory:
             if engine_config:
                 # Check if enhanced features are requested
                 rag_enabled = engine_config.get("rag_enabled", False)
-                if rag_enabled and config.rag_enabled:
+                if rag_enabled and self._config.rag_enabled:
                     use_enhanced = True
             
             # Create engine
@@ -156,7 +230,7 @@ class EngineFactory:
                 
                 # Get FAISS index for RAG
                 faiss_index = None
-                if config.rag_enabled:
+                if self._config.rag_enabled:
                     faiss_index = self._get_faiss_index()
                     if faiss_index is None:
                         logger.warning("FAISS index not available, RAG disabled")
@@ -165,18 +239,27 @@ class EngineFactory:
                 
                 # Get MCP for enhanced engine
                 mcp_server = None
-                if config.mcp_enabled:
+                if self._config.mcp_enabled:
                     try:
                         from ..lazy import get_mcp_server
                         mcp_server = get_mcp_server()
-                    except ImportError:
-                        logger.warning("MCP server not available")
+                    except ImportError as e:
+                        logger.warning(f"MCP server not available: {e}")
+                        mcp_server = None
                 
-                # CORRECTED: Create enhanced engine with proper parameters
-                enhanced_base_engine: EnhancedV3Engine = EnhancedV3Engine(
-                    faiss_index=faiss_index,  # FIXED: Pass faiss_index, not rag_graph
-                    mcp_server=mcp_server      # FIXED: Positional argument
-                )
+                # FIXED: Create enhanced engine with proper parameters
+                # Check EnhancedV3Engine constructor signature
+                enhanced_base_engine: EnhancedV3Engine
+                try:
+                    # Try with both parameters as positional
+                    enhanced_base_engine = EnhancedV3Engine(faiss_index, mcp_server)
+                except TypeError:
+                    # Fall back to keyword arguments if positional fails
+                    logger.debug("Using keyword arguments for EnhancedV3Engine")
+                    enhanced_base_engine = EnhancedV3Engine(
+                        faiss_index=faiss_index,
+                        mcp_server=mcp_server
+                    )
                 
                 # Wrap in OSS wrapper
                 enhanced_engine: OSSEnhancedV3ReliabilityEngine = OSSEnhancedV3ReliabilityEngine(enhanced_base_engine)
@@ -198,17 +281,41 @@ class EngineFactory:
             else:
                 return self._create_base_engine()
             
+        except ImportError as e:
+            logger.error(f"Failed to import engine modules: {e}")
+            # Try to create basic engine as fallback
+            try:
+                return self._create_base_engine()
+            except Exception as inner_e:
+                logger.error(f"Complete engine creation failure: {inner_e}")
+                raise RuntimeError(
+                    f"Cannot create any engine. "
+                    f"Check dependencies and configuration. "
+                    f"Original error: {e}, Fallback error: {inner_e}"
+                )
         except Exception as e:
             logger.error(f"Failed to create engine: {e}")
-            # Fallback to basic engine
-            return self._create_base_engine()
+            # Try to create basic engine as fallback
+            try:
+                return self._create_base_engine()
+            except Exception:
+                # Re-raise original error if fallback also fails
+                raise RuntimeError(f"Failed to create engine: {e}")
     
     def _create_base_engine(self) -> OSSV3ReliabilityEngine:
         """Create base V3 engine with OSS wrapper"""
-        from .reliability import V3ReliabilityEngine as BaseV3Engine
+        try:
+            from .reliability import V3ReliabilityEngine as BaseV3Engine
+        except ImportError as e:
+            logger.error(f"Failed to import BaseV3Engine: {e}")
+            raise ImportError(f"Cannot create base engine: {e}")
         
         logger.info("Creating V3ReliabilityEngine (OSS Edition)")
-        base_engine: BaseV3Engine = BaseV3Engine()
+        try:
+            base_engine: BaseV3Engine = BaseV3Engine()
+        except Exception as e:
+            logger.error(f"Failed to instantiate BaseV3Engine: {e}")
+            raise RuntimeError(f"Cannot instantiate base engine: {e}")
         
         # Wrap in OSS wrapper
         oss_engine: OSSV3ReliabilityEngine = OSSV3ReliabilityEngine(base_engine)
@@ -254,7 +361,7 @@ class EngineFactory:
         
         # Get FAISS index for RAG if enabled
         faiss_index = None
-        if enable_rag and config.rag_enabled:
+        if enable_rag and self._config.rag_enabled:
             faiss_index = self._get_faiss_index()
             if faiss_index is None:
                 logger.warning("FAISS index not available, RAG will be disabled")
@@ -262,20 +369,32 @@ class EngineFactory:
         
         # Get MCP server
         mcp_server = None
-        if config.mcp_enabled:
+        if self._config.mcp_enabled:
             try:
                 from ..lazy import get_mcp_server
                 mcp_server = get_mcp_server()
-            except ImportError:
-                logger.warning("MCP server not available")
+            except ImportError as e:
+                logger.warning(f"MCP server not available: {e}")
+                mcp_server = None
         
-        from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
+        try:
+            from .v3_reliability import V3ReliabilityEngine as EnhancedV3Engine
+        except ImportError as e:
+            logger.error(f"Failed to import EnhancedV3Engine: {e}")
+            raise ImportError(f"Cannot create enhanced engine: {e}")
         
-        # CORRECTED: Create enhanced engine with proper parameters
-        enhanced_base_engine: EnhancedV3Engine = EnhancedV3Engine(
-            faiss_index=faiss_index,  # FIXED: Pass faiss_index
-            mcp_server=mcp_server      # FIXED: Positional argument
-        )
+        # FIXED: Create enhanced engine with proper parameters
+        enhanced_base_engine: EnhancedV3Engine
+        try:
+            # Try with both parameters as positional
+            enhanced_base_engine = EnhancedV3Engine(faiss_index, mcp_server)
+        except TypeError:
+            # Fall back to keyword arguments if positional fails
+            logger.debug("Using keyword arguments for EnhancedV3Engine")
+            enhanced_base_engine = EnhancedV3Engine(
+                faiss_index=faiss_index,
+                mcp_server=mcp_server
+            )
         
         # Wrap in OSS wrapper with capabilities
         oss_enhanced_engine: OSSEnhancedV3ReliabilityEngine = OSSEnhancedV3ReliabilityEngine(
@@ -298,7 +417,7 @@ class EngineFactory:
             "license": "Apache 2.0",
             "engines_available": {
                 "V3ReliabilityEngine": True,
-                "EnhancedV3ReliabilityEngine": config.rag_enabled or config.mcp_enabled,
+                "EnhancedV3ReliabilityEngine": self._config.rag_enabled or self._config.mcp_enabled,
             },
             "limits": {
                 "max_rag_incident_nodes": 1000,
@@ -308,7 +427,7 @@ class EngineFactory:
                 "persistent_storage": False,
             },
             "capabilities": {
-                "rag_analysis": config.rag_enabled,
+                "rag_analysis": self._config.rag_enabled,
                 "anomaly_detection": True,
                 "business_impact": True,
                 "forecasting": True,
@@ -316,9 +435,9 @@ class EngineFactory:
                 "self_healing_execution": False,  # OSS: Advisory only
             },
             "requires_enterprise": (
-                getattr(config, 'rag_max_incident_nodes', 0) >= 1000 or
-                getattr(config, 'rag_max_outcome_nodes', 0) >= 5000 or
-                getattr(config, 'mcp_mode', 'advisory') != "advisory"
+                getattr(self._config, 'rag_max_incident_nodes', 0) >= 1000 or
+                getattr(self._config, 'rag_max_outcome_nodes', 0) >= 5000 or
+                getattr(self._config, 'mcp_mode', 'advisory') != "advisory"
             ),
             "enterprise_features": [
                 "autonomous_execution",
@@ -373,6 +492,13 @@ class EngineFactory:
         
         if engine_config.get("rollout_percentage", 0) > 0:
             violations.append("rollout_percentage requires Enterprise edition")
+        
+        # Add warnings for features that will be ignored in OSS
+        if engine_config.get("execution_enabled", False):
+            warnings.append("execution_enabled will be ignored in OSS (advisory only)")
+        
+        if engine_config.get("autonomous_mode", False):
+            warnings.append("autonomous_mode will be ignored in OSS (advisory only)")
         
         return {
             "valid": len(violations) == 0,
