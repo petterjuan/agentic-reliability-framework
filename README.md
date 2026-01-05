@@ -650,7 +650,7 @@ This is a **revenue protection system in Enterprise deployments**, and a **trust
 - Enterprise expansion path
 - OSS → Paid flywheel
 
-```
+```mermaid
 graph LR 
    ARF["ARF v3.0"] --> Finance 
    ARF --> Healthcare 
