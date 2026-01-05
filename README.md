@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://github.com/petterjuan/agentic-reliability-framework/raw/main/assets/assets/ARF_logo.png" width="100%" alt="ARF logo">
+  <img src="https://github.com/petterjuan/agentic-reliability-framework/raw/main/assets/ARF_logo.png" width="100%" alt="ARF logo">
 </p>
 
-<h2 align="center">Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing.</h2>
+**Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing.**
 
 > **ARF is the first enterprise framework that enables autonomous, context-aware AI agents** with advisory healing intelligence (OSS) and **executed remediation (Enterprise)** for infrastructure reliability monitoring and remediation at scale.
 
