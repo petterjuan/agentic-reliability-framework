@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/petterjuan/agentic-reliability-framework/main/assets/arf-banner.svg" alt="Agentic Reliability Framework Banner" width="100%" />
+  <img src="https://github.com/petterjuan/agentic-reliability-framework/raw/main/assets/arf-logo.png" width="100%" alt="ARF Banner">
 </p>
 
 <h2 align="center">Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing.</h2>
