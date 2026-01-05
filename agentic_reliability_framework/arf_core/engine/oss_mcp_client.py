@@ -18,10 +18,9 @@ import json
 from typing import Dict, Any, Optional, List, Union, Tuple, cast
 from dataclasses import dataclass, field
 from datetime import datetime
+import hashlib
 
-# FIXED: Use relative imports since we're inside arf_core
-from ..models import ReliabilityEvent, EventSeverity, create_compatible_event
-
+# FIXED: Use direct imports from arf_core to avoid circular dependencies
 from ..constants import (
     OSS_EDITION,
     OSS_LICENSE,
@@ -35,6 +34,7 @@ from ..constants import (
     check_oss_compliance,
 )
 
+# FIXED: Import healing intent directly to avoid circular imports
 from ..models.healing_intent import (
     HealingIntent,
     HealingIntentSerializer,
@@ -46,7 +46,23 @@ from ..models.healing_intent import (
     create_oss_advisory_intent,
 )
 
-from ..config.oss_config import oss_config
+# FIXED: Import config safely
+try:
+    from ..config.oss_config import oss_config
+except ImportError:
+    # Fallback for when oss_config is not available
+    class FallbackOSSConfig:
+        safety_guardrails = {
+            "action_blacklist": [],
+            "max_blast_radius": 3,
+            "business_hours": {"start": "09:00", "end": "17:00"},
+        }
+        
+        @staticmethod
+        def get(key, default=None):
+            return default
+    
+    oss_config = FallbackOSSConfig()
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +125,11 @@ class OSSMCPResponse:
     @classmethod
     def from_healing_intent(cls, intent: HealingIntent, request_id: str) -> "OSSMCPResponse":
         """Create response from HealingIntent"""
+        # FIXED: Safe access to similar_incidents
+        similar_count = 0
+        if intent.similar_incidents:
+            similar_count = len(intent.similar_incidents)
+        
         return cls(
             request_id=request_id,
             status="completed",
@@ -123,9 +144,9 @@ class OSSMCPResponse:
                 "upgrade_url": ENTERPRISE_UPGRADE_URL,
                 "enterprise_features": get_oss_capabilities()["enterprise_features"],
                 "oss_analysis": {
-                    "similar_incidents_count": len(intent.similar_incidents) if intent.similar_incidents else 0,
+                    "similar_incidents_count": similar_count,
                     "rag_similarity_score": intent.rag_similarity_score,
-                    "source": intent.source.value,
+                    "source": intent.source.value if hasattr(intent.source, 'value') else str(intent.source),
                     "is_oss_advisory": intent.is_oss_advisory,
                 }
             }
@@ -253,6 +274,7 @@ class OSSMCPClient:
                     "revision": {"type": "str", "required": True, "default": "previous"},
                     "force": {"type": "bool", "required": False, "default": False},
                 },
+                "dangerous_parameters": {"force": True},
                 "oss_allowed": True,
                 "requires_enterprise_for_execution": True,
             },
@@ -305,6 +327,7 @@ class OSSMCPClient:
                     "percentage": {"type": "int", "required": True, "default": 50, "min": 1, "max": 100},
                     "target": {"type": "str", "required": True},
                 },
+                "dangerous_parameters": {"percentage": 100},
                 "oss_allowed": True,
                 "requires_enterprise_for_execution": True,
             },
@@ -359,7 +382,13 @@ class OSSMCPClient:
             if not validation["valid"]:
                 raise ValueError(f"Validation failed: {', '.join(validation['errors'])}")
             
-            # 2. Perform safety checks
+            # 2. Check for dangerous parameter combinations
+            dangerous_check = self._check_dangerous_parameters(tool_name, parameters)
+            if not dangerous_check["safe"]:
+                self.metrics["safety_checks_failed"] += 1
+                raise ValueError(f"Dangerous parameters: {dangerous_check['reason']}")
+            
+            # 3. Perform safety checks
             safety_result = await self._perform_safety_checks(tool_name, component, parameters, context)
             if not safety_result["allowed"]:
                 self.metrics["safety_checks_failed"] += 1
@@ -367,11 +396,11 @@ class OSSMCPClient:
             
             self.metrics["safety_checks_passed"] += 1
             
-            # 3. Query RAG for similar incidents (if enabled and available)
+            # 4. Query RAG for similar incidents (if enabled and available)
             similar_incidents = []
             rag_similarity_score = None
             
-            if use_rag and oss_config.get("rag_enabled", False):
+            if use_rag and self._get_rag_enabled():
                 similar_incidents = await self._query_rag_for_similar_incidents(
                     component, parameters, context
                 )
@@ -379,12 +408,12 @@ class OSSMCPClient:
                     self.metrics["rag_queries_performed"] += 1
                     rag_similarity_score = self._calculate_rag_similarity_score(similar_incidents)
             
-            # 4. Calculate confidence
+            # 5. Calculate confidence
             confidence = self._calculate_confidence(
                 tool_name, component, parameters, similar_incidents, context
             )
             
-            # 5. Create HealingIntent
+            # 6. Create HealingIntent
             healing_intent = await self._create_healing_intent(
                 tool_name=tool_name,
                 component=component,
@@ -397,7 +426,7 @@ class OSSMCPClient:
             
             self.metrics["healing_intents_created"] += 1
             
-            # 6. Calculate analysis time
+            # 7. Calculate analysis time
             analysis_time_ms = (time.time() - start_time) * 1000
             
             # Update average analysis time
@@ -424,7 +453,7 @@ class OSSMCPClient:
             )
             
         except Exception as e:
-            logger.exception(f"Error in OSS analysis: {e}")
+            logger.error(f"Error in OSS analysis: {e}", exc_info=True)
             analysis_time_ms = (time.time() - start_time) * 1000
             
             # Create fallback advisory intent
@@ -476,6 +505,33 @@ class OSSMCPClient:
             for param_name, param_def in tool_params.items():
                 if param_def.get("required", False) and param_name not in parameters:
                     errors.append(f"Missing required parameter: {param_name}")
+                elif param_name in parameters:
+                    # Type validation
+                    expected_type = param_def.get("type", "any")
+                    value = parameters[param_name]
+                    
+                    if expected_type == "int" and not isinstance(value, int):
+                        try:
+                            parameters[param_name] = int(value)
+                        except (ValueError, TypeError):
+                            errors.append(f"Parameter {param_name} must be int, got {type(value).__name__}")
+                    
+                    elif expected_type == "float" and not isinstance(value, (int, float)):
+                        try:
+                            parameters[param_name] = float(value)
+                        except (ValueError, TypeError):
+                            errors.append(f"Parameter {param_name} must be float, got {type(value).__name__}")
+                    
+                    elif expected_type == "bool" and not isinstance(value, bool):
+                        if isinstance(value, str):
+                            if value.lower() in ["true", "1", "yes"]:
+                                parameters[param_name] = True
+                            elif value.lower() in ["false", "0", "no"]:
+                                parameters[param_name] = False
+                            else:
+                                errors.append(f"Parameter {param_name} must be bool, got string '{value}'")
+                        else:
+                            errors.append(f"Parameter {param_name} must be bool, got {type(value).__name__}")
         
         # Check justification in context
         if context and "justification" in context:
@@ -488,6 +544,23 @@ class OSSMCPClient:
             "errors": errors,
             "warnings": warnings,
         }
+    
+    def _check_dangerous_parameters(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Check for dangerous parameter combinations"""
+        tool_info = self.registered_tools.get(tool_name)
+        if not tool_info:
+            return {"safe": True, "reason": ""}
+        
+        dangerous_params = tool_info.get("dangerous_parameters", {})
+        
+        for param_name, dangerous_value in dangerous_params.items():
+            if param_name in parameters and parameters[param_name] == dangerous_value:
+                return {
+                    "safe": False,
+                    "reason": f"Parameter {param_name}={dangerous_value} is considered dangerous"
+                }
+        
+        return {"safe": True, "reason": ""}
     
     async def _perform_safety_checks(
         self,
@@ -520,6 +593,16 @@ class OSSMCPClient:
         # Check production environment warning
         if context and context.get("environment") == "production":
             warnings.append("Action requested in production environment - extra caution advised")
+        
+        # Check business hours if configured
+        business_hours = self.safety_guardrails.get("business_hours")
+        if business_hours:
+            current_hour = datetime.now().hour
+            start_hour = int(business_hours.get("start", "09:00").split(":")[0])
+            end_hour = int(business_hours.get("end", "17:00").split(":")[0])
+            
+            if not (start_hour <= current_hour < end_hour):
+                warnings.append(f"Outside business hours ({start_hour}:00-{end_hour}:00)")
         
         return {
             "allowed": allowed,
@@ -565,7 +648,7 @@ class OSSMCPClient:
             
             # Create a compatibility event for RAG graph
             # The RAG graph expects a Pydantic ReliabilityEvent from models.py
-            # We need to create a compatible event
+            # We need to create one that matches the expected structure
             event = self._create_compatible_event_for_rag(component, context)
             
             if event is None:
@@ -577,25 +660,43 @@ class OSSMCPClient:
             # Convert to dictionary format
             similar_incidents = []
             for node in similar_nodes:
+                # FIXED: Safe attribute access
                 incident_dict = {
-                    "incident_id": node.incident_id,
-                    "component": node.component,
-                    "severity": node.severity,
-                    "similarity": node.metadata.get("similarity_score", 0.0),
-                    "metrics": node.metrics,
-                    "timestamp": node.timestamp,
+                    "incident_id": getattr(node, 'incident_id', str(uuid.uuid4())),
+                    "component": getattr(node, 'component', component),
+                    "severity": getattr(node, 'severity', 'medium'),
+                    "similarity": getattr(node, 'similarity_score', 0.0),
+                    "timestamp": getattr(node, 'timestamp', time.time()),
                 }
                 
-                # Get outcomes for this incident
-                outcomes = rag_graph._get_outcomes(node.incident_id)
-                if outcomes:
-                    successful = [o for o in outcomes if o.success]
-                    incident_dict["success"] = len(successful) > 0
-                    incident_dict["success_rate"] = len(successful) / len(outcomes) if outcomes else 0.0
-                    incident_dict["resolution_time_minutes"] = (
-                        sum(o.resolution_time_minutes for o in successful) / len(successful) 
-                        if successful else 0.0
-                    )
+                # Try to get metrics
+                try:
+                    incident_dict["metrics"] = node.metrics
+                except AttributeError:
+                    incident_dict["metrics"] = {}
+                
+                # Try to get outcomes (with safe method call)
+                try:
+                    if hasattr(rag_graph, 'get_outcomes'):
+                        outcomes = rag_graph.get_outcomes(incident_dict["incident_id"])
+                    elif hasattr(rag_graph, '_get_outcomes'):
+                        # Fallback to private method (last resort)
+                        outcomes = rag_graph._get_outcomes(incident_dict["incident_id"])
+                    else:
+                        outcomes = []
+                    
+                    if outcomes:
+                        successful = [o for o in outcomes if getattr(o, 'success', False)]
+                        incident_dict["success"] = len(successful) > 0
+                        incident_dict["success_rate"] = len(successful) / len(outcomes) if outcomes else 0.0
+                        
+                        if successful:
+                            resolution_times = [getattr(o, 'resolution_time_minutes', 0) for o in successful]
+                            incident_dict["resolution_time_minutes"] = sum(resolution_times) / len(resolution_times)
+                        else:
+                            incident_dict["resolution_time_minutes"] = 0.0
+                except Exception as e:
+                    logger.debug(f"Could not get outcomes for incident: {e}")
                 
                 similar_incidents.append(incident_dict)
             
@@ -610,10 +711,10 @@ class OSSMCPClient:
             return similar_incidents
             
         except Exception as e:
-            logger.error(f"Error querying RAG: {e}", exc_info=True)
+            logger.error(f"Error querying RAG: {e}", exc_info=False)  # Don't need full traceback
             return []
     
-    def _create_compatible_event_for_rag(self, component: str, context: Optional[Dict[str, Any]] = None) -> Any:
+    def _create_compatible_event_for_rag(self, component: str, context: Optional[Dict[str, Any]] = None) -> Optional[Any]:
         """
         Create a compatible event for the RAG graph
         
@@ -621,7 +722,9 @@ class OSSMCPClient:
         This method creates one that matches the expected structure
         """
         try:
-            # Use the compatibility wrapper
+            # FIXED: Import EventSeverity locally to avoid circular imports
+            from ..models import EventSeverity, create_compatible_event
+            
             severity = EventSeverity.MEDIUM
             
             # Get severity from context if available
@@ -650,19 +753,22 @@ class OSSMCPClient:
             
             return event
             
+        except ImportError as e:
+            logger.debug(f"Cannot import EventSeverity for RAG: {e}")
+            return None
         except Exception as e:
             logger.error(f"Error creating compatible event for RAG: {e}", exc_info=True)
             return None
     
-    def _calculate_rag_similarity_score(self, similar_incidents: List[Dict[str, Any]]) -> float:
+    def _calculate_rag_similarity_score(self, similar_incidents: List[Dict[str, Any]]) -> Optional[float]:
         """
         Calculate aggregate RAG similarity score
         
         Returns:
-            Float between 0.0 and 1.0 representing average similarity
+            Float between 0.0 and 1.0 representing average similarity, or None if no valid similarities
         """
         if not similar_incidents:
-            return 0.0
+            return None
         
         similarities: List[float] = []
         for inc in similar_incidents:
@@ -673,7 +779,7 @@ class OSSMCPClient:
                 similarities.append(clamped_similarity)
         
         if not similarities:
-            return 0.0
+            return None
         
         return sum(similarities) / len(similarities)
     
@@ -703,16 +809,17 @@ class OSSMCPClient:
         # Boost for historical context (RAG similarity)
         if similar_incidents:
             avg_similarity = self._calculate_rag_similarity_score(similar_incidents)
-            # Boost confidence based on similarity (capped at 20% boost)
-            similarity_boost = min(0.2, avg_similarity * 0.3)
-            base_confidence *= (1.0 + similarity_boost)
-            
-            # Additional boost if historical incidents were successful
-            success_rates = [inc.get("success_rate", 0.0) for inc in similar_incidents if "success_rate" in inc]
-            if success_rates:
-                avg_success_rate = sum(success_rates) / len(success_rates)
-                success_boost = min(0.15, avg_success_rate * 0.2)
-                base_confidence *= (1.0 + success_boost)
+            if avg_similarity is not None:
+                # Boost confidence based on similarity (capped at 20% boost)
+                similarity_boost = min(0.2, avg_similarity * 0.3)
+                base_confidence *= (1.0 + similarity_boost)
+                
+                # Additional boost if historical incidents were successful
+                success_rates = [inc.get("success_rate", 0.0) for inc in similar_incidents if "success_rate" in inc]
+                if success_rates:
+                    avg_success_rate = sum(success_rates) / len(success_rates)
+                    success_boost = min(0.15, avg_success_rate * 0.2)
+                    base_confidence *= (1.0 + success_boost)
         
         # Context-based adjustments
         if context:
@@ -815,10 +922,11 @@ class OSSMCPClient:
             
             # Get average similarity
             avg_similarity = self._calculate_rag_similarity_score(similar_incidents)
+            similarity_text = f"Average similarity: {avg_similarity:.1%}" if avg_similarity is not None else ""
             
             return (
                 f"Based on {similar_count} similar historical incidents{success_text}. "
-                f"Average similarity: {avg_similarity:.1%}. "
+                f"{similarity_text}. "
                 f"Recommend {tool_name} for {component} with parameters {parameters}."
             )
         
@@ -848,9 +956,41 @@ class OSSMCPClient:
         Returns:
             String cache key based on component, parameters, and context
         """
-        param_str = json.dumps(parameters, sort_keys=True, default=str)
-        context_str = json.dumps(context, sort_keys=True, default=str) if context else ""
-        return f"{component}:{hash(param_str)}:{hash(context_str)}"
+        # FIXED: More efficient cache key generation
+        key_parts = [component]
+        
+        # Add sorted parameter keys and values
+        if parameters:
+            sorted_params = sorted(parameters.items())
+            for key, value in sorted_params:
+                # Convert value to string safely
+                if isinstance(value, (dict, list)):
+                    # Use JSON for complex structures
+                    param_str = json.dumps(value, sort_keys=True, default=str)
+                else:
+                    param_str = str(value)
+                key_parts.append(f"{key}:{param_str}")
+        
+        # Add context hash if present
+        if context:
+            # Only include specific context fields that affect similarity
+            relevant_context = {
+                k: v for k, v in context.items() 
+                if k in ["severity", "environment", "metrics", "incident_type"]
+            }
+            if relevant_context:
+                context_str = json.dumps(relevant_context, sort_keys=True, default=str)
+                key_parts.append(f"ctx:{hashlib.md5(context_str.encode()).hexdigest()[:8]}")
+        
+        # Join parts with delimiter
+        return "|".join(key_parts)
+    
+    def _get_rag_enabled(self) -> bool:
+        """Safely check if RAG is enabled"""
+        try:
+            return oss_config.get("rag_enabled", False)
+        except (AttributeError, KeyError):
+            return False
     
     async def execute_tool(self, request_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -887,7 +1027,7 @@ class OSSMCPClient:
             component=component,
             parameters=parameters,
             context=context,
-            use_rag=oss_config.get("rag_enabled", False),
+            use_rag=self._get_rag_enabled(),
         )
         
         # Create OSS MCP response
@@ -898,7 +1038,7 @@ class OSSMCPClient:
         )
         
         # Add OSS analysis metadata
-        if response.result is not None:  # FIXED: Check for None before accessing
+        if response.result is not None:
             response.result["oss_analysis"] = {
                 "analysis_time_ms": analysis_result.analysis_time_ms,
                 "similar_incidents_found": analysis_result.similar_incidents_count,
@@ -911,7 +1051,10 @@ class OSSMCPClient:
     
     def get_client_info(self) -> Dict[str, Any]:
         """Get OSS MCP client information and capabilities"""
-        capabilities = get_oss_capabilities()
+        try:
+            capabilities = get_oss_capabilities()
+        except Exception:
+            capabilities = {"enterprise_features": []}
         
         return {
             "mode": self.mode,
@@ -925,9 +1068,9 @@ class OSSMCPClient:
             "requires_enterprise_for_execution": True,
             "upgrade_url": ENTERPRISE_UPGRADE_URL,
             "config": {
-                "mcp_mode": oss_config.get("mcp_mode", "advisory"),
-                "mcp_enabled": oss_config.get("mcp_enabled", False),
-                "rag_enabled": oss_config.get("rag_enabled", False),
+                "mcp_mode": "advisory",
+                "mcp_enabled": True,
+                "rag_enabled": self._get_rag_enabled(),
                 "execution_allowed": False,
             },
         }
@@ -973,6 +1116,17 @@ class OSSMCPClient:
             "safety_checks_failed": 0,
         }
         logger.info("Reset OSS MCP client metrics")
+    
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        # Clean up resources if needed
+        if exc_type:
+            logger.error(f"OSSMCPClient context exited with error: {exc_val}")
+        return False  # Don't suppress exceptions
 
 
 # Factory function for backward compatibility
