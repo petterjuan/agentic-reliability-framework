@@ -17,7 +17,7 @@ def clear_module_cache():
     modules_to_clear = [
         'agentic_reliability_framework',
         'agentic_reliability_framework.arf_core',
-        'agentic_reliability_framework.arf_core.engine.simple_mcp_client',
+        'agentic_reliability_framework.arf_core.engine.oss_mcp_client',  # UPDATED
         'agentic_reliability_framework.arf_core.models.healing_intent',
         'agentic_reliability_framework.arf_core.engine.oss_mcp_client',
         'agentic_reliability_framework.config',
@@ -103,16 +103,16 @@ def test_import_no_circular():
         tests.append(("Constants module", False, f"❌ Error: {type(e).__name__}: {e}"))
         traceback.print_exc()
     
-    # Test 6: Test simple_mcp_client import
+    # Test 6: Test oss_mcp_client import (UPDATED - was simple_mcp_client)
     try:
-        import agentic_reliability_framework.arf_core.engine.simple_mcp_client
-        tests.append(("simple_mcp_client", True, "✅ Import successful"))
+        import agentic_reliability_framework.arf_core.engine.oss_mcp_client
+        tests.append(("oss_mcp_client", True, "✅ Import successful"))
     except RecursionError as e:
-        tests.append(("simple_mcp_client", False, f"❌ RecursionError: {e}"))
+        tests.append(("oss_mcp_client", False, f"❌ RecursionError: {e}"))
         traceback.print_exc()
         return False, tests
     except Exception as e:
-        tests.append(("simple_mcp_client", False, f"❌ Error: {type(e).__name__}: {e}"))
+        tests.append(("oss_mcp_client", False, f"❌ Error: {type(e).__name__}: {e}"))
         traceback.print_exc()
     
     # Test 7: Test healing_intent import
@@ -143,17 +143,17 @@ def check_import_paths():
     print("-" * 40)
     
     try:
-        # Check simple_mcp_client.py import
-        import agentic_reliability_framework.arf_core.engine.simple_mcp_client as smc
-        source_file = getattr(smc, '__file__', 'unknown')
-        print(f"✅ simple_mcp_client.py: {source_file}")
+        # Check oss_mcp_client.py import (UPDATED - was simple_mcp_client)
+        import agentic_reliability_framework.arf_core.engine.oss_mcp_client as omc
+        source_file = getattr(omc, '__file__', 'unknown')
+        print(f"✅ oss_mcp_client.py: {source_file}")
         
         # Check it can instantiate
-        client = smc.OSSMCPClient()
+        client = omc.OSSMCPClient()
         print(f"✅ OSSMCPClient instantiated: {client.mode} mode")
         
     except Exception as e:
-        print(f"❌ simple_mcp_client check failed: {e}")
+        print(f"❌ oss_mcp_client check failed: {e}")
     
     try:
         # Check healing_intent import path
@@ -227,7 +227,7 @@ def run_comprehensive_test():
         print("\n⚠️  FAILURE: Circular import issues detected!")
         print("\n🔧 Debugging required:")
         print("1. Check arf_core/__init__.py - ensure no lazy loading of engine modules")
-        print("2. Check simple_mcp_client.py - line 17 should be 'from ..models.healing_intent'")
+        print("2. Check oss_mcp_client.py - should import from ..models.healing_intent")
         print("3. Check main __init__.py - OSS components should be imported directly")
         print("4. Clear Python cache and retest")
         
