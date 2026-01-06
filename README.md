@@ -14,7 +14,6 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/agentic-reliability-framework?style=for-the-badge&logo=python&logoColor=white)](https://pypi.org/project/agentic-reliability-framework/)
 ![OSS Tests](https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/tests.yml/badge.svg)
 ![Comprehensive Tests](https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/oss_tests.yml/badge.svg)
-![OSS Boundary Tests](https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/oss_tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge&logo=apache&logoColor=white)](./LICENSE)
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97-Live%20Demo-yellow?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)
 
@@ -337,12 +336,7 @@ This enables:
 ### 2. Healing Intent Boundary
 
 OSS **creates** intent.  
-Enterprise **executes** intent. The framework **separates intent creation from execution
-
-This separation:
-- Preserves safety
-- Enables compliance
-- Makes autonomous execution auditable
+Enterprise **executes** intent. The framework **separates intent creation from execution**
 
 ``` 
 +----------------+         +---------------------+
