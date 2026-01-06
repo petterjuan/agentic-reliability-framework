@@ -39,16 +39,16 @@ jobs:
     - name: Run basic tests (WITH coverage support)
       run: python -m pytest Test/test_basic.py -v  # ← Runs OSS-safe test suite with pytest
 
-      - name: Verify Enterprise imports are blocked
-        run: |
-          echo "🔒 Verifying Enterprise-only imports are inaccessible..."
-          python - << 'EOF'
-          try:
-              import agentic_reliability_enterprise
-              raise SystemExit("❌ Enterprise package should not be importable in OSS")
-          except ImportError:
-              print("✅ Enterprise imports correctly blocked")
-          EOF
+    - name: Verify Enterprise imports are blocked
+      run: |
+        echo "🔒 Verifying Enterprise-only imports are inaccessible..."
+        python - << 'EOF'
+        try:
+            import agentic_reliability_enterprise
+            raise SystemExit("❌ Enterprise package should not be importable in OSS") 
+            except ImportError:
+            print("✅ Enterprise imports correctly blocked")
+        EOF
 
       
     - name: Verify imports work
