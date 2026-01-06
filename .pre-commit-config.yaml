@@ -1,0 +1,51 @@
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: oss-boundary-check
+        name: OSS Boundary Check
+        entry: python scripts/oss_boundary_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        
+      - id: circular-import-check
+        name: Circular Import Check
+        entry: python scripts/verify_circular_fix.py --quick
+        language: system
+        pass_filenames: false
+        always_run: true
+        
+      - id: ruff-lint
+        name: Ruff Linting
+        entry: ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: true
+        
+      - id: ruff-format
+        name: Ruff Formatting
+        entry: ruff format
+        language: system
+        types: [python]
+        pass_filenames: true
+        
+      - id: mypy-check
+        name: MyPy Type Checking
+        entry: mypy --ignore-missing-imports agentic_reliability_framework
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+      - id: check-merge-conflicts
+      - id: check-toml
+      - id: detect-private-key
