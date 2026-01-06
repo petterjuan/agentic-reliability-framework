@@ -16,8 +16,9 @@
 ![Comprehensive Tests](https://github.com/petterjuan/agentic-reliability-framework/actions/workflows/oss_tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge&logo=apache&logoColor=white)](./LICENSE)
 [![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97-Live%20Demo-yellow?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-red?style=for-the-badge&logo=github)](https://github.com/sponsors/petterjuan)
 
-**[🚀 Live Demo](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)** • **[📚 Documentation](https://github.com/petterjuan/agentic-reliability-framework/tree/main/docs)** • **[💼 Enterprise Edition](https://github.com/petterjuan/agentic-reliability-enterprise)**
+**[🚀 Live Demo](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)** • **[📚 Documentation](https://github.com/petterjuan/agentic-reliability-framework/tree/main/docs)** • **[💼 Enterprise Edition](https://github.com/petterjuan/agentic-reliability-enterprise)** • **[❤️ Sponsor](https://github.com/sponsors/petterjuan)**
 
 </div>
 
@@ -826,16 +827,7 @@ If you use the Agentic Reliability Framework in production or research, please c
 - **Live Demo:** [Try ARF on Hugging Face](https://huggingface.co/spaces/petter2025/agentic-reliability-framework)  
 - **Full Documentation:** [ARF Docs](https://github.com/petterjuan/agentic-reliability-framework/tree/main/docs)  
 - **PyPI Package:** [agentic-reliability-framework](https://pypi.org/project/agentic-reliability-framework/)
-
-**📞 Contact & Support** 
-
-**Primary Contact:** 
-
-*   **Email:** [petter2025us@outlook.com](mailto:petter2025us@outlook.com) 
-    
-*   **LinkedIn:** [linkedin.com/in/petterjuan](https://www.linkedin.com/in/petterjuan) 
-    
-
+   
 **Additional Resources:** 
 
 *   **GitHub Issues:** For bug reports and technical issues 
@@ -843,3 +835,34 @@ If you use the Agentic Reliability Framework in production or research, please c
 *   **Documentation:** Check the docs for common questions 
     
 **Response Time:** Typically within 24-48 hours
+
+## 🤝 Support & Sponsorship
+
+Agentic Reliability Framework is developed as sustainable open-source software.
+
+**Ways to support the project:**
+
+### 🆓 Open Source Community
+- ⭐ **Star the repository** - Helps with visibility
+- 🐛 **Report issues** - Improve stability for everyone
+- 📣 **Share with colleagues** - Spread the word
+- 🔧 **Contribute code** - PRs welcome for OSS features
+
+### 💼 Enterprise Edition
+For production deployments with execution, learning loops, and business analytics:
+- **[Explore Enterprise Edition](https://github.com/petterjuan/agentic-reliability-enterprise)**
+- **Email:** petter2025us@outlook.com for commercial inquiries
+- **LinkedIn:** [petterjuan](https://www.linkedin.com/in/petterjuan)
+
+### ❤️ Financial Support
+- **[GitHub Sponsors](https://github.com/sponsors/petterjuan)** - Support ongoing OSS development
+- **One-time donations** - Contact for invoice-based support
+
+### 📞 Contact
+- **OSS Issues:** [GitHub Issues](https://github.com/petterjuan/agentic-reliability-framework/issues)
+- **Commercial:** petter2025us@outlook.com
+- **Professional:** [LinkedIn](https://www.linkedin.com/in/petterjuan)
+
+---
+
+**Sustainability Model:** OSS edition remains free forever. Enterprise edition funds ongoing development, security updates, and new features that eventually trickle down to OSS.
