@@ -155,10 +155,11 @@ ARF collapses that gap by providing a hybrid intelligence system that advises sa
 
 | Solution | Learning Capability | Safety Guarantees | Deterministic Behavior | Business ROI |
 |----------|-------------------|-----------------|----------------------|--------------|
+| **ARF (Hybrid Intelligence)** | ✅ Continuous learning (RAG Graph memory) | ✅ High safety (MCP guardrails + approval workflows) | ✅ High determinism (Policy Engine + AI synthesis) | ✅ Quantified ROI (Enterprise-only: execution + learning required) |
 | **Traditional Monitoring** (Datadog, New Relic, Prometheus) | ❌ No learning capability | ✅ High safety (read-only) | ✅ High determinism (rules-based) | ❌ Reactive only - alerts after failures occur |
 | **LLM-Only Agents** (AutoGPT, LangChain, CrewAI) | ⚠️ Limited learning (context window only) | ❌ Low safety (direct API access) | ❌ Low determinism (hallucinations) | ⚠️ Unpredictable - cannot guarantee outcomes |
 | **Rule-Based Automation** (Ansible, Terraform, scripts) | ❌ No learning (static rules) | ✅ High safety (manual review) | ✅ High determinism (exact execution) | ⚠️ Brittle - breaks with system changes |
-| **ARF (Hybrid Intelligence)** | ✅ Continuous learning (RAG Graph memory) | ✅ High safety (MCP guardrails + approval workflows) | ✅ High determinism (Policy Engine + AI synthesis) | ✅ Quantified ROI (Enterprise-only: execution + learning required) |
+
 
 **Key Differentiators** 
 
@@ -225,19 +226,6 @@ _**💰 ROI Measurement**_ 
     
 *   ❌ Have regulatory requirements prohibiting any autonomous action 
     
-
-**Technical Comparison Summary**
-
-| Aspect        | Traditional Monitoring | LLM Agents           | Rule Automation         | ARF (Hybrid Intelligence)          |
-|---------------|----------------------|--------------------|------------------------|------------------------------------|
-| **Architecture** | Time-series + alerts  | LLM + tools        | Scripts + cron         | Hybrid: RAG + MCP + Policies        |
-| **Learning**     | None                  | Episodic           | None                   | Continuous (RAG Graph)              |
-| **Safety**       | Read-only             | Risky              | Manual review          | Three-mode guardrails               |
-| **Determinism**  | High                  | Low                | High                   | High (policy-backed)                |
-| **Setup Time**   | Days                  | Weeks              | Days                   | Hours                               |
-| **Maintenance**  | High                  | Very High          | High                   | Low (Enterprise learning loops)     |
-| **ROI Timeline** | 6-12 months           | Unpredictable      | 3-6 months             | 30 days                             |
-
 _ARF provides the intelligence of AI agents with the reliability of traditional automation, creating a new category of "Reliable AI Systems."_
 
 ---
