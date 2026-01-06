@@ -27,12 +27,13 @@ def check_no_enterprise_code():
         return True
     
     # Patterns that should NEVER appear in OSS code
-    # FIXED: Updated to use correct variable name has_enterprise_key
+    # CORRECTED: Check for license_key (original enterprise pattern), not has_enterprise_key
+    # has_enterprise_key was our OSS-compliant rename, but we removed it entirely
     forbidden_patterns = [
         "EnterpriseMCPServer",
         "LicenseManager",
-        "has_enterprise_key",  # FIXED: Changed from "license_key"
-        "ARF-ENT-",  # License key pattern
+        "license_key",  # CORRECTED: Original enterprise pattern that should not exist
+        "ARF-ENT-",  # Enterprise license key pattern
     ]
     
     violations = []
@@ -103,6 +104,11 @@ def check_oss_constants():
             print("❌ Contains non-advisory modes (APPROVAL/AUTONOMOUS)")
             return False
         
+        # Additional check: Verify no license_key or has_enterprise_key patterns
+        if "license_key" in content:
+            print("❌ Contains license_key pattern (enterprise)")
+            return False
+        
         if all_good:
             print("✅ OSS constants look good")
             return True
@@ -116,7 +122,7 @@ def check_oss_constants():
 
 def main():
     """Main boundary check - Always returns success for now"""
-    print("🔐 OSS BOUNDARY CHECK (Lenient Version)")
+    print("🔐 OSS BOUNDARY CHECK (Corrected - Checks for license_key)")
     print("=" * 50)
     
     print("\n📁 Checking OSS file structure:")
