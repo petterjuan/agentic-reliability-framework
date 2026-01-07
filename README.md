@@ -4,7 +4,7 @@
 
 **Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing.**
 
-> **ARF is the first enterprise framework that enables autonomous, context-aware AI agents** with advisory healing intelligence (OSS) and **executed remediation (Enterprise)** for infrastructure reliability monitoring and remediation at scale.
+> **ARF is an enterprise reliability framework that enables context-aware AI agents to detect, reason about, and remediate infrastructure failures—operating in advisory mode in OSS and executing controlled remediation in Enterprise deployments.**
 
 > _Battle-tested architecture for autonomous incident detection and_ _**advisory remediation intelligence**_.
 
