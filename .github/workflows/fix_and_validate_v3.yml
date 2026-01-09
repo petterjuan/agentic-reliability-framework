@@ -1,0 +1,101 @@
+name: Fix and Validate V3 Boundaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      auto_fix:
+        description: 'Apply automatic fixes'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+jobs:
+  fix-and-validate:
+    name: Fix and Validate V3 Boundaries
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install package
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -e .
+    
+    - name: Run V3 validation (before fixes)
+      run: |
+        echo "=== V3 VALIDATION (BEFORE FIXES) ==="
+        python scripts/run_v3_validation.py --fast || echo "⚠️ Validation failed (expected before fixes)"
+    
+    - name: Apply automatic fixes (if requested)
+      if: ${{ inputs.auto_fix == 'true' }}
+      run: |
+        echo "=== APPLYING AUTOMATIC FIXES ==="
+        if [ -f "scripts/quick_fix_v3_violations.py" ]; then
+          python scripts/quick_fix_v3_violations.py || echo "⚠️ Quick fixes failed"
+        else
+          echo "❌ quick_fix_v3_violations.py not found"
+        fi
+        
+        echo ""
+        echo "=== CHECKING REMAINING VIOLATIONS ==="
+        # Simple grep for known violations
+        echo "Checking for require_admin in OSS:"
+        grep -r "require_admin" agentic_reliability_framework/ --include="*.py" | grep -v "#" | grep -v test || echo "✅ No require_admin found"
+        
+        echo ""
+        echo "Checking for license_key in OSS:"
+        grep -r "license_key" . --include="*.py" | grep -v "#" | grep -v test || echo "✅ No license_key found"
+    
+    - name: Run V3 validation (after fixes)
+      run: |
+        echo "=== V3 VALIDATION (AFTER FIXES) ==="
+        python scripts/run_v3_validation.py --fast
+    
+    - name: Generate V3 certification
+      run: |
+        echo "=== GENERATING V3 CERTIFICATION ==="
+        python scripts/run_v3_validation.py --certify
+    
+    - name: Check certification file
+      run: |
+        echo "=== CHECKING CERTIFICATION ==="
+        if [ -f "V3_COMPLIANCE_CERTIFICATION.json" ]; then
+          echo "✅ V3_COMPLIANCE_CERTIFICATION.json GENERATED"
+          echo "File content summary:"
+          python -c "
+          import json
+          try:
+              with open('V3_COMPLIANCE_CERTIFICATION.json', 'r') as f:
+                  cert = json.load(f)
+              print(f'Status: {cert.get(\"overall_status\", \"Unknown\")}')
+              print(f'V3.0 Compliance: {cert.get(\"compliance_levels\", {}).get(\"v3_0_advisory_intelligence\", \"Unknown\")}')
+          except Exception as e:
+              print(f'Error reading certification: {e}')
+          "
+        else
+          echo "❌ V3_COMPLIANCE_CERTIFICATION.json NOT GENERATED"
+          echo "Check V3_COMPLIANCE_ISSUES.json for details"
+        fi
+    
+    - name: Upload results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: v3-fix-and-validate-results
+        path: |
+          V3_COMPLIANCE_CERTIFICATION.json
+          V3_COMPLIANCE_ISSUES.json
+        if-no-files-found: warn
+        retention-days: 30
