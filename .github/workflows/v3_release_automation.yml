@@ -1,0 +1,44 @@
+# .github/workflows/v3_release_automation.yml
+name: V3 Release Automation
+on:
+  push:
+    tags:
+      - 'v3.*.*'
+
+jobs:
+  validate_and_release:
+    name: Validate and Release V3.x
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run V3 Milestone Sequencing
+        uses: ./.github/workflows/v3_milestone_sequence.yml
+        with:
+          tag_name: ${{ github.ref_name }}
+
+      - name: Build and Test Package
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*
+            milestone_report-*.md
+            v3-validation-report.json
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI (Conditional)
+        if: startsWith(github.ref, 'refs/tags/v3.') && github.event_name == 'push'
+        run: |
+          python -m twine upload dist/* --username __token__ --password ${{ secrets.PYPI_API_TOKEN }}
