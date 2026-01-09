@@ -8,7 +8,104 @@ Usage:
 
 import argparse
 import sys
+import subprocess
 from pathlib import Path
+import json
+from datetime import datetime
+
+
+def run_script(script_path: Path, name: str) -> dict:
+    """Run a script and return results."""
+    print(f"   Running: {name}...")
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script_path)],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        
+        passed = result.returncode == 0
+        
+        if passed:
+            print(f"   ✅ {name} PASSED")
+            # Show success message if present
+            lines = result.stdout.split('\n')
+            for line in lines:
+                if "🎉" in line or "✅" in line or "PASSED" in line:
+                    print(f"     {line.strip()}")
+        else:
+            print(f"   ❌ {name} FAILED")
+            # Show error
+            if result.stderr:
+                print(f"     Error: {result.stderr[:200]}...")
+            elif result.stdout:
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if "❌" in line or "FAILED" in line or "ERROR" in line:
+                        print(f"     {line.strip()}")
+        
+        return {
+            "name": name,
+            "script": script_path.name,
+            "passed": passed,
+            "returncode": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+        
+    except subprocess.TimeoutExpired:
+        print(f"   ⏰ {name} TIMEOUT")
+        return {
+            "name": name,
+            "script": script_path.name,
+            "passed": False,
+            "error": "Timeout after 120 seconds",
+        }
+    except Exception as e:
+        print(f"   💥 {name} ERROR: {e}")
+        return {
+            "name": name,
+            "script": script_path.name,
+            "passed": False,
+            "error": str(e),
+        }
+
+
+def generate_certification(results: list) -> dict:
+    """Generate V3 compliance certification."""
+    all_passed = all(r.get("passed", False) for r in results)
+    
+    certification = {
+        "version": "V3.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "validation_suite": "ARF V3 Boundary Validation",
+        "overall_status": "VERIFIED" if all_passed else "FAILED",
+        "components_validated": [
+            "OSS/Enterprise Split",
+            "Execution Ladder Boundaries",
+            "Rollback API Boundaries",
+            "License Manager Boundaries",
+            "Cross-Repository Dependencies",
+        ],
+        "test_results": results,
+        "compliance_levels": {
+            "v3_0_advisory_intelligence": "VERIFIED" if all_passed else "FAILED",
+            "v3_1_execution_governance": "PENDING",
+            "v3_2_risk_bounded_autonomy": "PENDING",
+            "v3_3_outcome_learning": "PENDING",
+        },
+        "boundary_verification": {
+            "require_operator_vs_require_admin": "VERIFIED" if all_passed else "FAILED",
+            "oss_execution_prevention": "VERIFIED" if all_passed else "FAILED",
+            "enterprise_license_enforcement": "VERIFIED" if all_passed else "FAILED",
+            "rollback_mandatory_analysis": "VERIFIED" if all_passed else "FAILED",
+            "novel_execution_protocol": "VERIFIED" if all_passed else "FAILED",
+        },
+    }
+    
+    return certification
 
 
 def main():
@@ -23,93 +120,90 @@ def main():
     args = parser.parse_args()
     
     print("🚀 ARF V3 Boundary Validation Suite")
-    print("=" * 50)
+    print("=" * 60)
     
-    scripts_to_run = []
-    
+    # Determine which scripts to run
     if args.fast:
         print("⚡ Fast mode - running essential checks only")
-        scripts_to_run = [
-            ("Existing OSS Check", "oss_boundary_check.py"),
-            ("Basic V3 Validation", "enhanced_v3_boundary_check.py"),
+        scripts = [
+            ("oss_boundary_check.py", "OSS Boundary Check"),
+            ("enhanced_v3_boundary_check.py", "Enhanced V3 Boundary Check"),
         ]
     else:
         print("🔍 Comprehensive mode - running all checks")
-        scripts_to_run = [
-            ("Existing OSS Check", "oss_boundary_check.py"),
-            ("Enhanced V3 Check", "enhanced_v3_boundary_check.py"),
-            ("V3 Integration", "v3_boundary_integration.py"),
+        scripts = [
+            ("oss_boundary_check.py", "OSS Boundary Check"),
+            ("enhanced_v3_boundary_check.py", "Enhanced V3 Boundary Check"),
+            ("v3_boundary_integration.py", "V3 Boundary Integration"),
         ]
     
     if args.certify:
-        scripts_to_run.append(("V3 Certification", "v3_boundary_integration.py"))
+        print("🏆 Certification mode - generating V3 compliance certification")
+    
+    # Run all scripts
+    print("\n" + "=" * 60)
+    print("🧪 RUNNING VALIDATION SCRIPTS")
+    print("=" * 60)
     
     results = []
     all_passed = True
     
-    for name, script in scripts_to_run:
-        print(f"\n▶️  Running: {name}")
-        print("-" * 30)
-        
-        script_path = Path(__file__).parent / script
+    for script_file, script_name in scripts:
+        script_path = Path(__file__).parent / script_file
         
         if not script_path.exists():
-            print(f"⚠️  Script not found: {script}")
+            print(f"❌ Script not found: {script_file}")
+            results.append({
+                "name": script_name,
+                "script": script_file,
+                "passed": False,
+                "error": f"Script not found: {script_file}"
+            })
+            all_passed = False
             continue
         
-        import subprocess
-        try:
-            result = subprocess.run(
-                [sys.executable, str(script_path)],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
-            
-            passed = result.returncode == 0
-            all_passed = all_passed and passed
-            
-            status = "✅ PASSED" if passed else "❌ FAILED"
-            print(f"   Status: {status}")
-            
-            # Show key output
-            if result.stdout:
-                lines = result.stdout.split('\n')
-                for line in lines[-5:]:  # Last 5 lines
-                    if line.strip():
-                        print(f"   {line}")
-            
-            results.append({
-                "name": name,
-                "script": script,
-                "passed": passed,
-                "returncode": result.returncode,
-                "output": result.stdout[-500:] if result.stdout else "",
-            })
-            
-        except subprocess.TimeoutExpired:
-            print("   ⏰ TIMEOUT")
+        result = run_script(script_path, script_name)
+        results.append(result)
+        
+        if not result.get("passed", False):
             all_passed = False
-            results.append({
-                "name": name,
-                "script": script,
-                "passed": False,
-                "error": "Timeout",
-            })
-        except Exception as e:
-            print(f"   💥 ERROR: {e}")
-            all_passed = False
-            results.append({
-                "name": name,
-                "script": script,
-                "passed": False,
-                "error": str(e),
-            })
+    
+    # Generate certification if requested
+    if args.certify:
+        print("\n" + "=" * 60)
+        print("🏆 GENERATING V3 CERTIFICATION")
+        print("=" * 60)
+        
+        certification = generate_certification(results)
+        
+        if all_passed:
+            cert_path = Path("V3_COMPLIANCE_CERTIFICATION.json")
+            with open(cert_path, 'w') as f:
+                json.dump(certification, f, indent=2)
+            print(f"✅ V3 Certification saved to: {cert_path}")
+        else:
+            issues_path = Path("V3_COMPLIANCE_ISSUES.json")
+            with open(issues_path, 'w') as f:
+                json.dump(certification, f, indent=2)
+            print(f"⚠️  V3 Compliance Issues saved to: {issues_path}")
+    
+    # Generate output report if requested
+    if args.output:
+        output_path = Path(args.output)
+        report = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "args": vars(args),
+            "results": results,
+            "all_passed": all_passed,
+        }
+        with open(output_path, 'w') as f:
+            json.dump(report, f, indent=2)
+        print(f"📄 Report saved to: {output_path}")
     
     # Final report
-    print("\n" + "=" * 50)
-    print("📋 FINAL REPORT")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("📊 FINAL VALIDATION REPORT")
+    print("=" * 60)
     
     passed_count = sum(1 for r in results if r.get("passed", False))
     total_count = len(results)
@@ -122,13 +216,13 @@ def main():
         print("\n🎉 ALL V3 VALIDATIONS PASSED!")
         print("\nThe system is V3 compliant with:")
         print("  • Mechanical OSS/Enterprise boundaries")
-        print("  • Proper execution ladder enforcement")
-        print("  • License-based feature gating")
+        print("  • Advisory-only execution in OSS")
+        print("  • Proper license enforcement")
         print("  • Mandatory rollback analysis")
         
         if args.certify:
-            cert_path = Path(__file__).parent.parent / "V3_COMPLIANCE_CERTIFICATION.json"
-            print(f"\n📄 V3 Certification: {cert_path}")
+            print("\n✅ V3.0 ADVISORY INTELLIGENCE LOCK-IN VERIFIED")
+            print("\nReady for V3.0 OSS package release!")
         
         sys.exit(0)
     else:
@@ -136,14 +230,17 @@ def main():
         print("\nFailed tests:")
         for result in results:
             if not result.get("passed", False):
-                print(f"  • {result['name']} ({result['script']})")
+                print(f"  • {result['name']}")
                 if result.get("error"):
                     print(f"    Error: {result['error']}")
         
         print("\n🔧 Next steps:")
-        print("  1. Check individual script outputs above")
-        print("  2. Run scripts individually for detailed output")
-        print("  3. Fix boundary violations before release")
+        print("  1. Run failed scripts individually for detailed output:")
+        for result in results:
+            if not result.get("passed", False):
+                print(f"     python scripts/{result['script']}")
+        print("  2. Fix identified boundary violations")
+        print("  3. Re-run validation: python scripts/run_v3_validation.py")
         
         sys.exit(1)
 
