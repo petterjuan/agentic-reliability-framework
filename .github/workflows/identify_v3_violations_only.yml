@@ -1,0 +1,128 @@
+name: Identify V3 Violations Only
+
+on:
+  workflow_dispatch:
+
+jobs:
+  identify-violations:
+    name: Identify V3 Violations (No Fixes)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install package
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -e .
+    
+    - name: Run enhanced V3 boundary check
+      id: validation
+      run: |
+        echo "=== RUNNING ENHANCED V3 BOUNDARY CHECK ==="
+        echo "This will show us ALL violations..."
+        echo ""
+        
+        # Run the validation and capture output
+        python scripts/enhanced_v3_boundary_check.py > validation_output.txt 2>&1 || true
+        
+        echo "=== VALIDATION OUTPUT ==="
+        cat validation_output.txt
+        
+        # Extract just the violation lines
+        echo ""
+        echo "=== EXTRACTED VIOLATIONS ==="
+        echo ""
+        
+        # Method 1: Look for violation patterns
+        echo "VIOLATIONS FOUND:"
+        grep -n -B1 -A1 "violation\|Violation\|VIOLATION\|❌" validation_output.txt || echo "No violation patterns found"
+        
+        echo ""
+        echo "=== FILES WITH VIOLATIONS ==="
+        # Extract file paths mentioned
+        grep -E "\.py:|File:|file:|• " validation_output.txt | grep -v "test_" | head -30 || echo "No files with violations found"
+    
+    - name: Run debug_violations.py for detailed analysis
+      run: |
+        echo ""
+        echo "=== DETAILED VIOLATION ANALYSIS ==="
+        echo ""
+        
+        if [ -f "scripts/debug_violations.py" ]; then
+          python scripts/debug_violations.py
+        else
+          echo "❌ debug_violations.py not found"
+        fi
+    
+    - name: Run direct_violation_check.py for known patterns
+      run: |
+        echo ""
+        echo "=== CHECKING KNOWN PATTERNS ==="
+        echo ""
+        
+        if [ -f "scripts/direct_violation_check.py" ]; then
+          python scripts/direct_violation_check.py
+        else
+          echo "❌ direct_violation_check.py not found"
+        fi
+    
+    - name: Generate violation summary report
+      run: |
+        echo ""
+        echo "=== GENERATING VIOLATION SUMMARY ==="
+        echo ""
+        
+        # Create a summary of all Python files with potential violations
+        echo "🔍 Scanning for Enterprise patterns in all Python files..."
+        echo ""
+        
+        # Patterns to search for
+        PATTERNS="license_key\|require_admin\|autonomous_execution\|rollout_percentage\|learning_enabled\|beta_testing_enabled\|MCPMode\.APPROVAL\|MCPMode\.AUTONOMOUS\|audit_trail\|audit_log"
+        
+        echo "Files containing Enterprise patterns (excluding tests):"
+        find . -name "*.py" -type f ! -path "*/test*" ! -path "*/__pycache__/*" ! -path "*/.git/*" -exec grep -l "$PATTERNS" {} \; 2>/dev/null | sort | head -20 || echo "No files found with these patterns"
+        
+        echo ""
+        echo "=== SAMPLE VIOLATIONS BY FILE ==="
+        
+        # Check a few key files
+        KEY_FILES="
+        agentic_reliability_framework/config.py
+        agentic_reliability_framework/engine/mcp_server.py
+        agentic_reliability_framework/engine/mcp_factory.py
+        agentic_reliability_framework/cli.py
+        agentic_reliability_framework/app.py
+        oss/constants.py
+        agentic_reliability_framework/arf_core/constants.py
+        "
+        
+        for file in $KEY_FILES; do
+          if [ -f "$file" ]; then
+            violations=$(grep -n "$PATTERNS" "$file" 2>/dev/null | head -3 || true)
+            if [ ! -z "$violations" ]; then
+              echo ""
+              echo "📄 $file:"
+              echo "$violations" | while read line; do
+                echo "   Line $line"
+              done
+            fi
+          fi
+        done
+    
+    - name: Save detailed report as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: v3-violations-identification-report
+        path: |
+          validation_output.txt
+        retention-days: 30
