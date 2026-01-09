@@ -31,7 +31,12 @@ jobs:
       id: create_validator
       run: |
         echo "📝 Creating smart_v3_validator.py..."
-        cat > scripts/smart_v3_validator.py << 'EOF'
+        
+        # Create the directory if it doesn't exist
+        mkdir -p scripts
+        
+        # Create the smart validator
+        cat > scripts/smart_v3_validator.py << 'PYTHON_SCRIPT'
 #!/usr/bin/env python3
 """
 SMART V3 Validator - Understands context, no false positives
@@ -182,7 +187,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
+PYTHON_SCRIPT
         
         echo "✅ Created scripts/smart_v3_validator.py"
         chmod +x scripts/smart_v3_validator.py
