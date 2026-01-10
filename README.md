@@ -2,9 +2,9 @@
   <img src="https://github.com/petterjuan/agentic-reliability-framework/raw/main/assets/agentic-reliability-banner.png" width="100%" alt="AGENTIC RELIABILITY FRAMEWORK">
 </p>
 
-**Production-grade multi-agent AI system for infrastructure reliability analysis and advisory intelligence, with governed execution available in Enterprise deployments.**
+**Production-grade multi-agent AI system for infrastructure reliability analysis and execution intelligence, with governed execution available in Enterprise deployments.**
 
-> **ARF is an enterprise reliability framework that enables context-aware AI agents to detect, reason about, and remediate infrastructure failures—operating in advisory mode in OSS and executing controlled remediation in Enterprise deployments.**
+> **"ARF: advisory AI for reliability, Enterprise execution for operational outcomes."**
 
 > _Battle-tested architecture for autonomous incident detection and_ _**advisory remediation intelligence**_.
 
@@ -28,7 +28,6 @@
 
 > ⚠️ **IMPORTANT OSS DISCLAIMER**
 >
-> This Apache 2.0 OSS edition is **analysis and advisory-only**.
 > It **does NOT execute actions**, **does NOT auto-heal**, and **does NOT perform remediation**.
 >
 > All execution, automation, persistence, and learning loops are **Enterprise-only** features.
@@ -148,7 +147,6 @@ The open-source edition of the Agentic Reliability Framework is designed for **a
 
 > The Enterprise Edition of ARF transforms advisory intelligence into governed, auditable execution at scale.
 
-**Enterprise Edition (Commercial)** The Enterprise Edition of ARF transforms advisory intelligence into **governed, production-grade execution**. It introduces permissioned remediation workflows, persistent organizational memory, outcome-aware optimization, and compliance-aligned controls—while preserving strict safety boundaries and human oversight. Enterprise deployments are designed for reliability teams operating at scale, where **predictable execution, auditability, and measurable business outcomes** are required. Execution, learning, analytics, and compliance capabilities are available exclusively under a commercial license.
 
 **️ Why Choose ARF Over Alternatives**
 
@@ -248,9 +246,9 @@ Enterprise **executes** intent. The framework **separates intent creation from e
     
 4.  **Policy Evaluation** - Deterministic rule-based action determination 
     
-5.  **Action Enhancement** - Historical effectiveness data informs priority 
-
->    Later execution, outcome evaluation, and learning stages exist exclusively in Enterprise deployments and are intentionally omitted from OSS documentation.
+5.  **Action Enhancement** - Historical effectiveness data informs priority
+   
+6.  Later execution, outcome evaluation, and learning stages exist exclusively in Enterprise deployments and are intentionally omitted from OSS documentation.
 ---
 
 # Multi-Agent Design (ARF v3.0) – Coverage Overview
@@ -265,8 +263,6 @@ Enterprise **executes** intent. The framework **separates intent creation from e
 | Detection Agent | Detect anomalies, monitor telemetry, perform time-series forecasting  | ✅  | ✅         |
 | Recall Agent    | Retrieve similar incidents/actions/outcomes from RAG graph + FAISS    | ✅  | ✅         |
 | Decision Agent  | Apply deterministic policies, reasoning over historical outcomes      | ✅  | ✅         |
-
-Learns from operational outcomes to improve future recommendations (Enterprise-only).
 ---
 
 ## OSS vs Enterprise Philosophy
@@ -442,11 +438,9 @@ pip install agentic-reliability-framework==3.3.9
 
 Runs:
 
-*   OSS MCP (advisory only)
-    
-*   In-memory RAG graph
-    
-*   FAISS similarity index
+```
+python -c "import arf; print(arf.__version__)"
+```
 
 Run locally or deploy as a service.
 
@@ -454,14 +448,6 @@ Run locally or deploy as a service.
 
 Apache 2.0 (OSS)
 Commercial license required for Enterprise features.
-
-## Roadmap (Public)
-
-- Graph visualization UI
-- Enterprise policy DSL
-- Cross-service causal chains
-- Cost-aware decision optimization
-
 ---
 
 ---
