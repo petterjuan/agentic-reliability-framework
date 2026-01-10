@@ -1,0 +1,64 @@
+name: Repository Maintenance
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  cleanup-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Analyze repository structure
+        run: |
+          echo "📊 REPOSITORY STRUCTURE ANALYSIS"
+          echo "================================="
+          
+          echo "📁 Workflows:"
+          ls -la .github/workflows/
+          echo ""
+          
+          echo "📁 Scripts:"
+          ls -la scripts/
+          echo ""
+          
+          echo "📁 Test directory:"
+          find Test/ -type f -name "*.py" | head -20
+          echo ""
+          
+          echo "🧹 Potential cleanup candidates:"
+          echo "1. Check for duplicate test files"
+          echo "2. Check for old one-time fix scripts"
+          echo "3. Check for unused dependencies"
+          
+      - name: Check for unused imports
+        run: |
+          echo "🔍 Checking for potentially unused imports..."
+          # Simple check for import statements in scripts
+          find scripts/ -name "*.py" -exec grep -l "import" {} \; | head -10
+          
+      - name: Generate maintenance report
+        run: |
+          echo "📋 MAINTENANCE REPORT" > maintenance-report.md
+          echo "====================" >> maintenance-report.md
+          echo "" >> maintenance-report.md
+          echo "Generated: $(date)" >> maintenance-report.md
+          echo "" >> maintenance-report.md
+          
+          echo "## Workflow Status" >> maintenance-report.md
+          for workflow in .github/workflows/*.yml; do
+            echo "- $(basename $workflow)" >> maintenance-report.md
+          done
+          
+          echo "" >> maintenance-report.md
+          echo "## Script Status" >> maintenance-report.md
+          echo "Total scripts: $(ls scripts/*.py | wc -l)" >> maintenance-report.md
+          
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-report
+          path: maintenance-report.md
