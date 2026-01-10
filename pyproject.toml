@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentic-reliability-framework"
-version = "3.3.7"
+version = "3.3.8"
 description = "Agentic Reliability Framework (OSS Edition): Enterprise-grade multi-agent AI for infrastructure reliability monitoring and advisory-only self-healing."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
