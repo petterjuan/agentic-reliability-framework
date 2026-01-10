@@ -772,7 +772,7 @@ export BUSINESS_HOURS_END=17:00
 ### OSS (≈5 minutes)
 
 ```bash
-pip install agentic-reliability-framework==3.3.7
+pip install agentic-reliability-framework==3.3.8
 ```
 
 Runs:
@@ -817,7 +817,7 @@ If you use the Agentic Reliability Framework in production or research, please c
   title = {Agentic Reliability Framework: Production-Grade Multi-Agent AI for autonomous system reliability intelligence},
   author = {Juan Petter and Contributors},
   year = {2026},
-  version = {3.3.7},
+  version = {3.3.8},
   url = {https://github.com/petterjuan/agentic-reliability-framework}
 }
 ```
