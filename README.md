@@ -55,18 +55,6 @@ This repository contains the **Apache 2.0 OSS edition (v3.3.9)**. Enterprise com
 > and enforces clean OSS/Enterprise boundaries.  
 > **All public imports are now guaranteed stable for production use.**
 
-## 🔒 Stability Guarantees (v3.3.9+)
-
-ARF v3.3.9 introduces **hard stability guarantees** for OSS users:
-
-- ✅ No circular imports
-- ✅ Direct, absolute imports for all public APIs
-- ✅ Pydantic v2 ↔ Dataclass compatibility wrapper
-- ✅ Graceful fallback behavior (no runtime crashes)
-- ✅ Advisory-only execution enforced at runtime
-
-If you can import it, it is safe to use in production.
-
 ---
 
 ## Why ARF Exists
@@ -131,7 +119,6 @@ The open-source edition of the Agentic Reliability Framework is designed for **a
     
 *   **Single-Context Operation**No multi-tenant isolation, enterprise policy layering, or cross-environment orchestration.
     
-
 ### Intended Use Cases
 
 *   Reliability experimentation and research
@@ -164,9 +151,7 @@ The open-source edition of the Agentic Reliability Framework is designed for **a
 
 **Enterprise Edition (Commercial)**
 
-The Enterprise Edition extends ARF’s advisory intelligence into **controlled, auditable execution environments**. It enables permissioned remediation workflows, persistent organizational memory, and outcome-aware learning—while preserving explicit safety boundaries and human-in-the-loop governance. Designed for production reliability teams, Enterprise deployments focus on **predictable execution, compliance alignment, and measurable operational outcomes**.
-
-_Execution, learning, persistence, analytics, and compliance features are available only under a commercial license._
+**Enterprise Edition (Commercial)** The Enterprise Edition of ARF transforms advisory intelligence into **governed, production-grade execution**. It introduces permissioned remediation workflows, persistent organizational memory, outcome-aware optimization, and compliance-aligned controls—while preserving strict safety boundaries and human oversight. Enterprise deployments are designed for reliability teams operating at scale, where **predictable execution, auditability, and measurable business outcomes** are required. Execution, learning, analytics, and compliance capabilities are available exclusively under a commercial license.
 
 **️ Why Choose ARF Over Alternatives**
 
@@ -315,6 +300,19 @@ Enterprise captures it.
 ### 💰 Business Value and ROI
 
 Quantitative performance metrics, benchmarks, and ROI analyses are derived exclusively from Enterprise deployments and are not disclosed in the OSS distribution.
+
+## 🔒 Stability Guarantees (v3.3.9+)
+
+ARF v3.3.9 introduces **hard stability guarantees** for OSS users:
+
+- ✅ No circular imports
+- ✅ Direct, absolute imports for all public APIs
+- ✅ Pydantic v2 ↔ Dataclass compatibility wrapper
+- ✅ Graceful fallback behavior (no runtime crashes)
+- ✅ Advisory-only execution enforced at runtime
+
+If you can import it, it is safe to use in production.
+
 
 #### Team Productivity
 
