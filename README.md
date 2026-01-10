@@ -2,7 +2,7 @@
   <img src="https://github.com/petterjuan/agentic-reliability-framework/raw/main/assets/agentic-reliability-banner.png" width="100%" alt="AGENTIC RELIABILITY FRAMEWORK">
 </p>
 
-**Production-grade multi-agent AI system for infrastructure reliability monitoring and self-healing.**
+**Production-grade multi-agent AI system for infrastructure reliability analysis and advisory intelligence, with governed execution available in Enterprise deployments.**
 
 > **ARF is an enterprise reliability framework that enables context-aware AI agents to detect, reason about, and remediate infrastructure failures—operating in advisory mode in OSS and executing controlled remediation in Enterprise deployments.**
 
@@ -77,11 +77,6 @@ But the real business loss happens between:
 > *“Something is wrong” → “We know what to do.”*
 
 ARF collapses that gap by providing a hybrid intelligence system that advises safely in OSS and executes deterministically in Enterprise. 
-
-- **🤖 AI Agents** for complex pattern recognition
-- **⚙️ Deterministic Rules** for reliable, predictable responses
-- **🧠 RAG Graph Memory** for context-aware decision making
-- **🔒 MCP Safety Layer** for zero-trust execution
 
 ---
 
@@ -162,6 +157,7 @@ The open-source edition of the Agentic Reliability Framework is designed for **a
 | Traditional Monitoring | Alert-based                       | High                      | High        | ❌         |
 | LLM-Only Agents        | Heuristic                         | Low                       | Low         | ⚠️        |
 
+**Governed execution modes (Enterprise-only)**Enterprise deployments support multiple permissioned execution configurations with varying levels of human oversight. Specific modes, controls, and workflows are not part of the OSS distribution.
 
 **Migration Paths**
 
@@ -251,12 +247,8 @@ Enterprise **executes** intent. The framework **separates intent creation from e
 4.  **Policy Evaluation** - Deterministic rule-based action determination 
     
 5.  **Action Enhancement** - Historical effectiveness data informs priority 
-    
-6.  **MCP Execution** - Safe tool execution with guardrails 
-    
-7.  **Outcome Recording** - Results stored in RAG Graph for learning 
-    
-8.  **Business Impact Calculation** - Revenue and user impact quantification
+
+>    Later execution, outcome evaluation, and learning stages exist exclusively in Enterprise deployments and are intentionally omitted from OSS documentation.
 ---
 
 # Multi-Agent Design (ARF v3.0) – Coverage Overview
@@ -271,10 +263,8 @@ Enterprise **executes** intent. The framework **separates intent creation from e
 | Detection Agent | Detect anomalies, monitor telemetry, perform time-series forecasting  | ✅  | ✅         |
 | Recall Agent    | Retrieve similar incidents/actions/outcomes from RAG graph + FAISS    | ✅  | ✅         |
 | Decision Agent  | Apply deterministic policies, reasoning over historical outcomes      | ✅  | ✅         |
-| Safety Agent    | Enforce guardrails, circuit breakers, compliance constraints          | ❌  | ✅         |
-| Execution Agent | Execute HealingIntents according to MCP modes (advisory/approval/autonomous) | ❌  | ✅         |
-| Learning Agent  | Extract outcomes and update predictive models / RAG patterns          | ❌  | ✅         |
 
+Learns from operational outcomes to improve future recommendations (Enterprise-only).
 ---
 
 ## OSS vs Enterprise Philosophy
@@ -313,15 +303,7 @@ ARF v3.3.9 introduces **hard stability guarantees** for OSS users:
 
 If you can import it, it is safe to use in production.
 
-
-#### Team Productivity
-
-ARF frees up engineering capacity, increasing productivity:
-
-| Metric                                  | Industry Average | ARF Performance        | Improvement         |
-|----------------------------------------|----------------|------------------------|-------------------|
-| Engineer Hours Spent on Manual Response | 10–20 h/month  | 320 h/month recovered  | 16–32× improvement |
-
+Quantitative productivity, ROI, and MTTR improvements are measured in Enterprise deployments and shared privately during evaluations.
 ---
 
 ## Who Uses ARF
@@ -381,25 +363,6 @@ graph LR
 
 ### 🔒 Security & Compliance
 
-#### Safety Guardrails Architecture
-
-ARF implements a multi-layered security model with **five protective layers**:
-
-```python
-# Five-Layer Safety System Configuration
-safety_system = { 
-   "layer_1": "Action Blacklisting", 
-   "layer_2": "Blast Radius Limiting",  
-   "layer_3": "Human Approval Workflows", 
-   "layer_4": "Business Hour Restrictions", 
-   "layer_5": "Circuit Breakers & Cooldowns" 
-}
-
-# Environment Configuration
-export SAFETY_ACTION_BLACKLIST="DATABASE_DROP,FULL_ROLLOUT,SYSTEM_SHUTDOWN"
-export SAFETY_MAX_BLAST_RADIUS=3
-export MCP_MODE=approval  # advisory, approval, or autonomous
-```
 
 **Layer Breakdown:**
 
@@ -454,18 +417,8 @@ export MCP_MODE=approval  # advisory, approval, or autonomous
         *   **Staging:** approval
             
         *   **Production:** advisory or approval
-
-Quick Configuration Example
-
-```
-# Set up basic security parameters
-export SAFETY_ACTION_BLACKLIST="DATABASE_DROP,FULL_ROLLOUT,SYSTEM_SHUTDOWN"
-export SAFETY_MAX_BLAST_RADIUS=3
-export MCP_MODE=approval
-export AUDIT_RETENTION_DAYS=30
-export BUSINESS_HOURS_START=09:00
-export BUSINESS_HOURS_END=17:00
-```
+          
+**Enterprise Safety Model (High-Level)**Enterprise deployments apply multiple layers of safety controls, including permission boundaries, scope constraints, approval workflows, and rate-limiting mechanisms. These controls are configurable per organization and environment and are intentionally not exposed in the OSS edition.
 
 ### Recommended Implementation Order
 
