@@ -97,79 +97,52 @@ ARF collapses that gap by providing a hybrid intelligence system that advises sa
 
 ---
 
-## 🎯 What This Actually Does
+🎯 What This Actually Does
+--------------------------
 
-🎯 What This Actually Does (OSS Edition)
-----------------------------------------
+**OSS Edition (Apache 2.0)**
 
-**Agentic Reliability Framework — OSS (Apache 2.0)**
-
-The OSS edition of ARF is a **deterministic, advisory-only reliability intelligence engine**. It analyzes incidents, recalls historical patterns, applies safety constraints, and produces immutable healing plans — **without ever executing actions**.
+The open-source edition of the Agentic Reliability Framework is designed for **advisory intelligence**, **incident understanding**, and **safe decision support**—not autonomous execution.
 
 ### Core Capabilities
 
-*   **Telemetry & Incident Ingestion**Processes reliability events and incident context through the V3ReliabilityEngine, using configurable thresholds and signal normalization.
+*   **Reliability Event Intake**Accepts structured reliability and operational events with configurable thresholds and metadata for downstream analysis.
     
-*   **Multi-Agent Analysis Pipeline**Orchestrates specialized agents (e.g. detection, diagnosis, prediction) to investigate root cause, contributing factors, and likely outcomes.
+*   **Multi-Stage Analysis Pipeline**Performs detection, diagnosis, and predictive reasoning to assess incident context, potential causes, and downstream risk.
     
-*   **RAG Graph Memory (In-Memory)**Stores incidents, actions, and outcomes in an in-memory knowledge graph, augmented with FAISS vector similarity search.
+*   **Historical Pattern Recall**Identifies similar past incidents using vector-based similarity techniques to surface precedent and comparative outcomes.
     
-*   **Historical Similarity Recall**Retrieves past incidents using cosine similarity over FAISS embeddings (IVF indexing) to surface comparable failure patterns.
+*   **Advisory Planning Output**Produces structured, immutable remediation plans that describe _what could be done_, _why_, and _with what expected impact_—without taking action.
     
-*   **Healing Intent Generation (Immutable)**Produces a HealingIntent object containing:
+*   **Deterministic Safety Guardrails**Applies explicit, configuration-driven policies to constrain recommendations (e.g., scope limits, restricted actions, compliance boundaries).
     
-    *   Recommended remediation steps
-        
-    *   Risk and blast-radius analysis
-        
-    *   Business impact estimates
-        
-    *   Policy validation resultsThese objects are **read-only and non-executable**.
-        
-*   **Deterministic Policy & Safety Engine**Applies hard guardrails via safety evaluation logic, including:
+*   **Business Impact Estimation**Estimates user, revenue, or operational impact based on event metadata and configurable models.
     
-    *   Blast-radius limits
-        
-    *   Cooldown enforcement
-        
-    *   Business-hour restrictions
-        
-    *   Action blacklists
-        
-    *   Circuit-breaker checks
-        
-*   **Advisory-Only MCP Interface**Exposes an MCP-compatible interface that returns **analysis and intent only**, never execution. This boundary is enforced at the code level.
-    
-*   **Business Impact Estimation**Calculates potential revenue, user, or SLA impact using configurable monetization and cost models.
+*   **In-Memory Operation Only**Operates entirely in memory with bounded retention suitable for development, research, and evaluation use cases.
     
 
-### Hard Execution Boundary (Enforced)
+### Explicit OSS Constraints (By Design)
 
-The OSS edition **cannot and will not execute remediation actions**. All execution requests terminate at the advisory layer.
+*   **Advisory-Only**The OSS edition never executes changes, deploys fixes, or mutates production systems.
+    
+*   **No Autonomous Learning**Historical data is used for recall and comparison only; the system does not self-train or update models over time.
+    
+*   **No Persistent Storage**Incident context and memory are ephemeral and capped to prevent long-term retention.
+    
+*   **Single-Context Operation**No multi-tenant isolation, enterprise policy layering, or cross-environment orchestration.
+    
 
-```python
-# OSS always returns this structure for execution requests
-{
-    "requires_enterprise": True,
-    "message": "Advisory analysis complete. Enterprise license required for execution.",
-    "analysis": {...},  # Full what-if analysis
-    "healing_intent": {...}  # Complete execution plan (requires Enterprise)
-}
-```
+### Intended Use Cases
 
-This behavior is **non-configurable** in OSS.
-
-### Memory & Decision Flow
-
-```
-ReliabilityEvent → FAISS Embedding → Graph Node
-     ↓
-Historical Pattern Recall → Success Probability Scoring
-     ↓
-Policy Evaluation → HealingIntent Creation
-     ↓
-[STOP: OSS Boundary] → [Enterprise Execution]
-```
+*   Reliability experimentation and research
+    
+*   Incident postmortems and what-if analysis
+    
+*   Agentic system prototyping
+    
+*   Safety-constrained AI planning demonstrations
+    
+*   Evaluation of agent reasoning quality without execution risk   
 
 ### Architectural Guarantees
 
@@ -189,75 +162,21 @@ Policy Evaluation → HealingIntent Creation
 
 ---
 
-## 🆓 OSS Edition (Apache 2.0)
+**Enterprise Edition (Commercial)**
 
-| Feature           | Implementation                 | Limits               |
-| ----------------- | ------------------------------ | -------------------- |
-| MCP Mode          | Advisory only (`OSSMCPClient`) | No execution         |
-| RAG Memory        | In-memory graph + FAISS        | 1000 incidents (LRU) |
-| Similarity Search | FAISS cosine similarity        | Top-K only           |
-| Learning          | Pattern stats only             | No persistence       |
-| Healing           | `HealingIntent` creation       | Advisory only        |
-| Policies          | Deterministic guardrails       | Warnings + blocks    |
-| Storage           | RAM only                       | Process-lifetime     |
-| Support           | GitHub Issues                  | No SLA               |
+The Enterprise Edition extends ARF’s advisory intelligence into **controlled, auditable execution environments**. It enables permissioned remediation workflows, persistent organizational memory, and outcome-aware learning—while preserving explicit safety boundaries and human-in-the-loop governance. Designed for production reliability teams, Enterprise deployments focus on **predictable execution, compliance alignment, and measurable operational outcomes**.
 
----
+_Execution, learning, persistence, analytics, and compliance features are available only under a commercial license._
 
-## 💰 Enterprise Edition (Commercial)
-
-| Feature    | Implementation                        | Value                             |
-| ---------- | ------------------------------------- | --------------------------------- |
-| MCP Modes  | Advisory / Approval / Autonomous      | Controlled execution              |
-| Storage    | Neo4j + FAISS (hybrid)                | Persistent, unlimited             |
-| Dashboard  | React + FastAPI <br> Live system view | Live system view                  |
-| Analytics  | Graph Neural Networks                 | Predictive MTTR (Enterprise-only) |
-| Compliance | SOC2 / GDPR / HIPAA                   | Full audit trails                 |
-| Pricing    | $0.10 / incident + $499 / month       | Usage-based                       |
-
----
 **️ Why Choose ARF Over Alternatives**
 
-**Comparison Matrix**
+| Solution               | Intelligence                      | Safety                    | Determinism | Execution |
+| ---------------------- | --------------------------------- | ------------------------- | ----------- | --------- |
+| **ARF (OSS)**          | Context-aware analysis            | High (advisory-only)      | High        | ❌         |
+| **ARF (Enterprise)**   | Advanced reliability intelligence | High (governed execution) | High        | ✅         |
+| Traditional Monitoring | Alert-based                       | High                      | High        | ❌         |
+| LLM-Only Agents        | Heuristic                         | Low                       | Low         | ⚠️        |
 
-| Solution | Learning Capability | Safety Guarantees | Deterministic Behavior | Business ROI |
-|----------|-------------------|-----------------|----------------------|--------------|
-| **ARF (Hybrid Intelligence)** | ✅ Continuous learning (RAG Graph memory) | ✅ High safety (MCP guardrails + approval workflows) | ✅ High determinism (Policy Engine + AI synthesis) | ✅ Quantified ROI (Enterprise-only: execution + learning required) |
-| **Traditional Monitoring** (Datadog, New Relic, Prometheus) | ❌ No learning capability | ✅ High safety (read-only) | ✅ High determinism (rules-based) | ❌ Reactive only - alerts after failures occur |
-| **LLM-Only Agents** (AutoGPT, LangChain, CrewAI) | ⚠️ Limited learning (context window only) | ❌ Low safety (direct API access) | ❌ Low determinism (hallucinations) | ⚠️ Unpredictable - cannot guarantee outcomes |
-| **Rule-Based Automation** (Ansible, Terraform, scripts) | ❌ No learning (static rules) | ✅ High safety (manual review) | ✅ High determinism (exact execution) | ⚠️ Brittle - breaks with system changes |
-
-
-**Key Differentiators** 
-
-_**🔄 Learning vs Static**_ 
-
-*   **Alternatives**: Static rules or limited context windows 
-    
-*   **ARF**: Continuously learns from incidents → outcomes in RAG Graph memory 
-    
-
-_**🔒 Safety vs Risk**_ 
-
-*   **Alternatives**: Either too restrictive (no autonomy) or too risky (direct execution) 
-    
-*   **ARF**: Three-mode MCP system (Advisory → Approval → Autonomous) with guardrails 
-    
-
-_**🎯 Predictability vs Chaos**_ 
-
-*   **Alternatives**: Either brittle rules or unpredictable LLM behavior 
-    
-*   **ARF**: Combines deterministic policies with AI-enhanced decision making 
-    
-
-_**💰 ROI Measurement**_ 
-
-*   **Alternatives**: Hard to quantify value beyond "fewer alerts" 
-    
-*   **ARF (Enterprise)**: Tracks revenue saved, auto-heal rates, and MTTR improvements via execution-aware business dashboards
-
-*   **OSS**: Generates advisory intent only (no execution, no ROI measurement)
 
 **Migration Paths**
 
@@ -297,66 +216,19 @@ _ARF provides the intelligence of AI agents with the reliability of traditional 
 
 ---
 
-## Conceptual Architecture (Mental Model)
-
-```
-Signals → Incidents → Memory Graph → Decision → Policy → Execution
-             ↑              ↓
-         Outcomes ← Learning Loop
-```
-
-**Key insight:** Reliability improves when systems *remember*.
-
 🔧 Architecture
 -------------------------------
 
-**🏗️ Core Architecture**  
+## Conceptual Architecture (Mental Model)
 
-**Three-Layer Hybrid Intelligence: The ARF Paradigm** 
+```
+Signals → Analysis → Memory → Intent
+                     ↓
+                Human Decision
+```
+**OSS stops permanently at intent generation.**
 
-ARF introduces a **hybrid intelligence architecture** that combines the best of three worlds: **AI reasoning**, **deterministic rules**, and **continuous learning**. This three-layer approach ensures both innovation and reliability in production environments.
-
-```mermaid
-graph TB 
-   subgraph "Layer 1: Cognitive Intelligence" 
-       A1[Multi-Agent Orchestration] --> A2[Detective Agent] 
-       A1 --> A3[Diagnostician Agent] 
-       A1 --> A4[Predictive Agent] 
-       A2 --> A5[Anomaly Detection & Pattern Recognition] 
-       A3 --> A6[Root Cause Analysis & Investigation] 
-       A4 --> A7[Future Risk Forecasting & Trend Analysis] 
-   end 
-    
-   subgraph "Layer 2: Memory & Learning" 
-       B1[RAG Graph Memory] --> B2[FAISS Vector Database] 
-       B1 --> B3[Incident-Outcome Knowledge Graph] 
-       B1 --> B4[Historical Effectiveness Database] 
-       B2 --> B5[Semantic Similarity Search] 
-       B3 --> B6[Connected Incident → Outcome Edges] 
-       B4 --> B7[Success Rate Analytics] 
-   end 
-    
-   subgraph "Layer 3: Execution Control (OSS Advisory / Enterprise Execution)" 
-       C1[MCP Server] --> C2[Advisory Mode - OSS Default] 
-       C1 --> C3[Approval Mode - Human-in-Loop] 
-       C1 --> C4[Autonomous Mode - Enterprise] 
-       C1 --> C5[Safety Guardrails & Circuit Breakers] 
-       C2 --> C6[What-If Analysis Only] 
-       C3 --> C7[Audit Trail & Approval Workflows] 
-       C4 --> C8[Auto-Execution with Guardrails] 
-   end 
-    
-   D[Reliability Event] --> A1 
-   A1 --> E[Policy Engine] 
-   A1 --> B1 
-   E & B1 --> C1 
-   C1 --> F["Healing Actions (Enterprise Only)"]
-   F --> G[Business Impact Dashboard] 
-   F --> B1[Continuous Learning Loop] 
-   G --> H[Quantified ROI: Revenue Saved, MTTR Reduction]
-   ```
-
-Healing Actions occur only in Enterprise deployments.
+**Key insight:** Reliability improves when systems *remember*.
 
 **Architecture Philosophy**: Each layer addresses a critical failure mode of current AI systems: 
 
@@ -366,91 +238,7 @@ Healing Actions occur only in Enterprise deployments.
     
 3.  **Execution Layer** prevents _"unsafe, unconstrained actions"_
 
-**OSS Architecture**
-
-```mermaid
-graph TD
-    A[Telemetry / Metrics] --> B[Reliability Engine]
-    B --> C[OSSMCPClient]
-    C --> D[RAGGraphMemory]
-    D --> E[FAISS Similarity]
-    D --> F[Incident / Outcome Graph]
-    E --> C
-    F --> C
-    C --> G[HealingIntent]
-    G --> H[STOP: Advisory Only]
-```
-OSS execution halts permanently at HealingIntent. No actions are performed.
-
 ### **Stop point:** OSS halts permanently at HealingIntent.
-
-### **ARF v3.0 Dual-Layer Architecture**
-
-```
-          ┌───────────────────────────┐
-          │        Telemetry          │
-          └─────────────┬────────────┘
-                        │
-                        ▼
-  ┌───────────── OSS Layer (Advisory Only) ─────────────┐
-  │                                                     │
-  │  +--------------------+                             │
-  │  | Detection Agent     |  ← Anomaly detection       │
-  │  | (OSS + Enterprise)  |  & forecasting             │
-  │  +--------------------+                             │
-  │           │                                         │
-  │           ▼                                         │
-  │  +--------------------+                             │
-  │  | Recall Agent        |  ← Retrieve similar        │
-  │  | (OSS + Enterprise)  |  incidents/actions/outcomes
-  │  +--------------------+                             │
-  │           │                                         │
-  │           ▼                                         │
-  │  +--------------------+                             │
-  │  | Decision Agent      |  ← Policy reasoning        │
-  │  | (OSS + Enterprise)  |  over historical outcomes  │
-  │  +--------------------+                             │
-  └─────────────────────────┬───────────────────────────┘
-                            │
-                            ▼
- ┌───────── Enterprise Layer (Full Execution) ─────────┐
- │                                                     │
- │  +--------------------+        +-----------------+  │
- │  | Safety Agent        |  ───> | Execution Agent |  │
- │  | (Enterprise only)   |       | (MCP modes)     |  │
- │  +--------------------+        +-----------------+  │
- │           │                                         │
- │           ▼                                         │
- │  +--------------------+                             │
- │  | Learning Agent      |  ← Extract outcomes,       │
- │  | (Enterprise only)   |  update RAG & predictive   │
- │  +--------------------+   models                    │
- │           │                                         │
- │           ▼                                         │
- │       HealingIntent (Executed, Audit-ready)         │
- └─────────────────────────────────────────────────────┘
-```
-
-## Core Innovations
-
-### 1. RAG Graph Memory (Not Vector Soup)
-
-### ARF models **incidents, actions, and outcomes as a graph**, rather than simple embeddings. This allows causal reasoning, pattern recall, and outcome-aware recommendations.
-
-```mermaid
-graph TD
-    Incident -->|caused_by| Component
-    Incident -->|resolved_by| Action
-    Incident -->|led_to| Outcome
-```
-
-This enables:
-
-*   **Causal reasoning:** Understand root causes of failures.
-    
-*   **Pattern recall:** Retrieve similar incidents efficiently using FAISS + graph.
-    
-*   **Outcome-aware recommendations:** Suggest actions based on historical success.
 
 ### 2. Healing Intent Boundary
 
@@ -466,42 +254,6 @@ Enterprise **executes** intent. The framework **separates intent creation from e
           |       HealingIntent       |
           +-------------------------->|
 ```
-
-### 3. MCP (Model Context Protocol) Execution Control
-
-Every action passes through:
-- Advisory → Approval → Autonomous modes
-- Blast radius checks
-- Human override paths
-  
-\* All actions in Enterprise flow through
-
-\* Controlled execution modes with policy enforcement:
-
-No silent actions. Ever.
-
-```mermaid
-graph LR
-    Action_Request --> Advisory_Mode --> Approval_Mode --> Autonomous_Mode
-    Advisory_Mode -->|recommend| Human_Operator
-    Approval_Mode -->|requires_approval| Human_Operator
-    Autonomous_Mode -->|auto-execute| Safety_Guardrails
-    Safety_Guardrails --> Execution_Log
-```
-
-**Execution Safety Features:**
-
-1.  **Blast radius checks:** Limit scope of automated actions.
-    
-2.  **Human override paths:** Operators can halt or adjust actions.
-    
-3.  **No silent execution:** All actions are logged for auditability.
-
-**Outcome:**
-
-*   Hybrid intelligence combining AI-driven recommendations and deterministic policies.
-    
-*   Safe, auditable, and deterministic execution in production.
 
 **Key Orchestration Steps:** 
 
