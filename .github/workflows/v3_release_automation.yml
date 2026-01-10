@@ -1,0 +1,70 @@
+name: V3.3.9 Release Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  v3-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          
+      - name: Run V3.3.9 validation
+        run: python scripts/smart_v3_validator.py
+        
+      - name: Run tests (if not skipped)
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          pytest tests/ --cov=agentic_reliability_framework --cov-report=xml
+          
+      - name: Create release artifacts
+        run: |
+          mkdir -p release_artifacts
+          # Copy key V3 files
+          cp -r agentic_reliability_framework/engine/v3_reliability.py release_artifacts/
+          cp -r agentic_reliability_framework/arf_core/config/oss_config.py release_artifacts/
+          cp -r agentic_reliability_framework/arf_core/engine/oss_mcp_client.py release_artifacts/
+          cp scripts/smart_v3_validator.py release_artifacts/
+          
+      - name: Create milestone report
+        run: |
+          python scripts/review_v3_artifacts.py --version 3.3.9 --output milestone-report.md
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3.3.9-release-artifacts
+          path: |
+            release_artifacts/
+            milestone-report.md
+            artifacts/v3-validation-report.json
