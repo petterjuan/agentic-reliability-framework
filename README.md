@@ -314,31 +314,7 @@ Enterprise captures it.
 
 ### 💰 Business Value and ROI
 
-> 🔒 **Enterprise-Only Metrics**
->
-> All metrics, benchmarks, MTTR reductions, auto-heal rates, revenue protection figures,
-> and ROI calculations in this section are derived from **Enterprise deployments only**.
->
-> The OSS edition does **not** execute actions, does **not** auto-heal, and does **not**
-> measure business impact.
-
-#### Detection & Resolution Speed
-
-**Enterprise deployments of ARF** dramatically reduce incident detection and resolution times compared to industry averages:
-
-| Metric                        | Industry Average | ARF Performance | Improvement        |
-|-------------------------------|----------------|----------------|------------------|
-| High-Priority Incident Detection | 8–14 min       | 2.3 min        | 71–83% faster     |
-| Major System Failure Resolution  | 45–90 min      | 8.5 min        | 81–91% faster     |
-
-#### Efficiency & Accuracy
-
-ARF improves auto-heal rates and reduces false positives, driving operational efficiency:
-
-| Metric           | Industry Average | ARF Performance | Improvement   |
-|-----------------|----------------|----------------|---------------|
-| Auto-Heal Rate    | 5–15%          | 81.7%          | 5.4× better   |
-| False Positives   | 40–60%         | 8.2%           | 5–7× better   |
+Quantitative performance metrics, benchmarks, and ROI analyses are derived exclusively from Enterprise deployments and are not disclosed in the OSS distribution.
 
 #### Team Productivity
 
@@ -347,66 +323,6 @@ ARF frees up engineering capacity, increasing productivity:
 | Metric                                  | Industry Average | ARF Performance        | Improvement         |
 |----------------------------------------|----------------|------------------------|-------------------|
 | Engineer Hours Spent on Manual Response | 10–20 h/month  | 320 h/month recovered  | 16–32× improvement |
-
----
-
-### 🏆 Financial Evolution: From Cost Center to Profit Engine
-
-ARF transforms reliability operations from a high-cost, reactive burden into a high-return strategic asset:
-
-| Approach                                  | Annual Cost       | Operational Profile                                      | ROI       | Business Impact                                        |
-|------------------------------------------|-----------------|---------------------------------------------------------|-----------|-------------------------------------------------------|
-| ❌ Cost Center (Traditional Monitoring)   | $2.5M–$4.0M     | 5–15% auto-heal, 40–60% false positives, fully manual response | Negative  | Reliability is a pure expense with diminishing returns |
-| ⚙️ Efficiency Tools (Rule-Based Automation) | $1.8M–$2.5M     | 30–50% auto-heal, brittle scripts, limited scope       | 1.5–2.5× | Marginal cost savings; still reactive                |
-| 🧠 AI-Assisted (Basic ML/LLM Tools)      | $1.2M–$1.8M     | 50–70% auto-heal, better predictions, requires tuning | 3–4×     | Smarter operations, not fully autonomous            |
-| ✅ ARF: Profit Engine                     | $0.75M–$1.2M    | 81.7% auto-heal, 8.2% false positives, 85% faster resolution | 5.2×+    | Converts reliability into sustainable competitive advantage |
-
-**Key Insights:**
-
-- **Immediate Cost Reduction:** Payback in 2–3 months with ~64% incident cost reduction.  
-- **Engineer Capacity Recovery:** 320 hours/month reclaimed (equivalent to 2 full-time engineers).  
-- **Revenue Protection:** $3.2M+ annual revenue protected for mid-market companies.  
-- **Compounding Value:** 3–5% monthly operational improvement as the system learns from outcomes.  
-
----
-
-### 🏢 Industry-Specific Impact (Enterprise Deployments)
-
-ARF delivers measurable benefits across industries:
-
-| Industry           | ARF ROI | Key Benefit                                      |
-|-------------------|---------|-------------------------------------------------|
-| Finance           | 8.3×    | $5M/min protection during HFT latency spikes   |
-| Healthcare        | Priceless | Zero patient harm, HIPAA-compliant failovers   |
-| SaaS              | 6.8×    | Maintains customer SLA during AI inference spikes |
-| Media & Advertising | 7.1×  | Protects $2.1M ad revenue during primetime outages |
-| Logistics         | 6.5×    | Prevents $12M+ in demurrage and delays        |
-
----
-
-### 📊 Performance Summary
-
-| Industry   | Avg Detection Time (Industry) | ARF Detection Time | Auto-Heal | Improvement |
-|-----------|-------------------------------|------------------|-----------|------------|
-| Finance   | 14 min                        | 0.78 min         | 100%      | 94% faster |
-| Healthcare | 20 min                       | 0.8 min          | 100%      | 94% faster |
-| SaaS      | 45 min                        | 0.75 min         | 95%       | 95% faster |
-| Media     | 30 min                        | 0.8 min          | 90%       | 94% faster |
-| Logistics | 90 min                        | 0.8 min          | 85%       | 94% faster |
-
-**Bottom Line:** **Enterprise ARF deployments** convert reliability from a cost center (2–5% of engineering budget) into a profit engine, delivering **5.2×+ ROI** and sustainable competitive advantage.
-
-**Before ARF**
-- 45 min MTTR
-- Tribal knowledge
-- Repeated failures
-
-**After ARF**
-- 5–10 min MTTR
-- Institutional memory
-- Institutionalized remediation patterns (Enterprise execution)
-
-This is a **revenue protection system in Enterprise deployments**, and a **trust-building advisory intelligence layer in OSS**.
 
 ---
 
@@ -563,28 +479,6 @@ export BUSINESS_HOURS_END=17:00
 
 ---
 
-### ⚡ Enterprise Performance & Scaling Benchmarks
-> OSS performance is limited to advisory analysis and intent generation.
-> Execution latency and throughput metrics apply to Enterprise MCP execution only.
-
-
-#### Benchmarks
-
-| Operation                   | Latency / p99      | Throughput           | Memory Usage          |
-|-----------------------------|------------------|--------------------|--------------------|
-| Event Processing            | 1.8s             | 550 req/s          | 45 MB              |
-| RAG Similarity Search       | 120 ms           | 8300 searches/s    | 1.5 MB / 1000 incidents |
-| MCP Tool Execution          | 50 ms - 2 s      | Varies by tool     | Minimal            |
-| Agent Analysis              | 450 ms           | 2200 analyses/s    | 12 MB              |
-
-#### Scaling Guidelines
-
-- **Vertical Scaling:** Each engine instance handles ~1000 req/min  
-- **Horizontal Scaling:** Deploy multiple engines behind a load balancer  
-- **Memory:** FAISS index grows ~1.5 MB per 1000 incidents  
-- **Storage:** Incident texts ~50 KB per 1000 incidents  
-- **CPU:** RAG search is O(log n) with FAISS IVF indexes  
-
 ## 🚀 Quick Start
 
 ### OSS (≈5 minutes)
@@ -616,12 +510,6 @@ Commercial license required for Enterprise features.
 - Cost-aware decision optimization
 
 ---
-
-## Philosophy
-
-> *Systems fail. Memory fixes them.*
-
-ARF encodes operational experience into software — permanently.
 
 ---
 ### Citing ARF
