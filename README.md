@@ -24,7 +24,7 @@
 
 ---
 
-# Agentic Reliability Framework (ARF) v3.3.7 — Production Stability Release
+# Agentic Reliability Framework (ARF) v3.3.8 — Production Stability Release
 
 > ⚠️ **IMPORTANT OSS DISCLAIMER**
 >
@@ -47,17 +47,17 @@ This is **operational intelligence**.
 
 A dual-architecture reliability framework where **OSS analyzes and creates intent**, and **Enterprise safely executes intent**.
 
-This repository contains the **Apache 2.0 OSS edition (v3.3.7 Stable)**. Enterprise components are distributed separately under a commercial license.
+This repository contains the **Apache 2.0 OSS edition (v3.3.8)**. Enterprise components are distributed separately under a commercial license.
 
-> **v3.3.7 Production Stability Release**
+> **v3.3.8 Production Stability Release**
 >
 > This release finalizes import compatibility, eliminates circular dependencies,
 > and enforces clean OSS/Enterprise boundaries.  
 > **All public imports are now guaranteed stable for production use.**
 
-## 🔒 Stability Guarantees (v3.3.7+)
+## 🔒 Stability Guarantees (v3.3.8+)
 
-ARF v3.3.7 introduces **hard stability guarantees** for OSS users:
+ARF v3.3.8 introduces **hard stability guarantees** for OSS users:
 
 - ✅ No circular imports
 - ✅ Direct, absolute imports for all public APIs
