@@ -241,7 +241,7 @@ jobs:
     # UPLOAD ARTIFACTS
     - name: Upload Validation Artifacts
       if: ${{ always() && inputs.validation_level == 'certification' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: v3-validation-artifacts
         path: |

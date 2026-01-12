@@ -84,7 +84,7 @@ jobs:
           echo "✅ Report created: v3_report.json"
       
       - name: Upload Validation Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: v3-validation-report
           path: v3_report.json
@@ -185,7 +185,7 @@ jobs:
           cat milestone_report.md
       
       - name: Upload Milestone Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: milestone-report-${{ needs.detect_milestone.outputs.milestone }}
           path: milestone_report.md
