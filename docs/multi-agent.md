@@ -616,14 +616,6 @@ agent2.notify_agent3()
 ```
 
 ---
-
-## Further Reading
-
-- [Architecture Overview](./architecture.md) - Complete system design
-- [API Reference](./api.md) - Agent APIs
-- [FAISS Memory](./faiss-memory.md) - How agents remember
-- [Self-Healing](./self-healing.md) - Policy-driven automation
-
 ---
 
 **Built by [LGCY Labs](https://lgcylabs.vercel.app/) | [Back to README](../README.md)**
