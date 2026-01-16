@@ -425,16 +425,16 @@ class RateLimiter:
 
 **Load Balancing:**
 ```
-┌──────────┐
-│  LB      │
-└─┬─┬─┬─┬──┘
-  │ │ │ │
-  ▼ ▼ ▼ ▼
-[ARF][ARF][ARF][ARF]
-  │ │ │ │
-  └─┴─┴─┴─► Shared FAISS (read-only)
-  │ │ │ │
-  └─┴─┴─┴─► Shared Event Store
+    ┌──────────┐
+    │  LB      │
+    └─┬─┬─┬─┬──┘
+      │ │ │ │
+      ▼ ▼ ▼ ▼
+ [ARF][ARF][ARF][ARF]
+      │ │ │ │
+      └─┴─┴─┴─► Shared FAISS (read-only)
+      │ │ │ │
+      └─┴─┴─┴─► Shared Event Store
 ```
 
 ---
