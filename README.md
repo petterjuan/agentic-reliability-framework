@@ -84,23 +84,23 @@ ARF collapses that gap by providing a hybrid intelligence system that advises sa
 
 **OSS Edition (Apache 2.0)**
 
-The open-source edition of the Agentic Reliability Framework is designed for **advisory intelligence**, **incident understanding**, and **safe decision support**—not autonomous execution.
+The open-source edition of the Agentic Reliability Framework is designed for **advisory intelligence**, **incident understanding**, and **safe decision support** not autonomous execution.
 
 ### Core Capabilities
 
-*   **Reliability Event Intake**Accepts structured reliability and operational events with configurable thresholds and metadata for downstream analysis.
+*   **Reliability Event Intake** Accepts structured reliability and operational events with configurable thresholds and metadata for downstream analysis.
     
-*   **Multi-Stage Analysis Pipeline**Performs detection, diagnosis, and predictive reasoning to assess incident context, potential causes, and downstream risk.
+*   **Multi-Stage Analysis Pipeline** Performs detection, diagnosis, and predictive reasoning to assess incident context, potential causes, and downstream risk.
     
-*   **Historical Pattern Recall**Identifies similar past incidents using vector-based similarity techniques to surface precedent and comparative outcomes.
+*   **Historical Pattern Recall** Identifies similar past incidents using vector-based similarity techniques to surface precedent and comparative outcomes.
     
-*   **Advisory Planning Output**Produces structured, immutable remediation plans that describe _what could be done_, _why_, and _with what expected impact_—without taking action.
+*   **Advisory Planning Output** Produces structured, immutable remediation plans that describe _what could be done_, _why_, and _with what expected impact_—without taking action.
     
-*   **Deterministic Safety Guardrails**Applies explicit, configuration-driven policies to constrain recommendations (e.g., scope limits, restricted actions, compliance boundaries).
+*   **Deterministic Safety Guardrails** Applies explicit, configuration-driven policies to constrain recommendations (e.g., scope limits, restricted actions, compliance boundaries).
     
-*   **Business Impact Estimation**Estimates user, revenue, or operational impact based on event metadata and configurable models.
+*   **Business Impact Estimation** Estimates user, revenue, or operational impact based on event metadata and configurable models.
     
-*   **In-Memory Operation Only**Operates entirely in memory with bounded retention suitable for development, research, and evaluation use cases.
+*   **In-Memory Operation Only** Operates entirely in memory with bounded retention suitable for development, research, and evaluation use cases.
     
 ### 💡 How ARF OSS Adds Value Today
 
