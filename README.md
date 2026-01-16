@@ -307,7 +307,6 @@ Enterprise **executes** intent. The framework **separates intent creation from e
 # Multi-Agent Design (ARF v3.0) – Coverage Overview
 
 - **Detection, Recall, Decision** → present in both OSS and Enterprise  
-- **Safety, Execution, Learning** → Enterprise only  
 
 | Agent           | Responsibility                                                       | 🟢 OSS | 🔵 Enterprise |
 | --------------- | -------------------------------------------------------------------- | :----: | :-----------: |
@@ -315,6 +314,8 @@ Enterprise **executes** intent. The framework **separates intent creation from e
 | Recall Agent    | Retrieve similar incidents/actions/outcomes from RAG graph + FAISS   |    ✅   |       ✅       |
 | Decision Agent  | Apply deterministic policies, reasoning over historical outcomes     |    ✅   |       ✅       |
 
+- **Safety, Execution, Learning** → Enterprise only
+  
 ---
 
 ## OSS vs Enterprise Philosophy
@@ -341,6 +342,8 @@ Enterprise captures it.
 
 Quantitative performance metrics, benchmarks, and ROI analyses are derived exclusively from Enterprise deployments and are not disclosed in the OSS distribution.
 
+> Quantitative productivity, ROI, and MTTR improvements are measured in Enterprise deployments and shared privately during evaluations.
+
 ## 🔒 Stability Guarantees (v3.3.9+)
 
 ARF v3.3.9 introduces **hard stability guarantees** for OSS users:
@@ -353,7 +356,6 @@ ARF v3.3.9 introduces **hard stability guarantees** for OSS users:
 
 If you can import it, it is safe to use in production.
 
-Quantitative productivity, ROI, and MTTR improvements are measured in Enterprise deployments and shared privately during evaluations.
 ---
 
 ## Who Uses ARF
@@ -486,12 +488,6 @@ graph LR
 
 ```bash
 pip install agentic-reliability-framework==3.3.9
-```
-
-Runs:
-
-```
-python -c "import arf; print(arf.__version__)"
 ```
 
 Run locally or deploy as a service.
