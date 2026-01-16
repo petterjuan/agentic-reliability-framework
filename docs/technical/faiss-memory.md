@@ -317,42 +317,6 @@ for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
 
 ## Implementation Details
 
-### ProductionFAISSIndex
-
-ARF's thread-safe FAISS wrapper:
-
-```python
-class ProductionFAISSIndex:
-    def __init__(self, index: faiss.Index, texts: List[str]):
-        self.index = index
-        self.texts = texts
-        self._writer_lock = threading.RLock()  # Single-writer
-        self._encoder_pool = ThreadPoolExecutor(max_workers=4)
-        self._pending_vectors = []
-        self._last_save = time.time()
-    
-    async def add_async(self, vector: np.ndarray, text: str):
-        """Add vector asynchronously with batching"""
-        self._pending_vectors.append((vector, text))
-        
-        if len(self._pending_vectors) >= BATCH_SIZE:
-            await self._flush_batch()
-    
-    def _flush_batch(self):
-        """Write batch to FAISS index"""
-        with self._writer_lock:
-            vectors = np.array([v for v, _ in self._pending_vectors])
-            texts = [t for _, t in self._pending_vectors]
-            
-            self.index.add(vectors)
-            self.texts.extend(texts)
-            
-            self._pending_vectors.clear()
-            self._save_if_needed()
-```
-
----
-
 ### Key Design Patterns
 
 #### **1. Lazy Loading**
@@ -479,21 +443,7 @@ total = (10,000 × 1.5KB) + (10,000 × 0.5KB)
 
 ## Best Practices
 
-### 1. Regular Persistence
-
-```python
-# Save periodically
-if time.time() - last_save > SAVE_INTERVAL:
-    save_index()
-```
-
-**Why?**
-- Prevents data loss
-- Enables recovery
-
----
-
-### 2. Bounded Memory
+### Bounded Memory
 
 ```python
 # Limit index size
@@ -510,7 +460,7 @@ if index.ntotal >= MAX_VECTORS:
 
 ---
 
-### 3. Incremental Updates
+### Incremental Updates
 
 ```python
 # Don't rebuild entire index
@@ -690,14 +640,6 @@ for idx in indices[0]:
 Similar: High latency on payment service
 Similar: Database connection timeout
 ```
-
----
-
-## Further Reading
-
-- [Architecture Overview](./architecture.md) - How FAISS fits in
-- [Multi-Agent System](./multi-agent.md) - How agents use memory
-- [API Reference](./api.md) - FAISS APIs
 
 ---
 
