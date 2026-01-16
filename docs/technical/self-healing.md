@@ -884,12 +884,6 @@ if predicted_cpu_util > 0.9:
 
 ---
 
-## Further Reading
-
-- [Architecture Overview](./architecture.md) - Complete system design
-- [Multi-Agent System](./multi-agent.md) - How agents coordinate healing
-- [API Reference](./api.md) - Policy Engine APIs
-
 ---
 
 **Built by [LGCY Labs](https://lgcylabs.vercel.app/) | [Back to README](../README.md)**
